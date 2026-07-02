@@ -1,0 +1,980 @@
+000000* VERSION   2.1  ; SAVED 20210106 19:30:30                    |000
+000100$$SET SHARING=PRIVATE
+000200$$SET TEMPORARY
+000300 IDENTIFICATION  DIVISION.
+000400**************************
+000500*
+000600*
+000700*PROGRAM-ID.     PC/GAT/L006/DB.
+000800 AUTHOR.         ALFREDO MIYAMOTO.
+000900*
+001000*ANALISTA        SILVIA SALIA.
+001100*
+001200 DATE-WRITTEN.   14/06/96.
+001300 DATE-COMPILED.
+001400*
+001500*----------------------------------------------------------------*
+001600*                                                                *
+001700*    O B J E T I V O :                                           *
+001800*                                                                *
+001900*    PESQUISA NO BANCO BLOQUEIODS E RETORNA OS TIPOS DE          *
+002000*    BLOQUEIO DO VEICULO.                                        *
+002100*                                                                *
+002200*   PC/GAT/L006/DB  COPIA IDENTICA PC/GAT/L005/DB                *
+002300*                                                                *
+002400*   PC/GAT/L006/DB - PLACA MERCOSUL
+002500*----------------------------------------------------------------*
+002600*                                                                *
+002700*            A L T E R A C O E S   E F E T U A D A S             *
+002800*            ---------------------------------------             *
+002900*                                                                *
+003000*      DATA      O.S.   PATCH      ANALISTA      PROGRAMADOR     *
+003100*    --------    ----   -----    ------------    ------------    *
+003200*                                                                *
+003300*    07/08/96    0384    001     RENATO          ANA PAULA       *
+003400*    01/12/97    0498    002     RENATO          JAIR            *
+003500*    --/--/--    ----    ---     ............    ............    *
+003600*    ----------------------------------------------------------- *
+003700*    13/04/2008          001     IRACI           LEE (RENAJUD)   *
+003800*    11/02/2009          002     IRACI           LEE (29-EXPORTA)*
+003900*    20/08/2009          003     IRACI           LEE (BLQ 19,21  *
+004000*    19/05/2010          004     IRACI           LEE (BLQ.22)    *
+004100*    20/03/2012  ----    ---     SSA / JWD INCL DESCR NV BLOQ 35 *
+004200*    26/11/2012                  JAC / LEE   INCL. BLOQ.23 - TRF *
+004300*    10/08/2015                  SSA / LEE   RET.OBRIG.BLQ.SINIST*
+004400*                                            PESQ.POR PLACA S/MUN*
+004450*    06/01/2021                  JAC / LEE   $$SHARING=PRIVATE   *
+004500*    --/--/--    ----    ---     ............    ............    *
+004600*    --/--/--    ----    ---     ............    ............    *
+004700*    --/--/--    ----    ---     ............    ............    *
+004800*    --/--/--    ----    ---     ............    ............    *
+004900*                                                                *
+005000*----------------------------------------------------------------*
+005100*                                                                *
+005200*----------------------------------------------------------------*
+005300/
+005400 ENVIRONMENT     DIVISION.
+005500**************************
+005600*
+005700*
+005800 CONFIGURATION   SECTION.
+005900*************************
+006000*
+006100 SPECIAL-NAMES.
+006200*
+006300     DECIMAL-POINT           IS      COMMA.
+006400*
+006500/
+006600 DATA            DIVISION.
+006700**************************
+006800*
+006900*
+007000*
+007100*
+007200 DATA-BASE       SECTION.
+007300*************************
+007400*
+007500*
+007600 DB          DB01    =       TDBBLOQUEIOS.
+007700*
+007800*
+007900 01          BLOQUEIODS.
+008000
+008100/
+008200 01          RENAJUDDS.
+008300*
+008400*
+008500*
+008600 WORKING-STORAGE SECTION.
+008700*
+008800*
+008900*
+009000/
+009100*----------------------------------------------------------------*
+009200*                                                                *
+009300*            C H A V E S                                         *
+009400*                                                                *
+009500*----------------------------------------------------------------*
+009600*
+009700 77          CH-NOTFOUND             PIC X(001).
+009800 77          CH-BCO                  PIC X(001)  VALUE "N".
+009900 77          CH-CHASSIS              PIC X(022).
+010000*
+010100 01          CH-MUNICIPIO            PIC 9(005)  COMP.
+010200
+010300 01          CH-PLAMERC              PIC X(010).
+010400
+010500 01          CH-PESQUISA             PIC X(005)  VALUE SPACES.
+010600
+010700 01          CH-PLA-AUX              PIC X(010).
+010800 01          CH-PLA-AUX-R            REDEFINES   CH-PLA-AUX.
+010900     05      CH-PLA-AUX-LET          PIC X(003).
+011000     05      CH-PLA-AUX-NUM1         PIC 9(001).
+011100     05      CH-PLA-AUX-ALF          PIC X(001).
+011200     05      CH-PLA-AUX-NUM2         PIC 9(002).
+011300     05      FILLER                  PIC X(003).
+011400
+011500
+011600
+011700*----------------------------------------------------------------*
+011800*    SUBSCRITOR                                                  *
+011900*                                                                *
+012000*        IA1 - ASSOCIADO A TABELA DE OCORRENCIAS DE BLOQUEIO     *
+012100*----------------------------------------------------------------*
+012200*
+012300*
+012400 77          IA1                     PIC 9(011)  BINARY.
+012500
+012600 77          IX1                     PIC 9(002)  BINARY.
+012700
+012800 77          AC-QTD-RESTR            PIC 9(002)  BINARY.
+012900
+013000 01          AX-BLOQ-RENAJUD         PIC 9(002).
+013100
+013200 01          AX-BLOQ-02-23           PIC 9(002).
+013300
+013400 01          AX-BLQ-SINISTRO         PIC 9(002).
+013500
+013600/
+013700******************************************************************
+013800*        TABELA  DE  CONVERSAO  DE  NUMEROS  E  LETRAS           *
+013900*        (PLACA MERCOSUL - 5A.POSICAO DA PLACA)                  *
+014000******************************************************************
+014100*
+014200 01          TAB-LET-NUM.
+014300     05      FILLER                  PIC X(003)  VALUE   "0-A".
+014400     05      FILLER                  PIC X(003)  VALUE   "1-B".
+014500     05      FILLER                  PIC X(003)  VALUE   "2-C".
+014600     05      FILLER                  PIC X(003)  VALUE   "3-D".
+014700     05      FILLER                  PIC X(003)  VALUE   "4-E".
+014800     05      FILLER                  PIC X(003)  VALUE   "5-F".
+014900     05      FILLER                  PIC X(003)  VALUE   "6-G".
+015000     05      FILLER                  PIC X(003)  VALUE   "7-H".
+015100     05      FILLER                  PIC X(003)  VALUE   "8-I".
+015200     05      FILLER                  PIC X(003)  VALUE   "9-J".
+015300
+015400
+015500 01          TAB-LET-NUM-R           REDEFINES   TAB-LET-NUM.
+015600     05      TBA-LET-NUM             OCCURS      10      TIMES
+015700                                     INDEXED     BY      IN1.
+015800       10    TBA-NUM                 PIC X(001).
+015900       10    FILLER                  PIC X(001).
+016000       10    TBA-LET                 PIC X(001).
+016100
+016200
+016300/----------------------------------------------------------------*
+016400*    PARAMETRO PARA VERIFICACAO DE BLOQUEIO NO DBBLOQUEIO        *
+016500*----------------------------------------------------------------*
+016600*
+016700*
+016800 01          AX-LIB-GATL006.
+016900
+017000     05      AX-GAT-PLAMERC          PIC X(010).
+017100     05      AX-GAT-PLAMERC-R        REDEFINES   AX-GAT-PLAMERC.
+017200        10   AX-GAT-PLAMERC-LET      PIC X(003).
+017300        10   AX-GAT-PLAMERC-NUM1     PIC 9(001).
+017400        10   AX-GAT-PLAMERC-ALF      PIC X(001).
+017500        10   AX-GAT-PLAMERC-NUM2     PIC 9(002).
+017600        10   FILLER                  PIC X(003).
+017700     05      AX-GAT-MUNIC            PIC 9(005).
+017800     05      AX-GAT-CHASS            PIC X(022).
+017900
+018000*
+018100 01          AX-GAT-RETL006.
+018200
+018300     05      AX-RET-PLAMERC          PIC X(010).
+018400     05      AX-RET-MUNIC            PIC 9(005).
+018500     05      AX-RET-CHASS            PIC X(022).
+018600     05      AX-RET-FLAG             PIC 9(001).
+018700     05      AX-RET-BLOQUEIO.
+018800       10    AX-RET-BLOQ             PIC 9(002)  OCCURS  6.
+018900*
+019000*
+019100******************************************************************
+019200***  AX-RET-BLOQ =  01 JUDICIAL
+019300***                 02 FALTA DE TRANSFERENCIA
+019400***                 03 DANOS DE GRANDE MONTA
+019500***                 04 VEICULO IMPORTADO USADO
+019600***                 05 VEICULO IMPORTADO - PREMIO
+019700***                 06 VEICULO IMPORTADO - CORPO CONSULAR
+019800***                 07 PENDENCIA JUDICIAL E/OU ADMINISTRATIVA
+019900***                 08 VEICULO P/ DEFICIENTE FISICO
+020000***                 09 VEICULO COM ISENCAO FISCAL
+020100***                 10 VEICULO CONSULAR C/ ISENCAO
+020200***                 11 ACAO JUDICIAL (ANTIGO MANDATO DE SEGURANCA)
+020300***                 12 BLOQUEIO DIVERSOS
+020400***                 13 VEICULO RELACIONADO P/ LEILAO
+020500***                 14 VEICULO SINISTRADO
+020600***                 15 VEICULO DUBLE
+020700***                 16 BLOQ PROVISORIO PARA LICENCIAMENTO (JUD)
+020800***                 17 CADIN - INCONSISTENCIA CADASTRAL
+020900***                 18 PENHORA (615-A-CPC)(ART.615 COD.PROC.CIVIL)
+021000***                 19 OBITO REGISTRADO INSS
+021100***                 20 VEICULO APRENDIZAGEM
+021200***                 21 DIRETORIA DE VEICULO - CADASTRO INCORRETO
+021300***                 22 VEICULO SUSPEITO DE DUPLICIDADE DE PLACA
+021400***                 23 TRANSFERENCIA - DETRAN  (ART.233 DO CTB)
+021500***                 29 BAIXA POR EXPORTACAO / TRANSF.P/OUTRO PAIS
+021600***                 30 BAIXA PERMANENTE
+021700***                 31 VEIC. BLOQUEADO PELO DETRAN
+021800***                 35 JUDICIAL- LIBERA LICENCIAMENTO
+021900***                 51 RENAJUD - TRANSFERENCIA
+022000***                 52 RENAJUD - LICENCIAMENTO
+022100***                 53 RENAJUD - CIRCULACAO
+022200***                 54 RENAJUD - PENHORA
+022300******************************************************************
+022400/
+022500 PROCEDURE   DIVISION                USING   AX-LIB-GATL006
+022600                                             AX-GAT-RETL006.
+022700*----------------------------------------------------------------*
+022800*    ROTINA PRINCIPAL DO PROGRAMA                                *
+022900*----------------------------------------------------------------*
+023000*
+023100 000-E-PROCEDURE.
+023200*
+023300     IF      CH-BCO                  =       "S"
+023400             GO                      TO      000-05.
+023500
+023600     OPEN    INQUIRY DB01
+023700       ON    EXCEPTION
+023800             DISPLAY "PC/GAT/L006/DB - ERRO ABERTURA DBBLOQUEIO"
+023900             CALL    SYSTEM  DMTERMINATE.
+024000
+024100     MOVE    "S"                     TO      CH-BCO.
+024200
+024300 000-05.
+024400
+024500     MOVE    ZEROS                   TO      AX-RET-FLAG
+024600                                             AX-RET-MUNIC.
+024700     MOVE    SPACES                  TO      AX-RET-PLAMERC
+024800                                             AX-RET-CHASS
+024900                                             AX-RET-BLOQUEIO
+025000                                             CH-PESQUISA.
+025100     MOVE    " "                     TO      CH-NOTFOUND.
+025200     MOVE    0                       TO      AX-BLOQ-02-23.
+025300     MOVE    0                       TO      AX-BLQ-SINISTRO.
+025400
+025500
+025600     IF      AX-GAT-CHASS        NOT =       LOW-VALUES AND
+025700                                             SPACES AND ZEROS
+025800             MOVE    AX-GAT-CHASS    TO      CH-CHASSIS
+025900             SET     BLOCHASSE       TO      BEGINNING
+026000             SET     REJCHASSISS     TO      BEGINNING
+026100     ELSE
+026200             MOVE    AX-GAT-PLAMERC  TO      CH-PLAMERC
+026300
+026400             PERFORM 100-E-VER-PLACA THRU    100-S-VER-PLACA
+026500
+026600             SET     REJPLAMSS2      TO      BEGINNING
+026700       IF    AX-GAT-MUNIC            >       0
+026800             MOVE    "PLCMN"         TO      CH-PESQUISA
+026900             MOVE    AX-GAT-MUNIC    TO      CH-MUNICIPIO
+027000             SET     BLOPLAMSE1      TO      BEGINNING
+027100       ELSE
+027200             MOVE    "PLACA"         TO      CH-PESQUISA
+027300             MOVE    0               TO      CH-MUNICIPIO
+027400             SET     BLOPLAMSE2      TO      BEGINNING.
+027500
+027600
+027700
+027800     MOVE    1                       TO      IA1.
+027900
+028000*
+028100*
+028200
+028300     PERFORM 010-E-FIND-BLOQ         THRU    010-S-FIND-BLOQ
+028400             UNTIL   CH-NOTFOUND     =       "S".
+028500
+028600****---->>>  PESQUISA PLACA CONVERTIDA
+028700
+028800     IF      CH-PESQUISA             =       "PLCMN" OR "PLACA"
+028900        IF  (CH-PLA-AUX              NOT =   SPACES)   AND
+029000            (AX-RET-BLOQ(1)          =       ZEROS   OR
+029100             AX-RET-BLOQ(2)          =       ZEROS   OR
+029200             AX-RET-BLOQ(3)          =       ZEROS   OR
+029300             AX-RET-BLOQ(4)          =       ZEROS   OR
+029400             AX-RET-BLOQ(5)          =       ZEROS   OR
+029500             AX-RET-BLOQ(6)          =       ZEROS)
+029600             MOVE    SPACES          TO      CH-NOTFOUND
+029700             PERFORM 015-E-FIND-BLOQ-AUX
+029800                                     THRU    015-S-FIND-BLOQ-AUX
+029900               UNTIL CH-NOTFOUND     =       "S".
+030000
+030100
+030200*
+030300     IF      AX-RET-BLOQ(1)          NOT =   0
+030400             MOVE    1               TO      AX-RET-FLAG.
+030500
+030600
+030700     IF      AX-BLOQ-02-23           NOT =   0
+030800       IF    AX-RET-BLOQ(2)          =       0
+030900             MOVE    AX-BLOQ-02-23   TO      AX-RET-BLOQ(2)
+031000       ELSE
+031100       IF    AX-RET-BLOQ(3)          =       0
+031200             MOVE    AX-BLOQ-02-23   TO      AX-RET-BLOQ(3)
+031300       ELSE
+031400       IF    AX-RET-BLOQ(4)          =       0
+031500             MOVE    AX-BLOQ-02-23   TO      AX-RET-BLOQ(4)
+031600       ELSE
+031700       IF    AX-RET-BLOQ(5)          =       0
+031800             MOVE    AX-BLOQ-02-23   TO      AX-RET-BLOQ(5)
+031900       ELSE
+032000       IF    AX-RET-BLOQ(6)          =       0
+032100             MOVE    AX-BLOQ-02-23   TO      AX-RET-BLOQ(6)
+032200       ELSE
+032300             NEXT    SENTENCE
+032400     ELSE
+032500             NEXT    SENTENCE.
+032600
+032700
+032800
+032900
+033000     MOVE    "N"                     TO      CH-NOTFOUND.
+033100
+033200     PERFORM 040-E-RENAJUD           THRU    040-S-RENAJUD
+033300             UNTIL   CH-NOTFOUND     =       "S".
+033400
+033500****---->>>  PESQUISA PLACA CONVERTIDA
+033600
+033700     IF      IX1                     >       4             OR
+033800             IX1                     >       AC-QTD-RESTR
+033900             NEXT    SENTENCE
+034000     ELSE
+034100     IF      CH-PLA-AUX              NOT =   SPACES
+034200        IF   CH-PESQUISA             =       "PLCMN"  OR  "PLACA"
+034300             MOVE    SPACES          TO      CH-NOTFOUND
+034400             PERFORM 045-E-RENAJUD-AUX
+034500                                     THRU    045-S-RENAJUD-AUX
+034600               UNTIL CH-NOTFOUND     =       "S".
+034700
+034800
+034900
+035000     IF      AX-BLQ-SINISTRO         NOT =   0
+035100       IF    (AX-RET-BLOQ(1)         =       41 OR 40 OR 14) OR
+035200             (AX-RET-BLOQ(2)         =       41 OR 40 OR 14) OR
+035300             (AX-RET-BLOQ(3)         =       41 OR 40 OR 14) OR
+035400             (AX-RET-BLOQ(4)         =       41 OR 40 OR 14) OR
+035500             (AX-RET-BLOQ(5)         =       41 OR 40 OR 14) OR
+035600             (AX-RET-BLOQ(6)         =       41 OR 40 OR 14)
+035700             NEXT    SENTENCE
+035800       ELSE
+035900       IF    AX-RET-BLOQ (6)         NOT =   51 AND 52 AND 53 AND
+036000                                             54 AND 17 AND 23 AND
+036100                                             02
+036200             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (6)
+036300       ELSE
+036400       IF    AX-RET-BLOQ (5)         NOT =   51 AND 52 AND 53 AND
+036500                                             54 AND 17 AND 23 AND
+036600                                             02
+036700             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (5)
+036800       ELSE
+036900       IF    AX-RET-BLOQ (4)         NOT =   51 AND 52 AND 53 AND
+037000                                             54 AND 17 AND 23 AND
+037100                                             02
+037200             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (4)
+037300       ELSE
+037400       IF    AX-RET-BLOQ (3)         NOT =   51 AND 52 AND 53 AND
+037500                                             54 AND 17 AND 23 AND
+037600                                             02
+037700             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (3)
+037800       ELSE
+037900       IF    AX-RET-BLOQ (2)         NOT =   51 AND 52 AND 53 AND
+038000                                             54 AND 17 AND 23 AND
+038100                                             02
+038200             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (2)
+038300       ELSE
+038400             MOVE    AX-BLQ-SINISTRO TO      AX-RET-BLOQ (1)
+038500     ELSE
+038600             NEXT    SENTENCE.
+038700
+038800
+038900
+039000
+039100
+039200     IF      AX-RET-BLOQ(1)          NOT =   0
+039300             MOVE    1               TO      AX-RET-FLAG.
+039400
+039500
+039600
+039700
+039800 000-S-EXIT.
+039900     EXIT PROGRAM.
+040000/----------------------------------------------------------------*
+040100*    P E S Q U I S A   N O   S E T  -   B L O C H A S S E        *
+040200*----------------------------------------------------------------*
+040300*
+040400 010-E-FIND-BLOQ.
+040500*
+040600
+040700
+040800     IF      CH-PESQUISA             =       "PLCMN"
+040900             PERFORM 030-E-FIND-PLCMUN
+041000                                     THRU    030-S-FIND-PLCMUN
+041100     ELSE
+041200     IF      CH-PESQUISA             =       "PLACA"
+041300             PERFORM 035-E-FIND-PLACA
+041400                                     THRU    035-S-FIND-PLACA
+041500     ELSE
+041600             PERFORM 020-E-FIND-CHASS
+041700                                     THRU    020-S-FIND-CHASS.
+041800*
+041900     IF      CH-NOTFOUND              =      "S"
+042000             GO                       TO     010-S-FIND-BLOQ.
+042100*
+042200*
+042300*
+042400
+042500     IF      BLO-TIP-BLOQ            =       02      AND
+042600             BLO-DT-INCLUSAO         <       19960729
+042700             MOVE    31              TO      BLO-TIP-BLOQ.
+042800
+042900
+043000     IF      BLO-TIP-BLOQ            =       41  OR  40  OR  14
+043100             MOVE    BLO-TIP-BLOQ    TO      AX-BLQ-SINISTRO.
+043200
+043300
+043400     IF      AX-RET-BLOQ(1)          =       ZEROS
+043500             MOVE    BLO-CHASSIS     TO      AX-RET-CHASS
+043600             MOVE    BLO-MUNICIPIO   TO      AX-RET-MUNIC
+043700             MOVE    BLO-PLACA-MERC  TO      AX-RET-PLAMERC
+043800             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(1)
+043900             GO                      TO      010-S-FIND-BLOQ.
+044000
+044100
+044200     IF      BLO-TIP-BLOQ            =       AX-RET-BLOQ(1) OR
+044300                                             AX-RET-BLOQ(2) OR
+044400                                             AX-RET-BLOQ(3) OR
+044500                                             AX-RET-BLOQ(4) OR
+044600                                             AX-RET-BLOQ(5) OR
+044700                                             AX-RET-BLOQ(6)
+044800             GO                      TO      010-S-FIND-BLOQ.
+044900
+045000
+045100     IF      BLO-TIP-BLOQ            =       23
+045200       IF    02                      =       AX-RET-BLOQ(1) OR
+045300                                             AX-RET-BLOQ(2) OR
+045400                                             AX-RET-BLOQ(3) OR
+045500                                             AX-RET-BLOQ(4) OR
+045600                                             AX-RET-BLOQ(5) OR
+045700                                             AX-RET-BLOQ(6)
+045800             MOVE    BLO-TIP-BLOQ    TO      AX-BLOQ-02-23
+045900             GO                      TO      010-S-FIND-BLOQ
+046000       ELSE
+046100             NEXT    SENTENCE
+046200     ELSE
+046300     IF      BLO-TIP-BLOQ            =       02
+046400       IF    23                      =       AX-RET-BLOQ(1) OR
+046500                                             AX-RET-BLOQ(2) OR
+046600                                             AX-RET-BLOQ(3) OR
+046700                                             AX-RET-BLOQ(4) OR
+046800                                             AX-RET-BLOQ(5) OR
+046900                                             AX-RET-BLOQ(6)
+047000             MOVE    BLO-TIP-BLOQ    TO      AX-BLOQ-02-23
+047100             GO                      TO      010-S-FIND-BLOQ
+047200       ELSE
+047300             NEXT    SENTENCE
+047400     ELSE
+047500             NEXT    SENTENCE.
+047600
+047700
+047800     IF      BLO-TIP-BLOQ            =       41  OR  40  OR  14
+047900       IF    (AX-RET-BLOQ(1)         =       41 OR 40 OR 14) OR
+048000             (AX-RET-BLOQ(2)         =       41 OR 40 OR 14) OR
+048100             (AX-RET-BLOQ(3)         =       41 OR 40 OR 14) OR
+048200             (AX-RET-BLOQ(4)         =       41 OR 40 OR 14) OR
+048300             (AX-RET-BLOQ(5)         =       41 OR 40 OR 14) OR
+048400             (AX-RET-BLOQ(6)         =       41 OR 40 OR 14)
+048500             GO                      TO      010-S-FIND-BLOQ
+048600       ELSE
+048700             NEXT    SENTENCE
+048800     ELSE
+048900             NEXT    SENTENCE.
+049000
+049100
+049200
+049300
+049400     IF      AX-RET-BLOQ(2)          =       ZEROS
+049500             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(2)
+049600     ELSE
+049700     IF      AX-RET-BLOQ(3)          =       ZEROS
+049800             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(3)
+049900     ELSE
+050000     IF      AX-RET-BLOQ(4)          =       ZEROS
+050100             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(4)
+050200     ELSE
+050300     IF      AX-RET-BLOQ(5)          =       ZEROS
+050400             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(5)
+050500     ELSE
+050600             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(6).
+050700
+050800 010-S-FIND-BLOQ.
+050900     EXIT.
+051000/----------------------------------------------------------------*
+051100*    P E S Q U I S A   N O   S E T  -   B L O C H A S S E        *
+051200*          PLACA AUXILIAR (5 POSICAO LETRA/NUMERO)               *
+051300*----------------------------------------------------------------*
+051400*
+051500 015-E-FIND-BLOQ-AUX.
+051600*
+051700
+051800
+051900     IF      CH-PESQUISA             =       "PLCMN"
+052000             PERFORM 032-E-FIND-PLCMUN-AUX
+052100                                     THRU    032-S-FIND-PLCMUN-AUX
+052200     ELSE
+052300             PERFORM 037-E-FIND-PLACA-AUX
+052400                                     THRU    037-S-FIND-PLACA-AUX.
+052500
+052600*
+052700     IF      CH-NOTFOUND              =      "S"
+052800             GO                       TO     015-S-FIND-BLOQ-AUX.
+052900*
+053000*
+053100*
+053200
+053300     IF      BLO-TIP-BLOQ            =       02      AND
+053400             BLO-DT-INCLUSAO         <       19960729
+053500             MOVE    31              TO      BLO-TIP-BLOQ.
+053600
+053700
+053800     IF      BLO-TIP-BLOQ            =       41  OR  40  OR  14
+053900             MOVE    BLO-TIP-BLOQ    TO      AX-BLQ-SINISTRO.
+054000
+054100
+054200     IF      AX-RET-BLOQ(1)          =       ZEROS
+054300             MOVE    BLO-CHASSIS     TO      AX-RET-CHASS
+054400             MOVE    BLO-MUNICIPIO   TO      AX-RET-MUNIC
+054500             MOVE    BLO-PLACA-MERC  TO      AX-RET-PLAMERC
+054600             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(1)
+054700             GO                      TO      015-S-FIND-BLOQ-AUX.
+054800
+054900
+055000     IF      BLO-TIP-BLOQ            =       AX-RET-BLOQ(1) OR
+055100                                             AX-RET-BLOQ(2) OR
+055200                                             AX-RET-BLOQ(3) OR
+055300                                             AX-RET-BLOQ(4) OR
+055400                                             AX-RET-BLOQ(5) OR
+055500                                             AX-RET-BLOQ(6)
+055600             GO                      TO      015-S-FIND-BLOQ-AUX.
+055700
+055800
+055900     IF      BLO-TIP-BLOQ            =       23
+056000       IF    02                      =       AX-RET-BLOQ(1) OR
+056100                                             AX-RET-BLOQ(2) OR
+056200                                             AX-RET-BLOQ(3) OR
+056300                                             AX-RET-BLOQ(4) OR
+056400                                             AX-RET-BLOQ(5) OR
+056500                                             AX-RET-BLOQ(6)
+056600             MOVE    BLO-TIP-BLOQ    TO      AX-BLOQ-02-23
+056700             GO                      TO      015-S-FIND-BLOQ-AUX
+056800       ELSE
+056900             NEXT    SENTENCE
+057000     ELSE
+057100     IF      BLO-TIP-BLOQ            =       02
+057200       IF    23                      =       AX-RET-BLOQ(1) OR
+057300                                             AX-RET-BLOQ(2) OR
+057400                                             AX-RET-BLOQ(3) OR
+057500                                             AX-RET-BLOQ(4) OR
+057600                                             AX-RET-BLOQ(5) OR
+057700                                             AX-RET-BLOQ(6)
+057800             MOVE    BLO-TIP-BLOQ    TO      AX-BLOQ-02-23
+057900             GO                      TO      015-S-FIND-BLOQ-AUX
+058000       ELSE
+058100             NEXT    SENTENCE
+058200     ELSE
+058300             NEXT    SENTENCE.
+058400
+058500
+058600     IF      BLO-TIP-BLOQ            =       41  OR  40  OR  14
+058700       IF    (AX-RET-BLOQ(1)         =       41 OR 40 OR 14) OR
+058800             (AX-RET-BLOQ(2)         =       41 OR 40 OR 14) OR
+058900             (AX-RET-BLOQ(3)         =       41 OR 40 OR 14) OR
+059000             (AX-RET-BLOQ(4)         =       41 OR 40 OR 14) OR
+059100             (AX-RET-BLOQ(5)         =       41 OR 40 OR 14) OR
+059200             (AX-RET-BLOQ(6)         =       41 OR 40 OR 14)
+059300             GO                      TO      015-S-FIND-BLOQ-AUX
+059400       ELSE
+059500             NEXT    SENTENCE
+059600     ELSE
+059700             NEXT    SENTENCE.
+059800
+059900
+060000
+060100
+060200     IF      AX-RET-BLOQ(2)          =       ZEROS
+060300             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(2)
+060400     ELSE
+060500     IF      AX-RET-BLOQ(3)          =       ZEROS
+060600             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(3)
+060700     ELSE
+060800     IF      AX-RET-BLOQ(4)          =       ZEROS
+060900             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(4)
+061000     ELSE
+061100     IF      AX-RET-BLOQ(5)          =       ZEROS
+061200             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(5)
+061300     ELSE
+061400             MOVE    BLO-TIP-BLOQ    TO      AX-RET-BLOQ(6).
+061500
+061600 015-S-FIND-BLOQ-AUX.
+061700     EXIT.
+061800
+061900/----------------------------------------------------------------*
+062000*                PESQUISA POR CHASSI                             *
+062100*----------------------------------------------------------------*
+062200*
+062300 020-E-FIND-CHASS.
+062400*
+062500     FIND    NEXT    BLOCHASSE       AT
+062600             BLO-CHASSIS             =       CH-CHASSIS
+062700       ON    EXCEPTION
+062800        IF   DMSTATUS(NOTFOUND)
+062900             MOVE    "S"             TO      CH-NOTFOUND
+063000             GO                      TO      020-S-FIND-CHASS
+063100        ELSE
+063200             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT BLOCHASSE"
+063300             CALL    SYSTEM          DMTERMINATE.
+063400*
+063500 020-S-FIND-CHASS.
+063600     EXIT.
+063700
+063800/----------------------------------------------------------------*
+063900*        PESQUISA  POR  PLACA  COM  MUNICIPIO                    *
+064000*----------------------------------------------------------------*
+064100*
+064200 030-E-FIND-PLCMUN.
+064300
+064400
+064500     FIND    NEXT    BLOPLAMSE1      AT
+064600             BLO-MUNICIPIO           =       CH-MUNICIPIO  AND
+064700             BLO-PLACA-MERC          =       CH-PLAMERC
+064800       ON    EXCEPTION
+064900        IF   DMSTATUS(NOTFOUND)
+065000             MOVE    "S"             TO      CH-NOTFOUND
+065100        ELSE
+065200             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT BLOPLAMSE1"
+065300             CALL    SYSTEM          DMTERMINATE.
+065400
+065500
+065600 030-S-FIND-PLCMUN.
+065700     EXIT.
+065800
+065900/----------------------------------------------------------------*
+066000*        PESQUISA  POR  PLACA  COM  MUNICIPIO (AUXILIAR)         *
+066100*----------------------------------------------------------------*
+066200*
+066300 032-E-FIND-PLCMUN-AUX.
+066400
+066500
+066600     FIND    NEXT    BLOPLAMSE1      AT
+066700             BLO-MUNICIPIO           =       CH-MUNICIPIO  AND
+066800             BLO-PLACA-MERC          =       CH-PLA-AUX
+066900       ON    EXCEPTION
+067000        IF   DMSTATUS(NOTFOUND)
+067100             MOVE    "S"             TO      CH-NOTFOUND
+067200        ELSE
+067300             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT BLOPLAMSE1"
+067400             CALL    SYSTEM          DMTERMINATE.
+067500
+067600
+067700 032-S-FIND-PLCMUN-AUX.
+067800     EXIT.
+067900
+068000/
+068100*----------------------------------------------------------------*
+068200*        PESQUISA  POR  PLACA                                    *
+068300*----------------------------------------------------------------*
+068400*
+068500 035-E-FIND-PLACA.
+068600
+068700
+068800
+068900     FIND    NEXT    BLOPLAMSE2      AT
+069000             BLO-PLACA-MERC          =       CH-PLAMERC
+069100       ON    EXCEPTION
+069200        IF   DMSTATUS (NOTFOUND)
+069300             MOVE    "S"             TO      CH-NOTFOUND
+069400        ELSE
+069500             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT BLOPLAMSE2"
+069600             CALL    SYSTEM          DMTERMINATE.
+069700
+069800
+069900
+070000 035-S-FIND-PLACA.
+070100     EXIT.
+070200*----------------------------------------------------------------*
+070300*        PESQUISA  POR  PLACA  (PLACA AUXILIAR)                  *
+070400*----------------------------------------------------------------*
+070500*
+070600 037-E-FIND-PLACA-AUX.
+070700
+070800
+070900
+071000     FIND    NEXT    BLOPLAMSE2      AT
+071100             BLO-PLACA-MERC          =       CH-PLA-AUX
+071200       ON    EXCEPTION
+071300        IF   DMSTATUS (NOTFOUND)
+071400             MOVE    "S"             TO      CH-NOTFOUND
+071500        ELSE
+071600             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT BLOPLAMSE2"
+071700             CALL    SYSTEM          DMTERMINATE.
+071800
+071900
+072000
+072100 037-S-FIND-PLACA-AUX.
+072200     EXIT.
+072300
+072400/
+072500*----------------------------------------------------------------*
+072600*        PESQUISA  NO  SET  RENAJUDDS                            *
+072700*----------------------------------------------------------------*
+072800*
+072900 040-E-RENAJUD.
+073000
+073100
+073200
+073300     IF      CH-PESQUISA             =       "PLCMN"  OR  "PLACA"
+073400             PERFORM 060-E-REJ-PLAC  THRU    060-S-REJ-PLAC
+073500     ELSE
+073600             PERFORM 070-E-REJ-CHAS  THRU    070-S-REJ-CHAS.
+073700
+073800
+073900     IF      CH-NOTFOUND             =       "S"
+074000             GO                      TO      040-S-RENAJUD.
+074100
+074200
+074300     COMPUTE AC-QTD-RESTR  =  REJ-QTD-RESTR-AT + REJ-QTD-RESTR-IN.
+074400
+074500
+074600     PERFORM 050-E-RESTR-REJ         THRU    050-S-RESTR-REJ
+074700             VARYING IX1             FROM    1   BY  1
+074800             UNTIL   IX1             >       4             OR
+074900                     IX1             >       AC-QTD-RESTR  OR
+075000                     CH-NOTFOUND     =       "S".
+075100
+075200
+075300
+075400
+075500
+075600 040-S-RENAJUD.
+075700     EXIT.
+075800*----------------------------------------------------------------*
+075900*        PESQUISA  NO  SET  RENAJUDDS  (PLACA AUXILIAR)          *
+076000*----------------------------------------------------------------*
+076100*
+076200 045-E-RENAJUD-AUX.
+076300
+076400
+076500     PERFORM 065-E-REJ-PLAC-AUX      THRU    065-S-REJ-PLAC-AUX.
+076600
+076700
+076800     IF      CH-NOTFOUND             =       "S"
+076900             GO                      TO      045-S-RENAJUD-AUX.
+077000
+077100
+077200     COMPUTE AC-QTD-RESTR  =  REJ-QTD-RESTR-AT + REJ-QTD-RESTR-IN.
+077300
+077400
+077500     PERFORM 050-E-RESTR-REJ         THRU    050-S-RESTR-REJ
+077600             VARYING IX1             FROM    1   BY  1
+077700             UNTIL   IX1             >       4             OR
+077800                     IX1             >       AC-QTD-RESTR  OR
+077900                     CH-NOTFOUND     =       "S".
+078000
+078100 045-S-RENAJUD-AUX.
+078200     EXIT.
+078300
+078400/
+078500*----------------------------------------------------------------*
+078600*        SELECIONAR  AS  RESTRICOES  ATIVAS  DE  RENAJUD         *
+078700*----------------------------------------------------------------*
+078800*
+078900 050-E-RESTR-REJ.
+079000
+079100
+079200
+079300     IF      REJ-DT-RETIRADA (IX1)   >       0   OR
+079400             REJ-TIPO-RESTR  (IX1)   =       0
+079500             GO                      TO      050-S-RESTR-REJ.
+079600
+079700
+079800
+079900     IF      REJ-TIPO-RESTR (IX1)    =       1
+080000             MOVE    51              TO      AX-BLOQ-RENAJUD
+080100     ELSE
+080200     IF      REJ-TIPO-RESTR (IX1)    =       2
+080300             MOVE    52              TO      AX-BLOQ-RENAJUD
+080400     ELSE
+080500     IF      REJ-TIPO-RESTR (IX1)    =       3
+080600             MOVE    53              TO      AX-BLOQ-RENAJUD
+080700     ELSE
+080800     IF      REJ-TIPO-RESTR (IX1)    =       4
+080900             MOVE    54              TO      AX-BLOQ-RENAJUD
+081000     ELSE
+081100             COMPUTE AX-BLOQ-RENAJUD =  REJ-TIPO-RESTR(IX1) + 50.
+081200
+081300
+081400
+081500     IF      AX-BLOQ-RENAJUD         =       AX-RET-BLOQ(1)  OR
+081600                                             AX-RET-BLOQ(2)  OR
+081700                                             AX-RET-BLOQ(3)  OR
+081800                                             AX-RET-BLOQ(4)  OR
+081900                                             AX-RET-BLOQ(5)  OR
+082000                                             AX-RET-BLOQ(6)
+082100             GO                      TO      050-S-RESTR-REJ.
+082200
+082300
+082400
+082500     IF      AX-RET-BLOQ(1)          =       0
+082600             MOVE    REJ-CHASSI      TO      AX-RET-CHASS
+082700             MOVE    REJ-MUNICIPIO   TO      AX-RET-MUNIC
+082800             MOVE    REJ-PLACA-MERC  TO      AX-RET-PLAMERC
+082900             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(1)
+083000     ELSE
+083100     IF      AX-RET-BLOQ(2)          =       0
+083200             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(2)
+083300     ELSE
+083400     IF      AX-RET-BLOQ(3)          =       0
+083500             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(3)
+083600     ELSE
+083700     IF      AX-RET-BLOQ(4)          =       0
+083800             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(4)
+083900     ELSE
+084000     IF      AX-RET-BLOQ(5)          =       0
+084100             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(5)
+084200     ELSE
+084300             MOVE    "S"             TO      CH-NOTFOUND
+084400       IF    AX-RET-BLOQ(6)          =       17  OR  23  OR  02
+084500         IF  AX-RET-BLOQ(5)          =       17  OR  23  OR  02
+084600             MOVE    AX-RET-BLOQ(5)  TO      AX-RET-BLOQ(4)
+084700             MOVE    AX-RET-BLOQ(6)  TO      AX-RET-BLOQ(5)
+084800             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(6)
+084900         ELSE
+085000             MOVE    AX-RET-BLOQ(6)  TO      AX-RET-BLOQ(5)
+085100             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(6)
+085200       ELSE
+085300             MOVE    AX-BLOQ-RENAJUD TO      AX-RET-BLOQ(6).
+085400
+085500
+085600
+085700
+085800
+085900 050-S-RESTR-REJ.
+086000     EXIT.
+086100
+086200/
+086300*----------------------------------------------------------------*
+086400*        PESQUISA  NO  SET  RENAJUDDS  POR  PLACA                *
+086500*----------------------------------------------------------------*
+086600*
+086700 060-E-REJ-PLAC.
+086800
+086900
+087000
+087100     FIND    NEXT    REJPLAMSS2      AT
+087200             REJ-PLACA-MERC          =       CH-PLAMERC
+087300       ON    EXCEPTION
+087400        IF   DMSTATUS (NOTFOUND)
+087500             MOVE    "S"             TO      CH-NOTFOUND
+087600        ELSE
+087700             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT REJPLAMSS2"
+087800             CALL    SYSTEM          DMTERMINATE.
+087900
+088000
+088100
+088200 060-S-REJ-PLAC.
+088300     EXIT.
+088400*----------------------------------------------------------------*
+088500*        PESQUISA  NO  SET  RENAJUDDS  POR  PLACA  (AUXILIAR)    *
+088600*----------------------------------------------------------------*
+088700*
+088800 065-E-REJ-PLAC-AUX.
+088900
+089000
+089100
+089200     FIND    NEXT    REJPLAMSS2      AT
+089300             REJ-PLACA-MERC          =       CH-PLA-AUX
+089400       ON    EXCEPTION
+089500        IF   DMSTATUS (NOTFOUND)
+089600             MOVE    "S"             TO      CH-NOTFOUND
+089700        ELSE
+089800             DISPLAY "PC/GAT/L006/DB : FIND ERROR NEXT REJPLAMSS2"
+089900             CALL    SYSTEM          DMTERMINATE.
+090000
+090100
+090200
+090300 065-S-REJ-PLAC-AUX.
+090400     EXIT.
+090500
+090600/
+090700*----------------------------------------------------------------*
+090800*        PESQUISA  NO  SET  RENAJUDDS  POR  CHASSI               *
+090900*----------------------------------------------------------------*
+091000*
+091100 070-E-REJ-CHAS.
+091200
+091300
+091400
+091500     FIND    NEXT    REJCHASSISS     AT
+091600             REJ-CHASSI              =       CH-CHASSIS
+091700       ON    EXCEPTION
+091800        IF   DMSTATUS (NOTFOUND)
+091900             MOVE    "S"             TO      CH-NOTFOUND
+092000        ELSE
+092100             DISPLAY "PC/GAT/L006/DB: FIND ERROR NEXT REJCHASSISS"
+092200             CALL    SYSTEM          DMTERMINATE.
+092300
+092400
+092500
+092600 070-S-REJ-CHAS.
+092700     EXIT.
+092800/----------------------------------------------------------------*
+092900*            VERIFICAR PLACA LETRA / NUMERO                      *
+093000*----------------------------------------------------------------*
+093100
+093200 100-E-VER-PLACA.
+093300
+093400
+093500     MOVE    SPACES                  TO      CH-PLA-AUX.
+093600
+093700     IF     (AX-GAT-PLAMERC-ALF      NOT     NUMERIC)    AND
+093800            (AX-GAT-PLAMERC-ALF      NOT     ALPHABETIC)
+093900             GO                      TO      100-S-VER-PLACA
+094000     ELSE
+094100     IF      AX-GAT-PLAMERC-ALF      NOT     NUMERIC
+094200        IF   AX-GAT-PLAMERC-ALF      >       "J"
+094300             GO                      TO      100-S-VER-PLACA
+094400        ELSE
+094500             GO                      TO      100-20-PESQ-NUMERO
+094600     ELSE
+094700             NEXT    SENTENCE.
+094800
+094900
+095000 100-10-PESQ-LETRA.
+095100
+095200     SET     IN1                     TO      1.
+095300
+095400     SEARCH  TBA-LET-NUM
+095500         AT  END
+095600             MOVE    SPACES          TO      CH-PLA-AUX
+095700       WHEN  TBA-NUM (IN1)           =       AX-GAT-PLAMERC-ALF
+095800             MOVE    AX-GAT-PLAMERC  TO      CH-PLA-AUX
+095900             MOVE    TBA-LET (IN1)   TO      CH-PLA-AUX-ALF
+096000
+096100     GO                              TO      100-S-VER-PLACA.
+096200
+096300 100-20-PESQ-NUMERO.
+096400
+096500     SET     IN1                     TO      1.
+096600
+096700     SEARCH  TBA-LET-NUM
+096800         AT  END
+096900             MOVE    SPACES          TO      CH-PLA-AUX
+097000       WHEN  TBA-LET (IN1)           =       AX-GAT-PLAMERC-ALF
+097100             MOVE    AX-GAT-PLAMERC  TO      CH-PLA-AUX
+097200             MOVE    TBA-NUM (IN1)   TO      CH-PLA-AUX-ALF.
+097300
+097400
+097500 100-S-VER-PLACA.
+097600     EXIT.
+097700
+097800/

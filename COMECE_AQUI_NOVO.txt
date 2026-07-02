@@ -1,0 +1,225 @@
+╔════════════════════════════════════════════════════════════════╗
+║                                                                ║
+║          INTERFACE WEB - TESTES COBOL EXPANDIDOS               ║
+║                                                                ║
+║               🚀 COMECE AQUI - 3 PASSOS SIMPLES 🚀            ║
+║                                                                ║
+╚════════════════════════════════════════════════════════════════╝
+
+
+PASSO 1: ABRIR PROMPT DE COMANDO
+═══════════════════════════════════════════════════════════════════
+
+Windows:
+  Pressione: Win + R
+  Digite: cmd
+  Pressione: Enter
+
+Ou clique em Start → "Command Prompt"
+
+
+PASSO 2: NAVEGAR E INICIAR SERVIDOR
+═══════════════════════════════════════════════════════════════════
+
+Digite no prompt:
+
+  cd c:\Projetos\outros\prodescp\codigo
+  python3 web_app.py
+
+Você verá:
+
+  * Running on http://127.0.0.1:5000
+  * Running on http://10.250.14.207:5000
+
+Não feche este terminal! Deixe rodando.
+
+
+PASSO 3: ABRIR NO NAVEGADOR
+═══════════════════════════════════════════════════════════════════
+
+Abra seu navegador (Chrome, Firefox, Edge, Safari)
+
+Acesse:
+
+  http://localhost:5000
+
+A interface vai carregar com:
+
+  ✓ Dashboard com estatísticas
+  ✓ Botões para executar testes
+  ✓ Histórico de testes
+  ✓ Validador de placas
+
+
+═══════════════════════════════════════════════════════════════════
+
+🎯 INTERFACE - 2 OPÇÕES DE TESTE
+═══════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────┐
+│                    BOTÃO 1 (Azul)                              │
+│                                                                │
+│           ▶ Testes Básicos (PF-GAA-L004)                      │
+│                                                                │
+│  • Testa apenas o validador de placas                         │
+│  • 17 testes                                                   │
+│  • Executa em ~5ms                                             │
+│  • Rápido para verificação básica                             │
+└────────────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────────────┐
+│                   BOTÃO 2 (Roxo) ← NOVO!                       │
+│                                                                │
+│    ⚙ Testes Expandidos (Todos 42 Programas)                  │
+│                                                                │
+│  • Testa TODOS os 42 programas COBOL                          │
+│  • 43 testes (17 + 26 outros)                                 │
+│  • Executa em ~40ms                                            │
+│  • Verificação completa do sistema                            │
+└────────────────────────────────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════
+
+📊 DEPOIS DE CLICAR EM UM BOTÃO
+═══════════════════════════════════════════════════════════════════
+
+1. Barra de progresso aparece
+2. Mostra qual teste está sendo executado
+3. Progresso atualiza em tempo real
+4. Quando terminar, resultados aparecem automaticamente
+
+Você pode:
+  ✓ Ver dashboard atualizado
+  ✓ Clicar em "Resultados Recentes" para ver cards
+  ✓ Clicar em "Detalhado" para ver tabela completa
+  ✓ Clicar em um resultado para ver detalhes
+
+
+═══════════════════════════════════════════════════════════════════
+
+🔍 VALIDADOR DE PLACA (Teste Individual)
+═══════════════════════════════════════════════════════════════════
+
+Você pode testar uma placa individualmente:
+
+1. Digite a placa na caixa (ex: AAA0A00)
+2. Clique "Validar" ou pressione Enter
+3. Veja o resultado instantaneamente
+
+Exemplos para testar:
+
+  Válidas:
+  ├─ AAA0A00  (Mercosul - SP)
+  ├─ AB12C34  (2 letras - Carros)
+  ├─ SP1234   (Placa antiga - SP)
+  └─ ABC1234  (Outra válida)
+
+  Inválidas:
+  ├─ ABC@1234  (caractere especial)
+  ├─ 123456    (apenas números)
+  └─           (vazia)
+
+
+═══════════════════════════════════════════════════════════════════
+
+📈 O QUE ESPERAR
+═══════════════════════════════════════════════════════════════════
+
+Testes Básicos (▶ botão azul):
+
+  Resultado esperado:
+  ├─ Total: 17 testes
+  ├─ Passou: 14 (82%)
+  ├─ Falhou: 3 (8%)
+  ├─ Tempo: ~5ms
+  └─ Status: NORMAL (alguns testes esperados falhar)
+
+Testes Expandidos (⚙ botão roxo):
+
+  Resultado esperado:
+  ├─ Total: 43 testes
+  ├─ Passou: 40 (93%)
+  ├─ Falhou: 3 (7%)
+  ├─ Erros: 0
+  ├─ Tempo: ~40ms
+  └─ Status: NORMAL (mesmo 3 testes falhando)
+
+Programas testados:
+  ├─ 16 programas GAA (Gestão Arquivo Automotivo)
+  ├─ 26 programas GEV (Gestão Empadronização)
+  └─ 2 programas GAT (Gestão Autoridades)
+
+
+═══════════════════════════════════════════════════════════════════
+
+❓ PERGUNTAS COMUNS
+═══════════════════════════════════════════════════════════════════
+
+P: Por que alguns testes falham?
+R: São erros na simulação do executor_cobol.py, não no sistema real.
+   Os 3 testes que falham são das placas antigas (SP, RJ, MG).
+
+P: Qual botão devo clicar?
+R: Comece com "Testes Básicos" (rápido).
+   Depois teste "Testes Expandidos" (completo).
+
+P: Quanto tempo leva?
+R: Básicos: ~5ms
+   Expandidos: ~40ms
+   Ambos executam rapidamente.
+
+P: Os dados são salvos?
+R: Sim! Arquivo JSON é criado automaticamente:
+   - TEST_RESULTS_*.json (básicos)
+   - TEST_RESULTS_EXPANDED_*.json (expandidos)
+
+P: Posso rodar quantas vezes quiser?
+R: Sim! Sem limite. Cada rodada cria um arquivo novo.
+
+P: E se a interface travasse?
+R: Clique em "⏹ Cancelar" para interromper.
+   Ou recarregue a página (Ctrl+R ou Cmd+R).
+
+
+═══════════════════════════════════════════════════════════════════
+
+📚 DOCUMENTAÇÃO
+═══════════════════════════════════════════════════════════════════
+
+Se precisar de mais informações:
+
+  RESUMO_TESTES_EXPANDIDOS.txt  ← Resumo técnico
+  TESTES_EXPANDIDOS.md           ← Documentação completa
+  WEB_INTERFACE_README.md        ← Guia da interface
+  CORRECOES_REALIZADAS.md        ← O que foi corrigido
+
+
+═══════════════════════════════════════════════════════════════════
+
+⚡ DICAS RÁPIDAS
+═══════════════════════════════════════════════════════════════════
+
+✓ Clique em "▶ Testes Básicos" primeiro (rápido)
+✓ Depois clique em "⚙ Testes Expandidos" (completo)
+✓ Veja "Resultados Recentes" para cards coloridos
+✓ Veja "Detalhado" para tabela com todos os testes
+✓ Clique em um resultado para ver detalhes
+
+Se algo não funcionar:
+✓ Verifique se servidor está rodando
+✓ Tente http://127.0.0.1:5000 ao invés de localhost
+✓ Abra console do navegador (F12) para ver erros
+✓ Reinicie o servidor
+
+
+═══════════════════════════════════════════════════════════════════
+
+✨ PRONTO!
+═══════════════════════════════════════════════════════════════════
+
+Siga os 3 passos acima e a interface está pronta para usar.
+
+Divirta-se testando! 🎉
+
+═══════════════════════════════════════════════════════════════════

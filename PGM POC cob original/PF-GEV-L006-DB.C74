@@ -1,0 +1,257 @@
+000000* VERSION   2.1  ; SAVED 20210106 19:32:26                    |000
+000100$$SET SHARING=PRIVATE
+000200$$SET TEMPORARY
+000300 IDENTIFICATION  DIVISION.
+000400**************************
+000500*
+000600*
+000700*PROGRAM-ID.     PC/GEV/L006/DB.
+000800 AUTHOR.         ALFREDO MIYAMOTO.
+000900*
+001000*ANALISTA        SILVIA SALIA.
+001100*
+001200 DATE-WRITTEN.   02/10/2018.
+001300 DATE-COMPILED.
+001400*
+001500*----------------------------------------------------------------*
+001600*                                                                *
+001700*    O B J E T I V O :                                           *
+001800*                                                                *
+001900*    PESQUISA NO DATASET COMVENDS A EXISTENCIA DE REGISTRO DE    *
+002000*    COMUNICACAO DE VENDA.                                       *
+002100*                                                                *
+002200*    PC/GEV/L006/DB  COPIA IDENTICA PC/GEV/L005/DB               *
+002300*                                                                *
+002400*    PC/GEV/L006/DB - PLACA MERCOSUL                             *
+002500*----------------------------------------------------------------*
+002600*                                                                *
+002700*            A L T E R A C O E S   E F E T U A D A S             *
+002800*            ---------------------------------------             *
+002900*                                                                *
+003000*      DATA      O.S.   PATCH      ANALISTA      PROGRAMADOR     *
+003100*    --------    ----   -----    ------------    ------------    *
+003200*                                                                *
+003300*    24/11/06    ----    001     JAC.........    JAC.........    *
+003400*    21/03/07    ----    002     JAC.........    JAC.........    *
+003500*    06/01/21                    JAC             LEE             *
+003600*    --/--/--    ----    ---     ............    ............    *
+003700*    --/--/--    ----    ---     ............    ............    *
+003800*    --/--/--    ----    ---     ............    ............    *
+003900*    --/--/--    ----    ---     ............    ............    *
+004000*    --/--/--    ----    ---     ............    ............    *
+004100*    --/--/--    ----    ---     ............    ............    *
+004200*    --/--/--    ----    ---     ............    ............    *
+004300*                                                                *
+004400*----------------------------------------------------------------*
+004500*                                                                *
+004600*----------------------------------------------------------------*
+004700/
+004800 ENVIRONMENT     DIVISION.
+004900**************************
+005000*
+005100*
+005200 CONFIGURATION   SECTION.
+005300*************************
+005400*
+005500 SPECIAL-NAMES.
+005600*
+005700     DECIMAL-POINT           IS      COMMA.
+005800*
+005900/
+006000 DATA            DIVISION.
+006100**************************
+006200*
+006300*
+006400*
+006500*
+006600 DATA-BASE       SECTION.
+006700*************************
+006800*
+006900*
+007000 DB          DB01    =       TDBGEVER.
+007100*
+007200*
+007300 01          COMVENDS.
+007400*
+007500*
+007600*
+007700/
+007800 WORKING-STORAGE SECTION.
+007900*
+008000*
+008100*
+008200*
+008300/----------------------------------------------------------------*
+008400*                                                                *
+008500*            C H A V E S                                         *
+008600*                                                                *
+008700/----------------------------------------------------------------*
+008800
+008900 77          CH-BCO                  PIC X(001)  VALUE "N".
+009000 77          CH-CHASSIS              PIC X(022).
+009100 01          CH-NOTFOUND             PIC 9(001).
+009200*
+009300 01          CH-MUNICIPIO            PIC 9(005)  COMP.
+009400
+009500 01          CH-PLAMERC              PIC X(010).
+009600
+009700 01          CH-PESQUISA             PIC X(005)  VALUE SPACES.
+009800
+009900*----------------------------------------------------------------*
+010000*    SUBSCRITOR                                                  *
+010100*                                                                *
+010200*        IA1 - ASSOCIADO A                                       *
+010300*----------------------------------------------------------------*
+010400*
+010500*
+010600 77          IA1                     PIC 9(011)  BINARY.
+010700/----------------------------------------------------------------*
+010800*    PARAMETROS PARA VERIFICACAO DO REGISTRO DE COMUNICACAO      *
+010900*----------------------------------------------------------------*
+011000*
+011100*
+011200 01          AX-GEV-ENVL006.
+011300
+011400     05      AX-GEV-PLAMERC          PIC X(010).
+011500     05      AX-GEV-MUNIC            PIC 9(005).
+011600     05      AX-GEV-CHASS            PIC X(022).
+011700*
+011800 01          AX-GEV-RETL006.
+011900
+012000     05      AX-RCV-PLAMERC          PIC X(010).
+012100     05      AX-RCV-MUNIC            PIC 9(005).
+012200     05      AX-RCV-CHASS            PIC X(022).
+012300     05      AX-RCV-FLAG             PIC 9(001).
+012400     05      AX-RCV-INFORMACOES.
+012500       10    AX-RCV-DT-VENDA         PIC 9(008).
+012600       10    AX-RCV-ID-CONTR         PIC 9(001).
+012700       10    AX-RCV-CPFCGC           PIC 9(014).
+012800       10    AX-RCV-DT-NFISC         PIC 9(008).
+012900       10    AX-RCV-FINANC           PIC 9(004).
+013000       10    AX-RCV-CNPJ-SEG         PIC 9(014).
+013100
+013200
+013300
+013400
+013500/
+013600 PROCEDURE   DIVISION                USING   AX-GEV-ENVL006
+013700                                             AX-GEV-RETL006.
+013800
+013900*----------------------------------------------------------------*
+014000*    ROTINA PRINCIPAL DO PROGRAMA                                *
+014100*----------------------------------------------------------------*
+014200*
+014300 000-E-PROCEDURE.
+014400*
+014500     IF      CH-BCO                  =       "S"
+014600             GO                      TO      000-05.
+014700
+014800     OPEN    INQUIRY DB01
+014900       ON    EXCEPTION
+015000             DISPLAY "PC/GEV/L006/DB - ERRO ABERTURA DBBLOQUEIO"
+015100             CALL    SYSTEM  DMTERMINATE.
+015200
+015300     MOVE    "S"                     TO      CH-BCO.
+015400
+015500 000-05.
+015600
+015700     MOVE    ZEROS                   TO      AX-RCV-FLAG
+015800                                             AX-RCV-MUNIC.
+015900     MOVE    SPACES                  TO      AX-RCV-PLAMERC
+016000                                             AX-RCV-CHASS.
+016100     MOVE    LOW-VALUES              TO      AX-RCV-INFORMACOES.
+016200
+016300     MOVE    0                       TO      CH-NOTFOUND.
+016400     MOVE    SPACES                  TO      CH-PESQUISA.
+016500
+016600     IF      AX-GEV-PLAMERC          NOT =   LOW-VALUES AND
+016700                                             SPACES AND ZEROS
+016800             MOVE    AX-GEV-PLAMERC  TO      CH-PLAMERC
+016900             MOVE    "PLACA"         TO      CH-PESQUISA
+017000     ELSE
+017100             MOVE    AX-GEV-CHASS    TO      CH-CHASSIS.
+017200
+017300
+017400
+017500
+017600     PERFORM 010-E-FIND-COMUNIC      THRU    010-S-FIND-COMUNIC.
+017700
+017800
+017900
+018000 000-S-EXIT.
+018100     EXIT PROGRAM.
+018200/----------------------------------------------------------------*
+018300*    P E S Q U I S A   - COMVENDS                                *
+018400*----------------------------------------------------------------*
+018500*
+018600 010-E-FIND-COMUNIC.
+018700*
+018800     IF      CH-PESQUISA             =       "PLACA"
+018900             PERFORM 030-E-FIND-PLACA THRU   030-S-FIND-PLACA
+019000     ELSE
+019100             PERFORM 020-E-FIND-CHASS THRU   020-S-FIND-CHASS.
+019200*
+019300     IF      CH-NOTFOUND              =      1
+019400             MOVE    0                TO     AX-RCV-FLAG
+019500             GO                       TO     010-S-FIND-COMUNIC
+019600     ELSE
+019700     IF      CVV-DT-DOCTS             >      0
+019800             MOVE    1                TO     AX-RCV-FLAG
+019900     ELSE
+020000             MOVE    0                TO     AX-RCV-FLAG
+020100             GO                       TO     010-S-FIND-COMUNIC.
+020200
+020300
+020400     MOVE    CVV-PLACA-MERC          TO      AX-RCV-PLAMERC.
+020500     MOVE    CVV-CHASSI              TO      AX-RCV-CHASS.
+020600     MOVE    CVV-MUNICIPIO           TO      AX-RCV-MUNIC.
+020700     MOVE    CVV-DT-VENDA            TO      AX-RCV-DT-VENDA.
+020800     MOVE    CVV-DOCTO-CV            TO      AX-RCV-ID-CONTR.
+020900     MOVE    CVV-CPF-CGC-CV          TO      AX-RCV-CPFCGC  .
+021000     MOVE    CVV-DT-NFISCAL          TO      AX-RCV-DT-NFISC.
+021100     MOVE    CVV-FINANC              TO      AX-RCV-FINANC  .
+021200     MOVE    CVV-CNPJ-SEG            TO      AX-RCV-CNPJ-SEG.
+021300
+021400
+021500
+021600
+021700 010-S-FIND-COMUNIC.
+021800     EXIT.
+021900
+022000/----------------------------------------------------------------*
+022100*                PESQUISA POR CHASSI                             *
+022200*----------------------------------------------------------------*
+022300*
+022400 020-E-FIND-CHASS.
+022500*
+022600     FIND    CVVCHASSISE             AT
+022700             CVV-CHASSI              =       CH-CHASSIS
+022800       ON    EXCEPTION
+022900        IF   DMSTATUS(NOTFOUND)
+023000             MOVE    1               TO      CH-NOTFOUND
+023100             GO                      TO      020-S-FIND-CHASS
+023200        ELSE
+023300             DISPLAY "PC/GEV/L006/DB - ERRO FIND CVVCHASSISE"
+023400             CALL                    SYSTEM  DMTERMINATE.
+023500*
+023600 020-S-FIND-CHASS.
+023700     EXIT.
+023800
+023900/----------------------------------------------------------------*
+024000*                PESQUISA POR PLACA                              *
+024100*----------------------------------------------------------------*
+024200*
+024300 030-E-FIND-PLACA.
+024400*
+024500     FIND    CVVPLAMSE               AT
+024600             CVV-PLACA-MERC          =       CH-PLAMERC
+024700       ON    EXCEPTION
+024800        IF   DMSTATUS(NOTFOUND)
+024900             MOVE    1               TO      CH-NOTFOUND
+025000             GO                      TO      030-S-FIND-PLACA
+025100        ELSE
+025200             DISPLAY "PC/GEV/L006/DB - ERRO FIND CVVPLAMSE"
+025300             CALL                    SYSTEM  DMTERMINATE.
+025400*
+025500 030-S-FIND-PLACA.
+025600     EXIT.

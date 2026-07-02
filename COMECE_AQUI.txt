@@ -1,0 +1,155 @@
+================================================================================
+                    COMECE AQUI - SISTEMA LEGADO COBOL
+================================================================================
+
+BEM-VINDO ao setup do Sistema Legado COBOL da Prodesp!
+
+Este eh um sistema de mainframe dos anos 2000 para validacao e processamento
+de dados veiculares de Sao Paulo.
+
+================================================================================
+PRIMEIRA VEZ? ESCOLHA UMA OPCAO:
+================================================================================
+
+OPCAO A: "So quero analisar o codigo" (30 segundos)
+────────────────────────────────────
+1. Abra terminal (PowerShell ou Bash)
+2. Navigate: cd c:\Projetos\outros\prodescp\codigo
+3. Execute: python runner.py
+4. Leia: README.md
+
+Resultado: Relatorio completo + testes simulados
+
+
+OPCAO B: "Quero compilar e rodar o codigo original" (30 minutos)
+────────────────────────────────────
+1. Instale GnuCOBOL:
+   Baixe em: https://sourceforge.net/projects/gnucobol/files/
+   Escolha: gnucobol-3.X-setup.exe (Windows)
+   Execute e deixe as opcoes padrao
+   Reinicie o terminal
+
+2. Compile tudo:
+   cd c:\Projetos\outros\prodescp\codigo
+   bash build.sh
+
+3. Execute:
+   ./build/bin/PF-GAA-L004.exe
+
+Resultado: Executaveis compilados em ./build/bin/
+
+
+OPCAO C: "So quero ler a documentacao" (5 minutos)
+────────────────────────────────────
+Abra estes arquivos em ordem:
+  1. README.md - Visao geral completa
+  2. PLANO_EXECUCAO.md - Plano detalhado
+  3. INSTALAR_GNUCOBOL.md - Se quiser compilar
+
+================================================================================
+ARQUIVOS DO PROJETO
+================================================================================
+
+Comece por aqui:
+  - README.md (OBRIGATORIO)
+  - STATUS_PROJETO.txt (este arquivo)
+  - runner.py (teste rapido)
+
+Para compilar (precisa GnuCOBOL):
+  - INSTALAR_GNUCOBOL.md (guia completo)
+  - build.sh (automacao)
+  - PLANO_EXECUCAO.md (detalhes)
+
+Arquivos COBOL (do sistema original):
+  - PGM POC cob original/ (42 programas)
+  - fontes_faltanters/ (16 bibliotecas)
+
+================================================================================
+RESUMO DO PROJETO
+================================================================================
+
+Nome:     Sistema Legado COBOL - Prodesp
+Linguagem: COBOL (Micro Focus 6.1)
+Tipo:     Mainframe Batch Processing
+Funcao:   Validacao e processamento de dados veiculares
+Tamanho:  72 arquivos, ~4.5 MB
+
+Componentes:
+  42 programas COBOL
+  16 bibliotecas/copybooks
+  14 arquivos de dados
+  + 2 arquivos .7z (comprimidos)
+
+Status:
+  Arquivos: Extraidos e analisados (OK)
+  Ferramentas: Criadas (OK)
+  Documentacao: Completa (OK)
+  Compilador: Precisa instalar GnuCOBOL
+
+================================================================================
+PERGUNTAS FREQUENTES
+================================================================================
+
+P: Preciso de um compilador COBOL para rodar?
+R: Nao. Use "python runner.py" para simulacao imediata.
+   Sim, se quiser compilar o codigo original COBOL.
+
+P: Quanto tempo leva?
+R: Simulador: 10 segundos
+   GnuCOBOL (instalacao): 10 minutos
+   Compilacao: 5 minutos
+
+P: Qual eh o programa mais importante?
+R: PF-GAA-L004.C74 - Validador de placas veiculares
+   Use como programa piloto para testes
+
+P: Posso rodar isso em Linux ou Mac?
+R: Sim! GnuCOBOL funciona em todos os SOs.
+   Veja INSTALAR_GNUCOBOL.md
+
+P: Preciso instalar algo para rodar runner.py?
+R: Nao! Python ja esta instalado em seu computador.
+   Execute imediatamente: python runner.py
+
+================================================================================
+PROXIMO PASSO
+================================================================================
+
+1. Abra terminal na pasta do projeto:
+   cd c:\Projetos\outros\prodescp\codigo
+
+2. Execute o simulador:
+   python runner.py
+
+3. Leia a documentacao:
+   cat README.md
+
+4. Decida:
+   - So analisar? Pronto! Use runner.py
+   - Compilar? Instale GnuCOBOL (veja INSTALAR_GNUCOBOL.md)
+
+================================================================================
+SUPORTE
+================================================================================
+
+Duvidas sobre:
+  - Como usar: Veja README.md
+  - Como instalar GnuCOBOL: Veja INSTALAR_GNUCOBOL.md
+  - Plano detalhado: Veja PLANO_EXECUCAO.md
+  - Status: Veja STATUS_PROJETO.txt
+
+Scripts disponiveis:
+  - runner.py: Simulador (sem COBOL)
+  - build.sh: Compilacao automatizada
+
+Ferramentas ja instaladas:
+  - Python 3.13.14
+  - Java 25.0.2 LTS
+  - Git 2.55.0
+
+================================================================================
+
+Bom comeco!
+Comece com: python runner.py
+
+================================================================================

@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Testes COBOL - Prodesp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1f2937;
+            --light: #f3f4f6;
+            --border: #e5e7eb;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            overflow-x: hidden;
+        }
+
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: var(--dark);
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: block;
+            width: 100%;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 16px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .progress-container {
+            margin-top: 16px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--light);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), var(--success));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        .status-running {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .status-success {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .status-error {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .results-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .result-card {
+            padding: 16px;
+            border-radius: 8px;
+            border-left: 4px solid var(--border);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .result-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .result-card.success {
+            border-left-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .result-card.failure {
+            border-left-color: var(--danger);
+            background: #fef2f2;
+        }
+
+        .result-card.warning {
+            border-left-color: var(--warning);
+            background: #fffbeb;
+        }
+
+        .result-timestamp {
+            font-size: 12px;
+            color: #6b7280;
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .result-card > div {
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+        }
+
+        .result-stat {
+            text-align: center;
+        }
+
+        .result-stat-value {
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #6b7280;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .test-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            table-layout: fixed;
+        }
+
+        .test-table th {
+            background: var(--light);
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--dark);
+            border-bottom: 1px solid var(--border);
+            word-break: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .test-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--border);
+            word-break: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        .test-table tr:hover {
+            background: var(--light);
+        }
+
+        .status-pass {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .status-fail {
+            color: var(--danger);
+            font-weight: 600;
+        }
+
+        .details-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .details-modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            animation: slideIn 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close-btn {
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #6b7280;
+        }
+
+        .close-btn:hover {
+            color: var(--dark);
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        .detail-section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+            overflow-x: auto;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 48px 24px;
+            color: #6b7280;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .alert {
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid var(--danger);
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid var(--success);
+        }
+
+        .programa-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--light);
+            cursor: pointer;
+        }
+
+        .programa-item:hover {
+            background: var(--light);
+        }
+
+        .programa-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            margin-right: 12px;
+            cursor: pointer;
+        }
+
+        .programa-info {
+            flex: 1;
+        }
+
+        .programa-nome {
+            font-weight: 600;
+            color: var(--dark);
+            font-size: 13px;
+        }
+
+        .programa-tipo {
+            font-size: 11px;
+            color: #6b7280;
+            margin-top: 2px;
+        }
+
+        .categoria-header {
+            font-weight: 700;
+            padding: 12px;
+            background: var(--light);
+            margin-top: 8px;
+            border-radius: 4px;
+            color: var(--primary);
+        }
+
+        .programa-item-container {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--light);
+        }
+
+        .programa-item-container:last-child {
+            border-bottom: none;
+        }
+
+        .form-field {
+            margin-bottom: 16px;
+        }
+
+        .form-field label {
+            display: block;
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .form-field input,
+        .form-field select,
+        .form-field textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .form-field input:focus,
+        .form-field select:focus,
+        .form-field textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-field textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        .exemplo-btn {
+            display: inline-block;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            padding: 6px 12px;
+            background: var(--light);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .exemplo-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .resultado-executar {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            background: var(--light);
+            display: none;
+        }
+
+        .resultado-executar.sucesso {
+            background: #f0fdf4;
+            border: 1px solid var(--success);
+            display: block;
+        }
+
+        .resultado-executar.erro {
+            background: #fef2f2;
+            border: 1px solid var(--danger);
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                flex: 1;
+                text-align: center;
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            .stat-value {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-screen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 400px;">
+            <h1 style="text-align: center; color: var(--dark); margin-bottom: 8px; font-size: 24px;">
+                🔐 Sistema COBOL
+            </h1>
+            <p style="text-align: center; color: #6b7280; margin-bottom: 32px; font-size: 14px;">
+                Prodesp - Testes Automatizados
+            </p>
+
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                    Senha de Acesso:
+                </label>
+                <input type="password" id="login-password"
+                    placeholder="Digite a senha"
+                    style="width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; font-family: inherit;"
+                    onkeypress="if(event.key==='Enter') autenticar()">
+            </div>
+
+            <button onclick="autenticar()" style="width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.3s;">
+                Entrar
+            </button>
+
+            <div id="login-error" style="display: none; margin-top: 16px; padding: 12px; background: #fee2e2; color: #991b1b; border-left: 4px solid var(--danger); border-radius: 4px; font-size: 13px;">
+                <!-- Mensagem de erro -->
+            </div>
+
+            <p style="text-align: center; color: #6b7280; margin-top: 24px; font-size: 12px;">
+                Sistema de testes do sistema legado COBOL
+            </p>
+        </div>
+    </div>
+
+    <!-- Dashboard (oculto até autenticar) -->
+    <div id="dashboard" style="display: none;">
+    <div class="container">
+        <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+            <div>
+                <h1>🧪 Sistema de Testes COBOL</h1>
+                <p class="subtitle">Interface para execução e acompanhamento de testes - Prodesp</p>
+            </div>
+            <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 4px;">
+                [Sair]
+            </button>
+        </header>
+
+        <!-- Estatísticas -->
+        <div class="grid">
+            <div class="card">
+                <div class="card-title">Execuções de Testes</div>
+                <div class="stat-value" id="stat-executions">0</div>
+                <div class="stat-label">Testes executados</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Taxa de Sucesso</div>
+                <div class="stat-value" id="stat-success">0%</div>
+                <div class="stat-label">Média geral</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Testes Passando</div>
+                <div class="stat-value" id="stat-passed">0</div>
+                <div class="stat-label">Sucesso</div>
+            </div>
+        </div>
+
+        <!-- Seção de Controle -->
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-title">🚀 Executar Testes</div>
+
+            <div class="btn-group">
+                <button class="btn btn-primary" id="run-tests-btn" onclick="runTests()">
+                    ▶ Testes Básicos (PF-GAA-L004)
+                </button>
+                <button class="btn btn-primary" id="run-tests-expanded-btn" onclick="runTestsExpanded()" style="background: #7c3aed;">
+                    ⚙ Testes Expandidos (Todos 42 Programas)
+                </button>
+                <button class="btn btn-primary" id="run-tests-custom-btn" onclick="toggleSelectorProgramas()" style="background: #059669;">
+                    🎯 Selecionar Programa para Teste
+                </button>
+                <button class="btn btn-danger" id="cancel-tests-btn" onclick="cancelTests()" style="display:none;">
+                    ⏹ Cancelar
+                </button>
+            </div>
+
+            <div id="test-progress" style="display:none; margin-top: 16px;">
+                <p id="current-test-label" style="font-size: 13px; margin-bottom: 8px;">Iniciando...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-bar" style="width: 0%;"></div>
+                </div>
+                <span class="status-badge status-running" id="status-badge">
+                    <span class="spinner"></span> Em execução...
+                </span>
+            </div>
+
+            <div id="test-error" style="display:none; margin-top: 16px;"></div>
+        </div>
+
+        <!-- Seção de Execução de Programa Individual -->
+        <div class="card" style="margin-bottom: 30px; display:none;" id="executor-card">
+            <div class="card-title">⚡ Executar Programa Individual</div>
+
+            <div style="margin-bottom: 16px; padding: 12px; background: var(--light); border-radius: 8px;">
+                <div style="font-weight: 600; color: var(--dark); margin-bottom: 8px;" id="programa-selecionado">
+                    Nenhum programa selecionado
+                </div>
+                <button class="btn btn-primary" onclick="voltarSeletor()" style="background: #6b7280; margin-right: 8px;">
+                    ← Voltar ao Seletor
+                </button>
+            </div>
+
+            <form id="programa-form" onsubmit="executarPrograma(event)">
+                <div id="form-fields">
+                    <!-- Campos serão preenchidos por JavaScript -->
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <div style="font-weight: 600; color: var(--dark); margin-bottom: 8px;">Exemplos Rápidos:</div>
+                    <div id="exemplos-buttons">
+                        <!-- Botões de exemplo serão preenchidos por JavaScript -->
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">
+                        ▶ Executar Programa
+                    </button>
+                    <button type="reset" class="btn" style="background: #6b7280; color: white;">
+                        ↻ Limpar Formulário
+                    </button>
+                </div>
+            </form>
+
+            <div id="resultado-exec" class="resultado-executar">
+                <!-- Resultado será preenchido por JavaScript -->
+            </div>
+        </div>
+
+        <!-- Seção de Seleção de Programas -->
+        <div class="card" style="margin-bottom: 30px; display:none;" id="selector-card">
+            <div class="card-title">🎯 Selecionar Programa para Teste</div>
+
+            <div style="margin-bottom: 16px;">
+                <button class="btn btn-primary" onclick="selecionarTodos()" style="background: #10b981; margin-right: 8px;">
+                    ✓ Selecionar Todos
+                </button>
+                <button class="btn btn-primary" onclick="desseleccionarTodos()" style="background: #ef4444;">
+                    ✗ Desselecionar Todos
+                </button>
+            </div>
+
+            <div id="programa-list" style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 16px;">
+                <p style="color: #6b7280;">Carregando programas...</p>
+            </div>
+
+            <div class="btn-group" style="margin-top: 16px;">
+                <button class="btn btn-primary" onclick="executarTestesCustom()" style="background: #059669;">
+                    ▶ Executar Testes Selecionados
+                </button>
+                <button class="btn" onclick="toggleSelectorProgramas()" style="background: #6b7280; color: white;">
+                    ✕ Fechar
+                </button>
+            </div>
+        </div>
+
+        <!-- Seção de Validação Manual -->
+        <div class="card" style="margin-bottom: 30px;">
+            <div class="card-title">🔍 Validar Placa Individual</div>
+
+            <div class="input-group">
+                <input type="text" id="plate-input" placeholder="Digite a placa (ex: AAA0A00)" maxlength="10">
+                <button class="btn btn-primary" onclick="validatePlate()">Validar</button>
+            </div>
+
+            <div id="plate-result" style="display:none;">
+                <div id="plate-result-content"></div>
+            </div>
+        </div>
+
+        <!-- Seção de Resultados -->
+        <div class="card">
+            <div class="card-title">📊 Histórico de Testes</div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="switchTab(event, 'recent-results')">Resultados Recentes</button>
+                <button class="tab" onclick="switchTab(event, 'detailed-results')">Detalhado</button>
+            </div>
+
+            <!-- Resultados Recentes -->
+            <div id="recent-results" class="tab-content active">
+                <div id="recent-results-list" class="results-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>Nenhum teste executado ainda</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resultados Detalhados -->
+            <div id="detailed-results" class="tab-content">
+                <div class="table-wrapper">
+                    <table class="test-table" id="detailed-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">ID</th>
+                                <th style="width: 150px;">Nome</th>
+                                <th style="width: 120px;">Categoria</th>
+                                <th style="width: 80px;">Status</th>
+                                <th style="width: 100px;">Entrada</th>
+                                <th style="width: 100px;">Esperado</th>
+                                <th style="width: 100px;">Obtido</th>
+                                <th style="width: 100px;">Tempo (ms)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="8" style="text-align: center; padding: 32px; color: #6b7280;">
+                                    Nenhum teste executado ainda
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <!-- Fim do Dashboard -->
+
+    <!-- Modal de Detalhes -->
+    <div id="details-modal" class="details-modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeDetails()">&times;</span>
+            <div id="modal-details-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Histórico -->
+    <div id="historico-modal" class="details-modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeHistorico()">&times;</span>
+            <div id="modal-historico-content"></div>
+        </div>
+    </div>
+
+    <!-- Modal de Código Fonte -->
+    <div id="codigo-modal" class="details-modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeCodigoFonte()">&times;</span>
+            <div id="modal-codigo-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // Estado global
+        let currentResults = null;
+        let testStatusInterval = null;
+        let autenticado = false;
+
+        // Verificar autenticação ao carregar página
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('prodesp_token');
+            if (token && token === 'prodesp_2026') {
+                autenticado = true;
+                mostrarDashboard();
+                initializeApp();
+            } else {
+                mostrarLogin();
+            }
+        });
+
+        // Função de autenticação
+        function autenticar() {
+            const senha = document.getElementById('login-password').value;
+            const errorDiv = document.getElementById('login-error');
+
+            console.log('[AUTH] Tentativa de autenticação');
+
+            if (!senha) {
+                errorDiv.textContent = 'Digite a senha para continuar';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (senha !== 'prodesp_2026') {
+                console.log('[AUTH] Senha incorreta');
+                errorDiv.textContent = 'Senha incorreta! Tente novamente.';
+                errorDiv.style.display = 'block';
+                document.getElementById('login-password').value = '';
+                return;
+            }
+
+            console.log('[AUTH] Autenticado com sucesso!');
+            autenticado = true;
+            localStorage.setItem('prodesp_token', 'prodesp_2026');
+            mostrarDashboard();
+            initializeApp();
+        }
+
+        // Mostrar login
+        function mostrarLogin() {
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('dashboard').style.display = 'none';
+            console.log('[AUTH] Mostrando tela de login');
+        }
+
+        // Mostrar dashboard
+        function mostrarDashboard() {
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            console.log('[AUTH] Mostrando dashboard');
+            document.getElementById('login-password').focus();
+        }
+
+        // Logout
+        function logout() {
+            autenticado = false;
+            localStorage.removeItem('prodesp_token');
+            mostrarLogin();
+            document.getElementById('login-password').value = '';
+            console.log('[AUTH] Desconectado');
+        }
+
+        // Inicializar
+        function initializeApp() {
+            console.log('[APP] Inicializando aplicação...');
+
+            try {
+                loadStats();
+                console.log('[APP] Estatísticas carregadas');
+            } catch (e) {
+                console.error('[APP] Erro ao carregar stats:', e);
+            }
+
+            try {
+                loadResults();
+                console.log('[APP] Resultados carregados');
+            } catch (e) {
+                console.error('[APP] Erro ao carregar resultados:', e);
+            }
+
+            // Auto-refresh de resultados a cada 5 segundos
+            setInterval(() => {
+                try {
+                    loadStats();
+                    loadResults();
+                } catch (e) {
+                    console.error('[APP] Erro no auto-refresh:', e);
+                }
+            }, 5000);
+
+            console.log('[APP] Aplicação inicializada!');
+        }
+
+        // Inicializar quando documento estiver pronto
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+
+        // Carregar estatísticas
+        async function loadStats() {
+            try {
+                console.log('[STATS] Carregando estatísticas...');
+                const response = await fetch('/api/stats');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const stats = await response.json();
+                console.log('[STATS] Dados recebidos:', stats);
+
+                const execEl = document.getElementById('stat-executions');
+                const succEl = document.getElementById('stat-success');
+                const passEl = document.getElementById('stat-passed');
+
+                if (execEl) execEl.textContent = stats.total_execucoes || 0;
+                if (succEl) succEl.textContent = (stats.taxa_sucesso || 0).toFixed(1) + '%';
+                if (passEl) passEl.textContent = stats.total_passed || 0;
+
+                console.log('[STATS] Sucesso');
+            } catch (error) {
+                console.error('[STATS] Erro:', error);
+            }
+        }
+
+        // Carregar resultados
+        async function loadResults() {
+            try {
+                console.log('[LOAD] Carregando resultados...');
+                const response = await fetch('/api/results');
+                const results = await response.json();
+
+                console.log('[LOAD] Resultados recebidos:', results.length);
+
+                if (!results || results.length === 0) {
+                    console.log('[LOAD] Nenhum resultado');
+                    document.getElementById('recent-results-list').innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">📋</div>
+                            <p>Nenhum teste executado ainda</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Atualizar lista de resultados recentes
+                let html = '';
+                for (const result of results.slice(0, 10)) {
+                    const status = result.taxa_sucesso >= 95 ? 'success' :
+                                 result.taxa_sucesso >= 80 ? 'warning' : 'failure';
+
+                    const data = new Date(result.data);
+                    const dataFormatada = data.toLocaleString('pt-BR');
+
+                    // Truncar nome se for muito longo
+                    const nomeArquivo = result.arquivo.length > 30
+                        ? result.arquivo.substring(0, 27) + '...'
+                        : result.arquivo;
+
+                    html += `
+                        <div class="result-card ${status}" onclick="showDetails('${result.arquivo}')" title="${result.arquivo}">
+                            <div style="font-weight: 600; color: var(--dark); word-break: break-word; font-size: 13px;">
+                                ${nomeArquivo}
+                            </div>
+                            <div class="result-timestamp">${dataFormatada}</div>
+                            <div class="result-stats">
+                                <div class="result-stat">
+                                    <div class="result-stat-value">${result.total}</div>
+                                    <div>Total</div>
+                                </div>
+                                <div class="result-stat">
+                                    <div class="result-stat-value" style="color: var(--success);">${result.passed}</div>
+                                    <div>Passou</div>
+                                </div>
+                                <div class="result-stat">
+                                    <div class="result-stat-value" style="color: var(--danger);">${result.failed}</div>
+                                    <div>Falhou</div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(0,0,0,0.1); word-break: break-word;">
+                                <strong>${result.taxa_sucesso.toFixed(1)}%</strong> de sucesso
+                            </div>
+                        </div>
+                    `;
+                }
+
+                console.log('[LOAD] Renderizando resultados');
+                document.getElementById('recent-results-list').innerHTML = html;
+
+                // Usar o primeiro resultado para detalhes
+                if (results.length > 0) {
+                    currentResults = results[0];
+                    updateDetailedTable(results[0]);
+                }
+
+                console.log('[LOAD] Sucesso');
+            } catch (error) {
+                console.error('[LOAD] Erro:', error);
+            }
+        }
+
+        // Atualizar tabela detalhada
+        function updateDetailedTable(result) {
+            const tbody = document.querySelector('#detailed-table tbody');
+
+            if (!result.resultados || result.resultados.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align: center; padding: 32px; color: #6b7280;">
+                            Nenhum teste neste resultado
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            let html = '';
+            for (const test of result.resultados) {
+                const statusClass = test.status === 'PASS' ? 'status-pass' : 'status-fail';
+                html += `
+                    <tr>
+                        <td>${test.test_id}</td>
+                        <td>${test.nome}</td>
+                        <td>${test.categoria}</td>
+                        <td><span class="${statusClass}">${test.status}</span></td>
+                        <td>${test.entrada}</td>
+                        <td>${test.saida_esperada}</td>
+                        <td>${test.saida_obtida}</td>
+                        <td>${test.tempo_ms.toFixed(2)}</td>
+                    </tr>
+                `;
+            }
+
+            tbody.innerHTML = html;
+        }
+
+        // Executar testes
+        async function runTests() {
+            const btn = document.getElementById('run-tests-btn');
+            const btnExpanded = document.getElementById('run-tests-expanded-btn');
+            const cancelBtn = document.getElementById('cancel-tests-btn');
+            const progressDiv = document.getElementById('test-progress');
+            const errorDiv = document.getElementById('test-error');
+
+            btn.style.display = 'none';
+            btnExpanded.style.display = 'none';
+            cancelBtn.style.display = 'inline-flex';
+            progressDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+
+            try {
+                // Iniciar testes
+                const response = await fetch('/api/test/run', { method: 'POST' });
+                if (!response.ok) throw new Error('Erro ao iniciar testes');
+
+                // Monitorar progresso
+                monitorTestProgress();
+            } catch (error) {
+                showError(error.message);
+                btn.style.display = 'inline-flex';
+                btnExpanded.style.display = 'inline-flex';
+                cancelBtn.style.display = 'none';
+                progressDiv.style.display = 'none';
+            }
+        }
+
+        // Executar testes expandidos
+        async function runTestsExpanded() {
+            const btn = document.getElementById('run-tests-btn');
+            const btnExpanded = document.getElementById('run-tests-expanded-btn');
+            const cancelBtn = document.getElementById('cancel-tests-btn');
+            const progressDiv = document.getElementById('test-progress');
+            const errorDiv = document.getElementById('test-error');
+
+            btn.style.display = 'none';
+            btnExpanded.style.display = 'none';
+            cancelBtn.style.display = 'inline-flex';
+            progressDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            document.getElementById('current-test-label').textContent = 'Testando 42 programas COBOL...';
+
+            try {
+                // Iniciar testes expandidos
+                const response = await fetch('/api/test/run-expanded', { method: 'POST' });
+                if (!response.ok) throw new Error('Erro ao iniciar testes expandidos');
+
+                // Monitorar progresso
+                monitorTestProgress();
+            } catch (error) {
+                showError(error.message);
+                btn.style.display = 'inline-flex';
+                btnExpanded.style.display = 'inline-flex';
+                cancelBtn.style.display = 'none';
+                progressDiv.style.display = 'none';
+            }
+        }
+
+        // Monitorar progresso dos testes
+        function monitorTestProgress() {
+            let checkCount = 0;
+            const maxChecks = 600; // 10 minutos máximo (600 segundos)
+
+            testStatusInterval = setInterval(async () => {
+                checkCount++;
+
+                try {
+                    const response = await fetch('/api/test/status');
+                    const status = await response.json();
+
+                    // Atualizar progresso
+                    const progressPercent = Math.min(99, Math.max(0, status.progress));
+                    document.getElementById('progress-bar').style.width = progressPercent + '%';
+
+                    // Atualizar teste atual
+                    if (status.current_test) {
+                        document.getElementById('current-test-label').textContent =
+                            `Executando: ${status.current_test}`;
+                    }
+
+                    // Mostrar erro se houver
+                    if (status.error) {
+                        showError(status.error);
+                        clearInterval(testStatusInterval);
+                        finishTests();
+                        return;
+                    }
+
+                    // Parar quando testes terminarem
+                    if (!status.running) {
+                        document.getElementById('progress-bar').style.width = '100%';
+                        clearInterval(testStatusInterval);
+
+                        // Aguardar um pouco e depois finalizar
+                        setTimeout(() => {
+                            finishTests();
+                        }, 500);
+                        return;
+                    }
+
+                    // Timeout de segurança
+                    if (checkCount >= maxChecks) {
+                        showError('Timeout: Testes demoraram muito tempo para executar');
+                        clearInterval(testStatusInterval);
+                        finishTests();
+                    }
+
+                } catch (error) {
+                    console.error('Erro ao monitorar progresso:', error);
+                }
+            }, 1000);
+        }
+
+        // Finalizar testes
+        function finishTests() {
+            const btn = document.getElementById('run-tests-btn');
+            const btnExpanded = document.getElementById('run-tests-expanded-btn');
+            const btnCustom = document.getElementById('run-tests-custom-btn');
+            const cancelBtn = document.getElementById('cancel-tests-btn');
+            const progressDiv = document.getElementById('test-progress');
+            const errorDiv = document.getElementById('test-error');
+
+            btn.style.display = 'inline-flex';
+            btnExpanded.style.display = 'inline-flex';
+            btnCustom.style.display = 'inline-flex';
+            cancelBtn.style.display = 'none';
+            progressDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('current-test-label').textContent = 'Iniciando...';
+
+            loadStats();
+            loadResults();
+        }
+
+        // Cancelar testes
+        async function cancelTests() {
+            await fetch('/api/test/cancel', { method: 'POST' });
+            clearInterval(testStatusInterval);
+            finishTests();
+        }
+
+        // Validar placa
+        async function validatePlate() {
+            const placa = document.getElementById('plate-input').value.trim();
+
+            if (!placa) {
+                alert('Digite uma placa');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/validate-plate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ placa })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    showPlateError(result.error);
+                    return;
+                }
+
+                const statusText = result.valida ? '✓ Válida' : '✗ Inválida';
+                const statusColor = result.valida ? 'var(--success)' : 'var(--danger)';
+
+                document.getElementById('plate-result-content').innerHTML = `
+                    <div style="padding: 16px; border-radius: 8px; background: ${statusColor}20; border-left: 4px solid ${statusColor};">
+                        <div style="color: ${statusColor}; font-weight: 600; margin-bottom: 8px;">
+                            ${statusText}
+                        </div>
+                        <div style="font-size: 13px; color: var(--dark);">
+                            <div><strong>Placa:</strong> ${result.placa}</div>
+                            <div><strong>Código:</strong> ${result.codigo}</div>
+                            <div><strong>Tipo:</strong> ${result.descricao}</div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('plate-result').style.display = 'block';
+            } catch (error) {
+                showPlateError(error.message);
+            }
+        }
+
+        function showPlateError(message) {
+            document.getElementById('plate-result-content').innerHTML = `
+                <div class="alert alert-error">${message}</div>
+            `;
+            document.getElementById('plate-result').style.display = 'block';
+        }
+
+        // Mostrar detalhes
+        async function showDetails(filename) {
+            try {
+                const response = await fetch(`/api/results/${filename}`);
+                const result = await response.json();
+
+                const data = new Date(result.data);
+                const dataFormatada = data.toLocaleString('pt-BR');
+
+                let html = `
+                    <h2 style="margin-bottom: 20px; color: var(--dark);">Detalhes do Teste</h2>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">📋 Informações Gerais</div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                            <div><strong>Arquivo:</strong> ${filename}</div>
+                            <div><strong>Data:</strong> ${dataFormatada}</div>
+                            <div><strong>Duração:</strong> ${result.duracao.toFixed(2)}s</div>
+                            <div><strong>Taxa de Sucesso:</strong> ${result.taxa_sucesso.toFixed(1)}%</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">📊 Resumo</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+                            <div>
+                                <div style="font-size: 20px; font-weight: 700; color: var(--dark);">${result.total}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Total</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 20px; font-weight: 700; color: var(--success);">${result.passed}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Passou</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 20px; font-weight: 700; color: var(--danger);">${result.failed}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Falhou</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 20px; font-weight: 700; color: var(--warning);">${result.errored}</div>
+                                <div style="font-size: 12px; color: #6b7280;">Erros</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">🔍 Testes Detalhados</div>
+                        <div class="table-wrapper">
+                            <table class="test-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 80px;">ID</th>
+                                        <th style="width: 200px;">Nome</th>
+                                        <th style="width: 70px;">Status</th>
+                                        <th style="width: 100px;">Tempo (ms)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                for (const test of result.resultados) {
+                    const statusClass = test.status === 'PASS' ? 'status-pass' : 'status-fail';
+                    html += `
+                        <tr>
+                            <td>${test.test_id}</td>
+                            <td>${test.nome}</td>
+                            <td><span class="${statusClass}">${test.status}</span></td>
+                            <td>${test.tempo_ms.toFixed(2)}</td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('modal-details-content').innerHTML = html;
+                document.getElementById('details-modal').classList.add('active');
+            } catch (error) {
+                alert('Erro ao carregar detalhes: ' + error.message);
+            }
+        }
+
+        // Fechar modal
+        function closeDetails() {
+            document.getElementById('details-modal').classList.remove('active');
+        }
+
+        // Abrir histórico do programa
+        async function abrirHistorico(nomeProgramaHist) {
+            try {
+                console.log(`[HISTORICO] Abrindo histórico de ${nomeProgramaHist}`);
+                const response = await fetch(`/api/programa/${nomeProgramaHist}/historico`);
+                const historico = await response.json();
+
+                console.log(`[HISTORICO] Dados recebidos:`, historico);
+
+                let html = `
+                    <h2 style="margin-bottom: 20px; color: var(--dark);">Historico do Programa</h2>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">Informacoes Gerais</div>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+                            <div><strong>Programa:</strong> ${nomeProgramaHist}</div>
+                            <div><strong>Versao Atual:</strong> ${historico.versao_atual || 'N/A'}</div>
+                            <div><strong>Autor Original:</strong> ${historico.autor || 'Desconhecido'}</div>
+                            <div><strong>Data de Criacao:</strong> ${historico.criacao || 'N/A'}</div>
+                        </div>
+                    </div>
+
+                    <div class="detail-section">
+                        <div class="detail-section-title">Historico de Alteracoes</div>
+                        <div class="table-wrapper">
+                            <table class="test-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 120px;">Data</th>
+                                        <th style="width: 150px;">Pessoa</th>
+                                        <th style="width: 100px;">Tipo</th>
+                                        <th>Descricao</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                `;
+
+                if (historico.alteracoes && historico.alteracoes.length > 0) {
+                    for (const alt of historico.alteracoes.reverse()) {
+                        const tipoColor = alt.tipo === 'Criacao' ? '#10b981' :
+                                         alt.tipo === 'Feature' ? '#3b82f6' :
+                                         alt.tipo === 'Bug Fix' ? '#ef4444' :
+                                         alt.tipo === 'Manutenção' ? '#f59e0b' :
+                                         alt.tipo === 'Performance' ? '#8b5cf6' : '#6b7280';
+
+                        html += `
+                            <tr>
+                                <td><strong>${alt.data}</strong></td>
+                                <td>${alt.pessoa || 'Sistema'}</td>
+                                <td><span style="color: ${tipoColor}; font-weight: 600;">${alt.tipo}</span></td>
+                                <td>${alt.descricao || 'Sem descricao'}</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    html += `
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: #6b7280;">
+                                Nenhum historico disponivel
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('modal-historico-content').innerHTML = html;
+                document.getElementById('historico-modal').classList.add('active');
+            } catch (error) {
+                console.error('Erro ao carregar historico:', error);
+                alert('Erro ao carregar historico: ' + error.message);
+            }
+        }
+
+        // Fechar modal de historico
+        function closeHistorico() {
+            document.getElementById('historico-modal').classList.remove('active');
+        }
+
+        // Abrir código fonte do programa
+        function abrirCodigoFonte(nomeProgramaCod) {
+            console.log(`[CODIGO] Abrindo código de ${nomeProgramaCod}`);
+
+            let html = `
+                <h2 style="margin-bottom: 20px; color: var(--dark);">Codigo Fonte - ${nomeProgramaCod}</h2>
+
+                <div class="detail-section">
+                    <div class="detail-section-title">Autenticacao</div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 6px;">
+                            Senha de Acesso:
+                        </label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="password" id="senha-codigo"
+                                placeholder="Digite a senha"
+                                style="flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px;"
+                                onkeypress="if(event.key==='Enter') carregarCodigoFonte('${nomeProgramaCod}')">
+                            <button type="button" class="btn btn-primary"
+                                onclick="carregarCodigoFonte('${nomeProgramaCod}')"
+                                style="padding: 10px 20px;">
+                                Carregar Codigo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="codigo-resultado" style="display: none; margin-top: 16px;">
+                    <div class="detail-section">
+                        <div class="detail-section-title">Arquivo COBOL</div>
+                        <div id="codigo-info" style="margin-bottom: 16px; padding: 12px; background: var(--light); border-radius: 6px;">
+                            <!-- Informações do arquivo -->
+                        </div>
+                        <div style="background: white; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;">
+                            <pre id="codigo-texto" style="padding: 16px; margin: 0; overflow-x: auto; background: #1f2937; color: #10b981; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;">
+                                <!-- Código será exibido aqui -->
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modal-codigo-content').innerHTML = html;
+            document.getElementById('codigo-modal').classList.add('active');
+        }
+
+        // Carregar código fonte com autenticação
+        async function carregarCodigoFonte(nomeProgramaCod) {
+            try {
+                const senha = document.getElementById('senha-codigo').value;
+
+                if (!senha) {
+                    alert('Digite a senha!');
+                    return;
+                }
+
+                console.log(`[CODIGO] Carregando código com senha...`);
+
+                const response = await fetch(`/api/programa/${nomeProgramaCod}/codigo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ senha })
+                });
+
+                const resultado = await response.json();
+
+                console.log(`[CODIGO] Resposta:`, resultado);
+
+                if (!response.ok) {
+                    alert('Erro: ' + resultado.error);
+                    return;
+                }
+
+                if (!resultado.sucesso) {
+                    alert('Erro: ' + resultado.error);
+                    return;
+                }
+
+                // Exibir código
+                const divResultado = document.getElementById('codigo-resultado');
+                const divInfo = document.getElementById('codigo-info');
+                const divCodigo = document.getElementById('codigo-texto');
+
+                divInfo.innerHTML = `
+                    <strong>Programa:</strong> ${resultado.programa}<br>
+                    <strong>Arquivo:</strong> ${resultado.arquivo}<br>
+                    <strong>Tamanho:</strong> ${(resultado.tamanho / 1024).toFixed(2)} KB<br>
+                    <strong>Tipo:</strong> COBOL (Micro Focus)
+                `;
+
+                // Escaper HTML para exibir código corretamente
+                divCodigo.textContent = resultado.codigo;
+
+                divResultado.style.display = 'block';
+
+                console.log(`[CODIGO] Código carregado com sucesso!`);
+
+            } catch (error) {
+                console.error('Erro ao carregar código:', error);
+                alert('Erro ao carregar código: ' + error.message);
+            }
+        }
+
+        // Fechar modal de código
+        function closeCodigoFonte() {
+            document.getElementById('codigo-modal').classList.remove('active');
+        }
+
+        // Mudar abas
+        function switchTab(event, tabName) {
+            // Remover active de todas as abas
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            // Adicionar active à aba e conteúdo selecionado
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        // Mostrar erro
+        function showError(message) {
+            const errorDiv = document.getElementById('test-error');
+            errorDiv.innerHTML = `<div class="alert alert-error">${message}</div>`;
+            errorDiv.style.display = 'block';
+        }
+
+        // Programa customizado
+        let programasSelecionados = [];
+
+        // Toggle seletor de programas
+        function toggleSelectorProgramas() {
+            const selector = document.getElementById('selector-card');
+            if (selector.style.display === 'none') {
+                selector.style.display = 'block';
+                carregarProgramas();
+            } else {
+                selector.style.display = 'none';
+            }
+        }
+
+        // Carregar lista de programas
+        async function carregarProgramas() {
+            try {
+                const response = await fetch('/api/programas');
+                const programas = await response.json();
+
+                let html = '';
+                let todosProgramas = [];
+
+                for (const [tipo, progs] of Object.entries(programas)) {
+                    html += `<div class="categoria-header">${tipo} (${progs.length} programas)</div>`;
+
+                    for (const prog of progs) {
+                        todosProgramas.push(prog);
+                        const isChecked = programasSelecionados.includes(prog.nome) ? 'checked' : '';
+                        const objetivo = prog.objetivo ? `${prog.objetivo}` : '';
+                        const entrada = prog.entrada ? `<strong>Entrada:</strong> ${prog.entrada}` : '';
+
+                        html += `
+                            <div class="programa-item-container">
+                                <label class="programa-item" style="display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: flex-start; flex: 1;">
+                                        <input type="checkbox" value="${prog.nome}" ${isChecked}
+                                            onchange="atualizarSelecao()" style="margin-right: 12px; margin-top: 4px;">
+                                        <div class="programa-info" style="flex: 1;">
+                                            <div class="programa-nome">${prog.nome}</div>
+                                            <div class="programa-tipo">${prog.descricao}</div>
+                                            <div style="font-size: 12px; color: #059669; margin-top: 4px;">
+                                                📋 ${objetivo}
+                                            </div>
+                                            <div style="font-size: 11px; color: #6b7280; margin-top: 4px; line-height: 1.4;">
+                                                ${entrada}
+                                            </div>
+                                            <div id="saida-${prog.nome}" style="font-size: 11px; color: #1f2937; background: #f3f4f6; border-left: 3px solid #059669; padding: 6px 8px; margin-top: 8px; border-radius: 2px; max-height: 120px; overflow-y: auto;">
+                                                <strong>Saida:</strong> <span class="spinner" style="display: inline-block; width: 12px; height: 12px; margin: 0 4px;"></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 4px; margin-left: 8px;">
+                                        <button type="button" class="btn" onclick="abrirExecutor('${prog.nome}')"
+                                            style="background: #059669; color: white; padding: 6px 12px; font-size: 12px; flex-shrink: 0; margin-top: 4px;">
+                                            [Testar]
+                                        </button>
+                                        <button type="button" class="btn" onclick="abrirHistorico('${prog.nome}')"
+                                            style="background: #3b82f6; color: white; padding: 6px 12px; font-size: 12px; flex-shrink: 0; margin-top: 4px;">
+                                            [Historico]
+                                        </button>
+                                        <button type="button" class="btn" onclick="abrirCodigoFonte('${prog.nome}')"
+                                            style="background: #8b5cf6; color: white; padding: 6px 12px; font-size: 12px; flex-shrink: 0; margin-top: 4px;">
+                                            [Codigo]
+                                        </button>
+                                    </div>
+                                </label>
+                            </div>
+                        `;
+                    }
+                }
+
+                document.getElementById('programa-list').innerHTML = html;
+                console.log(`[PROGRAMAS] Total carregado: ${todosProgramas.length} programas`);
+
+                // Carregar resultado real para cada programa
+                for (const prog of todosProgramas) {
+                    carregarResultadoPrograma(prog.nome);
+                }
+            } catch (error) {
+                console.error('Erro ao carregar programas:', error);
+                document.getElementById('programa-list').innerHTML =
+                    '<p style="color: #ef4444;">Erro ao carregar programas</p>';
+            }
+        }
+
+        // Atualizar seleção
+        function atualizarSelecao() {
+            programasSelecionados = [];
+            document.querySelectorAll('#programa-list input[type="checkbox"]:checked').forEach(cb => {
+                programasSelecionados.push(cb.value);
+            });
+            console.log('Selecionados:', programasSelecionados);
+        }
+
+        // Selecionar todos
+        function selecionarTodos() {
+            document.querySelectorAll('#programa-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = true;
+            });
+            atualizarSelecao();
+        }
+
+        // Desselecionar todos
+        function desseleccionarTodos() {
+            document.querySelectorAll('#programa-list input[type="checkbox"]').forEach(cb => {
+                cb.checked = false;
+            });
+            atualizarSelecao();
+        }
+
+        // Programa selecionado para executor individual
+        let programaAtualExecutor = null;
+
+        // Abrir executor para um programa específico
+        async function abrirExecutor(nomeProgramaexec) {
+            programaAtualExecutor = nomeProgramaexec;
+
+            try {
+                // Carregar dados mockados
+                const response = await fetch(`/api/programa/${nomeProgramaexec}/dados`);
+                const dados = await response.json();
+
+                console.log(`Abrindo executor para ${nomeProgramaexec}:`, dados);
+
+                // Esconder seletor, mostrar executor
+                document.getElementById('selector-card').style.display = 'none';
+                document.getElementById('executor-card').style.display = 'block';
+
+                // Atualizar título
+                document.getElementById('programa-selecionado').textContent =
+                    `📝 ${nomeProgramaexec} - ${dados.descricao || 'Programa COBOL'}`;
+
+                // Renderizar campos
+                renderizarCampos(dados);
+
+                // Renderizar exemplos
+                renderizarExemplos(dados);
+
+                // Scroll para o formulário
+                document.getElementById('executor-card').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error('Erro ao abrir executor:', error);
+                alert('Erro ao carregar dados do programa');
+            }
+        }
+
+        // Renderizar campos de formulário
+        function renderizarCampos(dados) {
+            let html = '';
+
+            for (const campo of dados.campos) {
+                const tipo = campo.tipo;
+                const required = 'required';
+
+                if (tipo === 'texto' || tipo === 'numero') {
+                    html += `
+                        <div class="form-field">
+                            <label for="${campo.nome}">${campo.label}</label>
+                            <input type="${tipo === 'numero' ? 'number' : 'text'}"
+                                id="${campo.nome}"
+                                name="${campo.nome}"
+                                placeholder="${campo.placeholder || ''}"
+                                value="${campo.valor || ''}"
+                                ${campo.maxlength ? `maxlength="${campo.maxlength}"` : ''}
+                                ${campo.min ? `min="${campo.min}"` : ''}
+                                ${campo.max ? `max="${campo.max}"` : ''}
+                                ${required}>
+                        </div>
+                    `;
+                } else if (tipo === 'select') {
+                    html += `
+                        <div class="form-field">
+                            <label for="${campo.nome}">${campo.label}</label>
+                            <select id="${campo.nome}" name="${campo.nome}" ${required}>
+                                <option value="">-- Selecione uma opção --</option>
+                    `;
+                    for (const opcao of campo.opcoes || []) {
+                        const selected = opcao.valor === campo.valor ? 'selected' : '';
+                        html += `<option value="${opcao.valor}" ${selected}>${opcao.label}</option>`;
+                    }
+                    html += `
+                            </select>
+                        </div>
+                    `;
+                } else if (tipo === 'textarea') {
+                    html += `
+                        <div class="form-field">
+                            <label for="${campo.nome}">${campo.label}</label>
+                            <textarea id="${campo.nome}" name="${campo.nome}"
+                                placeholder="${campo.placeholder || ''}"
+                                rows="${campo.rows || 5}"
+                                ${required}>${campo.valor || ''}</textarea>
+                        </div>
+                    `;
+                }
+            }
+
+            document.getElementById('form-fields').innerHTML = html;
+        }
+
+        // Renderizar botões de exemplos
+        function renderizarExemplos(dados) {
+            let html = '';
+
+            if (!dados.exemplos || dados.exemplos.length === 0) {
+                document.getElementById('exemplos-buttons').innerHTML = '<p style="color: #6b7280;">Nenhum exemplo disponível</p>';
+                return;
+            }
+
+            for (let i = 0; i < dados.exemplos.length; i++) {
+                const exemplo = dados.exemplos[i];
+                const label = exemplo.descricao || `Exemplo ${i + 1}`;
+
+                html += `
+                    <button type="button" class="exemplo-btn"
+                        onclick="carregarExemplo(${i})">
+                        📋 ${label}
+                    </button>
+                `;
+            }
+
+            document.getElementById('exemplos-buttons').innerHTML = html;
+        }
+
+        // Carregar um exemplo
+        function carregarExemplo(indice) {
+            try {
+                const response = fetch(`/api/programa/${programaAtualExecutor}/dados`);
+                response.then(r => r.json()).then(dados => {
+                    const exemplo = dados.exemplos[indice];
+
+                    // Preencher formulário com valores do exemplo
+                    for (const [chave, valor] of Object.entries(exemplo)) {
+                        if (chave !== 'descricao' && chave !== 'descricao_ex') {
+                            const campo = document.getElementById(chave);
+                            if (campo) {
+                                campo.value = valor;
+                            }
+                        }
+                    }
+
+                    console.log(`Exemplo ${indice} carregado`);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar exemplo:', error);
+            }
+        }
+
+        // Voltar ao seletor
+        function voltarSeletor() {
+            document.getElementById('executor-card').style.display = 'none';
+            document.getElementById('selector-card').style.display = 'block';
+            document.getElementById('resultado-exec').className = 'resultado-executar';
+            document.getElementById('resultado-exec').innerHTML = '';
+            programaAtualExecutor = null;
+        }
+
+        // Executar programa com dados
+        async function executarPrograma(event) {
+            event.preventDefault();
+
+            if (!programaAtualExecutor) {
+                alert('Nenhum programa selecionado');
+                return;
+            }
+
+            // Coletar dados do formulário
+            const formData = new FormData(document.getElementById('programa-form'));
+            const dados = Object.fromEntries(formData);
+
+            console.log(`Executando ${programaAtualExecutor} com dados:`, dados);
+
+            try {
+                const response = await fetch(`/api/programa/${programaAtualExecutor}/executar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                const resultado = await response.json();
+
+                // Mostrar resultado
+                const divResultado = document.getElementById('resultado-exec');
+
+                if (resultado.sucesso) {
+                    divResultado.className = 'resultado-executar sucesso';
+                    divResultado.innerHTML = `
+                        <div style="margin-bottom: 12px;">
+                            <strong style="color: var(--success); font-size: 16px;">✓ Execução bem-sucedida!</strong>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                            <strong>Programa:</strong> ${resultado.programa}
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                            <strong>Entrada:</strong>
+                            <pre style="margin: 8px 0; padding: 8px; background: var(--light); border-radius: 4px; overflow-x: auto; font-size: 12px;">
+${JSON.stringify(resultado.entrada, null, 2)}</pre>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 6px;">
+                            <strong>Saída:</strong>
+                            <pre style="margin: 8px 0; padding: 8px; background: var(--light); border-radius: 4px; overflow-x: auto; font-size: 12px;">
+${JSON.stringify(resultado.saida, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    divResultado.className = 'resultado-executar erro';
+                    const erros = resultado.erros ? resultado.erros.join('<br>') : resultado.error;
+                    divResultado.innerHTML = `
+                        <div style="margin-bottom: 12px;">
+                            <strong style="color: var(--danger); font-size: 16px;">✗ Erro na execução</strong>
+                        </div>
+                        <div style="background: white; padding: 12px; border-radius: 6px;">
+                            <strong>Erro:</strong>
+                            <div style="margin-top: 8px; color: var(--danger);">
+                                ${erros}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                divResultado.scrollIntoView({ behavior: 'smooth' });
+
+            } catch (error) {
+                console.error('Erro ao executar programa:', error);
+                const divResultado = document.getElementById('resultado-exec');
+                divResultado.className = 'resultado-executar erro';
+                divResultado.innerHTML = `
+                    <strong style="color: var(--danger);">✗ Erro: ${error.message}</strong>
+                `;
+            }
+        }
+
+        // Executar testes customizados
+        async function executarTestesCustom() {
+            if (programasSelecionados.length === 0) {
+                alert('Selecione pelo menos um programa!');
+                return;
+            }
+
+            const btn = document.getElementById('run-tests-custom-btn');
+            const btnBasico = document.getElementById('run-tests-btn');
+            const btnExpanded = document.getElementById('run-tests-expanded-btn');
+            const cancelBtn = document.getElementById('cancel-tests-btn');
+            const progressDiv = document.getElementById('test-progress');
+            const errorDiv = document.getElementById('test-error');
+            const selector = document.getElementById('selector-card');
+
+            btn.style.display = 'none';
+            btnBasico.style.display = 'none';
+            btnExpanded.style.display = 'none';
+            cancelBtn.style.display = 'inline-flex';
+            progressDiv.style.display = 'block';
+            errorDiv.style.display = 'none';
+            selector.style.display = 'none';
+
+            document.getElementById('current-test-label').textContent =
+                `Testando ${programasSelecionados.length} programa(s)...`;
+
+            try {
+                const response = await fetch('/api/test/run-custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ programas: programasSelecionados })
+                });
+
+                if (!response.ok) throw new Error('Erro ao iniciar testes');
+
+                monitorTestProgress();
+            } catch (error) {
+                showError(error.message);
+                btn.style.display = 'inline-flex';
+                btnBasico.style.display = 'inline-flex';
+                btnExpanded.style.display = 'inline-flex';
+                cancelBtn.style.display = 'none';
+                progressDiv.style.display = 'none';
+            }
+        }
+
+        // Carregar resultado de um programa
+        async function carregarResultadoPrograma(nomeProgramaResult) {
+            try {
+                // Obter dados mockados do programa
+                const responseData = await fetch(`/api/programa/${nomeProgramaResult}/dados`);
+                const dados = await responseData.json();
+
+                console.log(`[${nomeProgramaResult}] Dados mockados:`, dados);
+
+                // Executar programa com dados mockados
+                const responsExec = await fetch(`/api/programa/${nomeProgramaResult}/executar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados.campos_valor || {})
+                });
+
+                const resultado = await responsExec.json();
+                console.log(`[${nomeProgramaResult}] Resultado:`, resultado);
+
+                const divSaida = document.getElementById(`saida-${nomeProgramaResult}`);
+
+                if (resultado.sucesso) {
+                    const saidaFormatada = typeof resultado.saida === 'object'
+                        ? JSON.stringify(resultado.saida, null, 2)
+                        : resultado.saida;
+
+                    console.log(`[${nomeProgramaResult}] Saída formatada:`, saidaFormatada);
+
+                    divSaida.innerHTML = `
+                        <strong>Saída:</strong>
+                        <pre style="margin: 4px 0; padding: 4px; background: white; border-radius: 2px; font-size: 10px; overflow-x: auto; white-space: pre-wrap; word-wrap: break-word;">
+${saidaFormatada}
+                        </pre>
+                    `;
+                } else {
+                    const erro = resultado.error || 'Erro desconhecido';
+                    console.log(`[${nomeProgramaResult}] Erro:`, erro);
+                    divSaida.innerHTML = `
+                        <strong style="color: #ef4444;">Saída:</strong>
+                        <div style="color: #ef4444; font-size: 10px; margin-top: 4px;">
+                            Erro: ${erro}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error(`[${nomeProgramaResult}] Exceção:`, error);
+                const divSaida = document.getElementById(`saida-${nomeProgramaResult}`);
+                if (divSaida) {
+                    divSaida.innerHTML = `
+                        <strong style="color: #ef4444;">Saída:</strong>
+                        <div style="color: #ef4444; font-size: 10px; margin-top: 4px;">
+                            Erro ao carregar: ${error.message}
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Enter para validar placa
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('plate-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') validatePlate();
+            });
+        });
+    </script>
+</body>
+</html>

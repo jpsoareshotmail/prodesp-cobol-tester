@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Teste da Interface Web</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .card { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .btn { padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 10px 0; }
+        .btn:hover { background: #1d4ed8; }
+        .log { background: #f8f8f8; padding: 10px; margin: 5px 0; border-left: 3px solid #2563eb; font-family: monospace; font-size: 12px; }
+        .error { border-left-color: #ef4444; background: #fef2f2; }
+        .success { border-left-color: #10b981; background: #f0fdf4; }
+        h2 { color: #1f2937; margin-top: 20px; }
+        .value { font-weight: bold; color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Teste da Interface Web - COBOL</h1>
+
+        <div class="card">
+            <h2>Status do Servidor</h2>
+            <button class="btn" onclick="testHealth()">Testar Conexão</button>
+            <div id="health-log"></div>
+        </div>
+
+        <div class="card">
+            <h2>Estatísticas</h2>
+            <button class="btn" onclick="testStats()">Carregar Estatísticas</button>
+            <div id="stats-log"></div>
+            <div id="stats-display"></div>
+        </div>
+
+        <div class="card">
+            <h2>Resultados de Testes</h2>
+            <button class="btn" onclick="testResults()">Carregar Resultados</button>
+            <div id="results-log"></div>
+            <div id="results-display"></div>
+        </div>
+
+        <div class="card">
+            <h2>Validar Placa</h2>
+            <input type="text" id="plate-input" placeholder="Digite uma placa (ex: AAA0A00)" style="padding: 8px; width: 100%; margin: 10px 0;">
+            <button class="btn" onclick="testPlate()">Validar</button>
+            <div id="plate-log"></div>
+            <div id="plate-display"></div>
+        </div>
+
+        <div class="card">
+            <h2>Executar Tudo</h2>
+            <button class="btn" onclick="runAll()">Teste Completo</button>
+            <div id="all-log"></div>
+        </div>
+    </div>
+
+    <script>
+        function addLog(elementId, message, type = 'info') {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            const log = document.createElement('div');
+            log.className = 'log ' + type;
+            log.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            el.appendChild(log);
+
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        async function testHealth() {
+            const el = 'health-log';
+            document.getElementById(el).innerHTML = '';
+            addLog(el, 'Testando /api/health...');
+
+            try {
+                const res = await fetch('http://localhost:5000/api/health');
+                const data = await res.json();
+
+                if (res.ok) {
+                    addLog(el, `Servidor respondendo! Status: ${res.status}`, 'success');
+                    addLog(el, `Resposta: ${JSON.stringify(data)}`, 'success');
+                } else {
+                    addLog(el, `Erro: HTTP ${res.status}`, 'error');
+                }
+            } catch (e) {
+                addLog(el, `Erro de conexão: ${e.message}`, 'error');
+            }
+        }
+
+        async function testStats() {
+            const el = 'stats-log';
+            const displayEl = 'stats-display';
+            document.getElementById(el).innerHTML = '';
+            document.getElementById(displayEl).innerHTML = '';
+            addLog(el, 'Carregando /api/stats...');
+
+            try {
+                const res = await fetch('http://localhost:5000/api/stats');
+                const data = await res.json();
+
+                if (res.ok) {
+                    addLog(el, `Dados recebidos: ${JSON.stringify(data)}`, 'success');
+
+                    let html = `
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px;">
+                            <div style="text-align: center; padding: 15px; background: #f0f9ff; border-radius: 4px;">
+                                <div style="font-size: 24px; font-weight: bold; color: #2563eb;">${data.total_execucoes}</div>
+                                <div style="font-size: 12px; color: #666;">Execuções</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: #f0fdf4; border-radius: 4px;">
+                                <div style="font-size: 24px; font-weight: bold; color: #10b981;">${data.taxa_sucesso.toFixed(1)}%</div>
+                                <div style="font-size: 12px; color: #666;">Taxa de Sucesso</div>
+                            </div>
+                            <div style="text-align: center; padding: 15px; background: #fffbeb; border-radius: 4px;">
+                                <div style="font-size: 24px; font-weight: bold; color: #f59e0b;">${data.total_passed}</div>
+                                <div style="font-size: 12px; color: #666;">Testes Passando</div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById(displayEl).innerHTML = html;
+                } else {
+                    addLog(el, `Erro: HTTP ${res.status}`, 'error');
+                }
+            } catch (e) {
+                addLog(el, `Erro: ${e.message}`, 'error');
+            }
+        }
+
+        async function testResults() {
+            const el = 'results-log';
+            const displayEl = 'results-display';
+            document.getElementById(el).innerHTML = '';
+            document.getElementById(displayEl).innerHTML = '';
+            addLog(el, 'Carregando /api/results...');
+
+            try {
+                const res = await fetch('http://localhost:5000/api/results');
+                const data = await res.json();
+
+                if (res.ok) {
+                    addLog(el, `${data.length} resultado(s) encontrado(s)`, 'success');
+
+                    if (data.length === 0) {
+                        document.getElementById(displayEl).innerHTML = '<p style="color: #666;">Nenhum resultado disponível</p>';
+                        return;
+                    }
+
+                    let html = '<div style="display: grid; gap: 10px;">';
+                    data.slice(0, 3).forEach((result, i) => {
+                        html += `
+                            <div style="padding: 15px; background: #f8f8f8; border-radius: 4px; border-left: 4px solid #2563eb;">
+                                <div style="font-weight: bold; margin-bottom: 8px;">
+                                    <span class="value">${result.arquivo}</span>
+                                </div>
+                                <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                                    ${new Date(result.data).toLocaleString('pt-BR')}
+                                </div>
+                                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                    <div style="text-align: center;">
+                                        <div style="font-weight: bold;">${result.total}</div>
+                                        <div style="font-size: 11px;">Total</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-weight: bold; color: #10b981;">${result.passed}</div>
+                                        <div style="font-size: 11px;">Passou</div>
+                                    </div>
+                                    <div style="text-align: center;">
+                                        <div style="font-weight: bold; color: #ef4444;">${result.failed}</div>
+                                        <div style="font-size: 11px;">Falhou</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    document.getElementById(displayEl).innerHTML = html;
+                } else {
+                    addLog(el, `Erro: HTTP ${res.status}`, 'error');
+                }
+            } catch (e) {
+                addLog(el, `Erro: ${e.message}`, 'error');
+            }
+        }
+
+        async function testPlate() {
+            const el = 'plate-log';
+            const displayEl = 'plate-display';
+            const plate = document.getElementById('plate-input').value.trim();
+
+            document.getElementById(el).innerHTML = '';
+            document.getElementById(displayEl).innerHTML = '';
+
+            if (!plate) {
+                addLog(el, 'Digite uma placa!', 'error');
+                return;
+            }
+
+            addLog(el, `Validando placa: ${plate}`);
+
+            try {
+                const res = await fetch('http://localhost:5000/api/validate-plate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ placa: plate })
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    addLog(el, `Resposta: ${JSON.stringify(data)}`, 'success');
+
+                    const color = data.valida ? '#10b981' : '#ef4444';
+                    const status = data.valida ? '✓ Válida' : '✗ Inválida';
+
+                    let html = `
+                        <div style="padding: 15px; background: ${color}20; border-left: 4px solid ${color}; border-radius: 4px;">
+                            <div style="font-weight: bold; color: ${color}; margin-bottom: 10px;">
+                                ${status}
+                            </div>
+                            <div style="font-size: 14px; color: #333;">
+                                <div><strong>Placa:</strong> ${data.placa}</div>
+                                <div><strong>Código:</strong> ${data.codigo}</div>
+                                <div><strong>Tipo:</strong> ${data.descricao}</div>
+                            </div>
+                        </div>
+                    `;
+                    document.getElementById(displayEl).innerHTML = html;
+                } else {
+                    addLog(el, `Erro: HTTP ${res.status} - ${data.error}`, 'error');
+                }
+            } catch (e) {
+                addLog(el, `Erro: ${e.message}`, 'error');
+            }
+        }
+
+        async function runAll() {
+            const el = 'all-log';
+            document.getElementById(el).innerHTML = '';
+
+            addLog(el, 'Iniciando teste completo...');
+            await new Promise(r => setTimeout(r, 500));
+
+            addLog(el, '1. Testando conexão...');
+            await testHealth();
+            await new Promise(r => setTimeout(r, 500));
+
+            addLog(el, '2. Carregando estatísticas...');
+            await testStats();
+            await new Promise(r => setTimeout(r, 500));
+
+            addLog(el, '3. Carregando resultados...');
+            await testResults();
+            await new Promise(r => setTimeout(r, 500));
+
+            addLog(el, 'Teste completo!', 'success');
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('Página carregada. Você pode executar os testes acima.');
+        });
+    </script>
+</body>
+</html>

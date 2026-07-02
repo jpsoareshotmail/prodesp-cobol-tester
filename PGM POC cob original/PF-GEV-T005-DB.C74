@@ -1,0 +1,2177 @@
+000000* VERSION 32.1   ; SAVED 20260504 15:41:28                    |32.
+000001
+000100 IDENTIFICATION  DIVISION.
+000200**************************
+000300*
+000400
+000500 PROGRAM-ID.     PC-GEV-T005-DB.
+000600*
+000700 DATE-WRITTEN.   NOVEMBRO 2004.
+000800*
+000900 DATE-COMPILED.
+001000*
+001100 AUTHOR.
+001200*  PROGRAMADOR:  JAIR CHININ.
+001300*  ANALISTA   :  IRACI.
+001400
+001500 SECURITY.
+001600*
+001700******************************************************************
+001800*    OBJETIVO:                                                   *
+001900*             PESQUISAR NO GEVERDS PARA ENVIAR OS MAPAS          *
+002000*             CORRESPONDENTES A OPCAO DO CADASTRO                *
+002100*                                                                *
+002200*                                                                *
+002300*                                                                *
+002400*    ARQUIVOS:                                                   *
+002500*    ========                                                    *
+002600*    DUMMYSTATION                                                *
+002700*                                                                *
+002800*    BANCO:                                                      *
+002900*    =====                                                       *
+003000*    DBGEVER     DATA SETS:                                      *
+003100*                GEVERDS    - DATASET DE FICHAS DO GEVER         *
+003200*                                                                *
+003300*                                                                *
+003400*    MAPAS:                                                      *
+003500*    =====                                                       *
+003600*(CAFI01 SUSPENSO) MAPA DE ENTRADA PARA ACESSO AO SIST. GEVER    *
+003700*    COFI01      MAPA DE INICIO DO CADASTRAMENTO E GAA61         *
+003800*    COFI03      MAPA PARA ESCOLHA DAS OPCOES                    *
+003900*    COFI04      MAPA PARA ENTRADA DE PRIMEIRO CADASTRAMENTO     *
+004000*    GERA01      MAPA PADRAO DA PRODESP                          *
+004100*    MENS01      MAPA PADRAO DA PRODESP                          *
+004200*    MENS03      MAPA PADRAO DA PRODESP POSICIONA NO CONTEUDO    *
+004300*    HEADER74    MAPA PADRAO DA PRODESP                          *
+004400*                                                                *
+004500*                                                                *
+004600*    TRANSACAO:                                                  *
+004700*    =========                                                   *
+004800*    CAFI+ NRO-FICHA + ANO-FICHA                                 *
+004900*          MONTA MAPA DE ACORDO COM A OPCAO DA FICHA             *
+005000*                                                                *
+005100*                                                                *
+005200*                                                                *
+005300******************************************************************
+005400
+005500/
+005600******************************************************************
+005700*                                                                *
+005800*    ALTERA['ES EFETUADAS:                                       *
+005900*                                                                *
+006000*    PATCH     DATA      O.S.     PROGR  ANALISTA  COMENTARIO    *
+006100*    =====     ====      ====     ===========      ========      *
+006200*                                                                *
+006300*     001    25/11/04    ____     JAIR ______     JAIR______     *
+006310*     002    30/11/04    ____     JAIR   /  JAIR  (NAO MOVE ESP) *
+006320*     003    08/12/04    ____     JAIR   /  JAIR  (MSG 08 FORA ) *
+006400*     004    12/04/05    ____     JAIR   / _JAIR  (PARAM DESP. ) *
+006410*     005    16/05/05    ____     JAIR   / _JAIR  (BIO/GEVER   ) *
+006420*     006    21/12/05    ____     JAIR   / _JAIR  (GEVER/CPF   ) *
+006500*     007    02/02/06             LEE    / IRACI  (PLACA-COFI04) *
+006510*     008    19/07/06             JAC    / IRACI  (AUTENT PLACA) *
+006520*----------------------------------------------------------------*
+006525*     NOVO FONTE                                                 *
+006530*----------------------------------------------------------------*
+006600*     001    03/08/09             SSA/SSA   AUMENTO TAMANHO MAPA *
+006700*     002    03/08/09             LEE / LEE   MAPA/COFI04  _     *
+006800*     ___    21/04/12             JWD / JAC INC ROT CAPT AUT DIG *
+006900*     ___    15/05/12             JWD / JAC ALT CAMPO AUT EMPL   *
+006902*            07/09/12    LEE / LEE   AUMENTO TAM.RENAVAM P/ 11   *
+007000*     ___    07/05/13    SSA / JWD   TRAT ROT 030-E P/ OP 11 E 12*
+007100*     ___    04/05/14    SSA / JWD   INCL ROTINA SINITROS        *
+007200*            08/08/14    SSA / LEE   TAMANHO DE MAPA COFI10 ALT. *
+007300*     ___    26/12/16    SSA / SSA   ALTERACAO COFI01 CSV        *
+007400*     ___    12/04/18    SSA / JWD  INC. AVARIADOSDS - TRANS TSEG*
+007500*     ___    29/08/18    JAC / JWD  AJUSTE TAM. DA REDEF COFI01  *
+007600*     ___    09/11/18    RSC / CFS  TRATAMENTO PLACA MERCOSUL    *
+007700*     ___    14/03/19    VLG / JWD  TRATA OPCAO 15 TRANS 1800    *
+007800*     ___    31/08/20    VLG / LJS  MOV TAXA P/COF01/03/04/10/11 *
+007805*            21/01/21    VLG / JWD  Alter tamanho do mapa COFI01 *
+007900*     ___    08/04/21    ____     SSA /DJCD ALT INFO CONFERENT   *
+008000*     ___    28/05/21    VLG / CFS PERMIT 2 VIA CRV TROCA PL MERC*
+008100*     ___    27/12/21    SSA/SSA  LIB DA APROV OPER.POSTO E REG=5*
+008200*     ___    08/03/22    SSA/SSA  OPER POSTO DIG E BU PRECISA APR*
+008300*     ___    05/04/22    SSA/SSA  ACERTO GER-FILLER E RENAVE     *
+008400*     ___    16/05/22    SSA/SSA  RENAVE 258P                    *
+008500*     ___    26/05/22    SSA/SSA  MOSTRAR TELA GAAT010 PARA INT  *
+008600*     ___    05/08/22    VLG/VLG  NOVOS STATUS DE GER-STATUS-ECRV*
+008700*            31/08/22    LEE/LEE  ALTERAR LOCK PARA FIND RENAVE  *
+008800*     ___    12/09/22    SSA/SSA  IDENTIF.OP2 COM TROCA DE PLACA *
+008803*            07/10/22    SSA/SSA  ALTERAOES P/OP3 AUTOMATICA     *
+008903*   178760   30/08/23    SSA/SSA  NOVOS STATUS 34,35 E 36        *
+009000*   188150   22/12/23    RBL/RBL  ALTERAR TAMANHO DA COFI10      *
+009050*            17/01/24    RBL/RBL  CAFI-DISPONIBILIZ DADOS DE AVA *
+009060*   202669   13/03/24    VLG/VLG  NOVO STATUS 37                 *
+009063*   208305   24/05/24    SSA/SSA  SE STATUS-eCRV=8 PARAR O PROC  *
+009065*   208305   26/07/24    SSA/SSA  SOMENTE PEGAR A VERSAO CORRETA *
+009066*            30/08/24    LEE/LEE  ADAPTACAO A VERSAO MAPA COFI01 *
+009068*            23/01/25    LEE/LEE  ATTRIBURIR A VEI02 MESMO GAA61 *
+009080* 180925   SSA/VLG/RBL   PIV NOVO MODELO - AUTORIZACAO ESTAMPAGEM*
+009085* 260762     16/04/26    VLG/RPL  INCLUSAO E VALIDACAO DO CODIGO *
+009090*                                 (19-RETAGUARDA/SEMI-AUTOMATICO)*
+009095*                                                                *
+009100******************************************************************
+009200
+009300/
+009400 ENVIRONMENT     DIVISION.
+009500**************************
+009600*
+009700 CONFIGURATION   SECTION.
+009800*
+009900 SPECIAL-NAMES.
+010000
+010100             DECIMAL-POINT   IS      COMMA.
+010200
+010300
+010400
+010500
+010600*
+010700 INPUT-OUTPUT    SECTION.
+010800*
+010900 FILE-CONTROL.
+011000*
+011001
+011500
+011600/
+011700 DATA        DIVISION.
+011800**********************
+011900*
+012000 FILE        SECTION.
+012100*
+016100 DATA-BASE       SECTION.
+016200
+016300
+016400 DB          DB01    =       TDBGEVER.
+016500
+016600 01          GEVERDS.
+016700
+016710 DB          DB02     =      TDBDETRAN.
+016715
+016720 01          ECRVAUTENTICADS.
+016725
+016730 01          SEGURADORADS.
+016750 01          EMPSALVADOSDS.
+016800
+016805 01          AVARIADOSDS.
+016806 01          AVARIAHISTDS.
+016808
+016811 01          RENAVEDS.
+016900
+017020 DB          DB03     =      TDBBLOQUEIOS.
+017030
+017040 01          BLOQUEIODS.
+017050
+017100*
+017200 WORKING-STORAGE SECTION.
+017202*
+017203 COPY    "MAPA/COMS".
+017204*
+017205*
+017206 01          TELA             REDEFINES C-MAPA.
+017207      05 FILLER PIC X(2000).
+017208
+017209
+017210
+017211
+017212 COPY        "MAPA/COFI01".
+017213
+017214 01          COFI01-R REDEFINES C-MAPA.
+017215*    05      FILLER          PIC X(025).
+017216     05      FILLER          PIC X(277).
+017217     05      CO01TXSEFAZ     PIC X(064).
+017218     05      FILLER          PIC X(127).
+017219     05      FILLER          PIC X(1532).
+017220
+017221
+017222/
+017223 COPY        "MAPA/COFI03".
+017224/
+017225 COPY        "MAPA/COFI04".
+017226
+017227 01          COFI04-R REDEFINES C-MAPA.
+017228*    05      FILLER          PIC X(025).
+017229     05      FILLER          PIC X(207).
+017230     05      CO04AUTENT      PIC X(064).
+017231     05      CO04AUTPLA      PIC X(064).
+017232     05      CO04NPROT       PIC 9(008).
+017233     05      CC04APROT       PIC 9(004).
+017234     05      CO04CLASSIF     PIC 9(001).
+017235     05      FILLER          PIC X(073).
+017236     05      FILLER          PIC X(1579).
+017237/
+017238*
+017239/
+017240 COPY        "MAPA/MENS03".
+017241/
+017242 COPY        "MAPA/MENS01".
+017243/
+017244 COPY        "MAPA/GERA01".
+017245/
+017246 COPY        "MAPA/CCCC99".
+017247/
+017248*COPY        "MAPA/HEADER74".
+017249/
+017250 COPY        "MAPA/COFI10".
+017251/
+017252 COPY        "MAPA/COFI11".
+017253*
+017300*-----------------------*
+017305
+017310 COPY        "MAPA/RENA04".
+017315
+017320 01          RENA04-R REDEFINES C-MAPA.
+017325*    05      FILLER          PIC X(025).
+017330     05      FILLER          PIC X(133).
+017335     05      RE04AUTENT      PIC X(064).
+017340     05      FILLER          PIC X(087).
+017345     05      FILLER          PIC X(1716).
+017350
+017400
+017500
+017600/
+017700******************************************************************
+017800*                                                                *
+017900*    CT-TIMELIMIT    -   TEMPO LIMITE PARA TERMINAL              *
+018000*                                                                *
+018100*    IA1             -   INDEXADOR DE MENSAGEM                   *
+018200*                                                                *
+018300******************************************************************
+018400*
+018500 77          CT-TIMELIMIT    PIC 9(011)  BINARY.
+018600
+018700 01          CT-PAG          PIC 9(004).
+018800
+018900 01          CT-TIPO         PIC 9(002).
+019000
+019100
+019200 01          IA1             PIC 9(002).
+019300
+019400 01          IX1             PIC 9(002).
+019500
+019600 01          IX2             PIC 9(002).
+019605
+019610 01          CH-ORIGEM       PIC X(030).
+019615 01          CH-ORIGEM-RED REDEFINES CH-ORIGEM.
+019620     05      CH-COD-ORIGEM   PIC 9(001).
+019625     05      CH-DESCR-ORIGEM PIC X(029).
+019630
+019635* 01  CH-ERRO-BLOQ            PIC X(001).
+019640
+019645 01          AX-DATA-OCORR       PIC 9(008).
+019650 01          AX-DATA-OCORR-RED REDEFINES AX-DATA-OCORR.
+019655     05      AX-ANO-OCORR        PIC 9(004).
+019660     05      AX-MES-OCORR        PIC 9(002).
+019665     05      AX-DIA-OCORR        PIC 9(002).
+019670
+019675 01          AX-DATA-AUX         PIC 9(008).
+019680 01          AX-DATA-AUX-RED REDEFINES AX-DATA-AUX.
+019685     05      AX-DIA-AUX          PIC 9(002).
+019690     05      AX-MES-AUX          PIC 9(002).
+019695     05      AX-ANO-AUX          PIC 9(004).
+019700
+020400
+020500******************************************************************
+020600*    CHAVES                                                      *
+020700******************************************************************
+020800*
+020900
+021000 01          CH-NOTFOUND     PIC 9(001).
+021100
+021200 01          CH-NF-SEG       PIC X(001).
+021300 01          CH-NF-SLV       PIC X(001).
+021320 01          CH-NF-AVA       PIC X(001).
+021340 01          CH-NF-AVH       PIC X(001).
+021360 01          CH-NF-BLO       PIC X(001).
+021400 01          CH-RENAVE       PIC 9(001).
+021402
+021404
+021500/----------------------------------------------------------------*
+021600*         ARMAZENA CONTEUDO ("-AN" = ALFANUMERICO)               *
+021700*----------------------------------------------------------------*
+021800
+021900 01         AX-CONTEUDO              PIC X(072).
+022000
+022100 01         AX-CONT-SSP-AN           PIC X(005)  JUST.
+022200 01         AX-CONT-SSP-AN-R         REDEFINES   AX-CONT-SSP-AN.
+022300     05     AX-CONT-SSP              PIC 9(005).
+022400
+022500 01         AX-CONT-FICHA-AN         PIC X(008)  JUST.
+022600 01         AX-CONT-FICHA-AN-R       REDEFINES   AX-CONT-FICHA-AN.
+022700     05     AX-CONT-FICHA            PIC 9(008).
+022800
+022900 01         AX-CONT-ANO-AN           PIC X(004)  JUST.
+023000 01         AX-CONT-ANO-AN-R         REDEFINES   AX-CONT-ANO-AN.
+023100     05     AX-CONT-ANO              PIC 9(004).
+023200
+023300 01         AX-T-DESP                PIC 9(005).
+023400
+023500 01         AX-PLACA-TELA.
+023600     05     AX-LETRA-TELA            PIC X(003).
+023700     05     AX-NUM1-TELA             PIC X(002).
+023800     05     AX-NUM2-TELA             PIC X(002).
+023900
+023905******************************************************************
+023910*          AREA AUXILIAR PARA AUTENTICACAO DIGITAL               *
+023915******************************************************************
+023920
+023925 01          AX-AUT-DUT.
+023930     05      AX-AUT-DUT-8            PIC X(008)  OC  8.
+023935
+023940 01          AX-AUT-EMPL.
+023945     05      AX-AUT-EMPL-8           PIC X(008)  OC  8.
+023950
+023955 01          AX-AUT-DIGITAL          PIC X(008).
+024000
+024020 01          AX-CONTEUDO-AUT         PIC X(064).
+024040 01          AX-TAMANHO-AUT          PIC 9(002).
+024060
+024080
+024100 01         AX-AUT-DIG-DUT           PIC X(064).
+024120 01         AX-AUT-DIG-DUT-R REDEFINES   AX-AUT-DIG-DUT.
+024140     05     AX-AUT-CHAVE             PIC 9(018).
+024160     05     AX-AUT-COMPL             PIC X(046).
+024200
+024300
+024400/
+024500******************************************************************
+024600*                                                                *
+024700*    AREA AUXILIAR                                               *
+024800*                                                                *
+024900*        AX-AUXILIAR                                             *
+025000*        AX-IOERROR                                              *
+025100*        AX-TELA         -   SALVA TELA                          *
+025200*        AX-DATE         -   DATA DO COMPUTADOR                  *
+025300*        AX-TIME         -   HORA DO COMPUTADOR                  *
+025400*                                                                *
+025500******************************************************************
+025600*
+025700
+025800 77          AX-AUXILIAR     PIC 9(011)  BINARY.
+025900
+026000 77          AX-IOERROR      PIC 9(011)  BINARY.
+026100
+026200
+026300 01          AX-TELA         PIC X(1920).
+026400
+026500 01          AX-GERACODE     PIC X(004).
+026600
+026700 01          AX-USUARIO.
+026750     05      AX-USU-12       PIC X(002).
+026800     05      FILLER          PIC X(003).
+026900     05      AX-USU-6        PIC 9(001).
+027000     05      FILLER          PIC X(004).
+027100
+027200 01          AX-DATE         PIC X(010)  TYPE IS NUMERIC-DATE.
+027300 01          AX-DATE-R       REDEFINES   AX-DATE.
+027400     05      AX-DATE-MES     PIC 9(002).
+027500     05      FILLER          PIC X(001).
+027600     05      AX-DATE-DIA     PIC 9(002).
+027700     05      FILLER          PIC X(001).
+027800     05      AX-DATE-ANO     PIC 9(004).
+027900
+028000
+028100 01          AX-DATE-HOJE    PIC 9(008).
+028200 01          AX-DATE-HOJE-R  REDEFINES   AX-DATE-HOJE.
+028300     05      AX-DATE-AAAA    PIC 9(004).
+028400     05      AX-DATE-MM      PIC 9(002).
+028500     05      AX-DATE-DD      PIC 9(002).
+028600
+028700
+028800 01          AX-TIME         PIC 9(008).
+028900 01          AX-TIME-R       REDEFINES   AX-TIME.
+029000     05      AX-T-HH         PIC 9(002).
+029100     05      AX-T-MM         PIC 9(002).
+029200     05      AX-T-SS         PIC 9(002).
+029300     05      FILLER          PIC 9(002).
+029400
+029500
+029600
+029700 01          AX-TELA-DATA.
+029800     05      AX-TELA-DIA     PIC 9(002).
+029900     05      FILLER          PIC X(001)  VA  "/".
+030000     05      AX-TELA-MES     PIC 9(002).
+030100     05      FILLER          PIC X(001)  VA  "/".
+030200     05      AX-TELA-ANO     PIC 9(004).
+030300
+030400
+030500 01          AX-DT-BCO       PIC 9(008).
+030600 01          AX-DT-BCO-R     REDEFINES   AX-DT-BCO.
+030700     05      AX-AA-BCO       PIC 9(004).
+030800     05      AX-MM-BCO       PIC 9(002).
+030900     05      AX-DD-BCO       PIC 9(002).
+031000
+031100 01          AX-TELA-HORA.
+031200     05      AX-TEL-HH       PIC 9(002).
+031300     05      FILLER          PIC X(001) VALUE ":".
+031400     05      AX-TEL-MM       PIC 9(002).
+031500     05      FILLER          PIC X(001) VALUE ":".
+031600     05      AX-TEL-SS       PIC 9(002).
+031700
+031705** SALVA DO GER-CONFERENTE PARA VERIFICACAO
+031710
+03171501           AX-CONFERENTE.
+031720     05      AX-CONF-NUM             PIC X(003).
+031725     05      FILLER                  PIC X(007).
+031800
+03180301          AX-TROCA-PL.
+031806     05      FILLER          PIC X(045)  VALUE
+031809             "COM TROCA DE PLACA P/ MERCOSUL".
+031812
+031900 01          AX-TROCA-PLAMER.
+031910     05      FILLER          PIC X(045)  VALUE
+031920             "2 VIA DE CRV COM TROCA DE PLACA P/ MERCOSUL".
+031923
+031926 01          AX-RENAVE-P.
+031929     05      FILLER           PIC X(045)  VALUE
+031932             "ESTOQUE PROPRIO                            ".
+031935
+031938
+032000/
+032100******************************************************************
+032200*        TABELA  DE  MENSAGENS  DE  TERMINAL                     *
+032300******************************************************************
+032400*
+032500 01          TABELA-DE-MENSAGENS.
+032600*
+032700
+032800*<MSG01>
+032900     05      FILLER          PIC X(073)  VALUE
+033000             "FICHA NAO CADASTRADA NO GEVER.......................
+033100-            ".....................".
+033200
+033300*<MSG02>
+033400     05      FILLER          PIC X(073)  VALUE
+033500             "OPCAO DE FICHA NAO RECONHECIDA - CONSULTE A FICHA NO
+033600-            " SISTEMA GEVER.......".
+033700
+033800*<MSG03>
+033900     05      FILLER          PIC X(073)  VALUE
+034000             "NUMERO DA FICHA INVALIDO - ACERTE E TECLE ENTER.....
+034100-            "  .   .   .   .   .  ".
+034200
+034300*<MSG04>
+034400     05      FILLER          PIC X(073)  VALUE
+034500             "ANO DA FICHA INVALIDO - ACERTE E TECLE ENTER........
+034600-            ".....................".
+034700
+034800*<MSG05>
+034900     05      FILLER          PIC X(073)  VALUE
+035000             "CODIGO DO DESPACHANTE INVALIDO - ACERTE E TECLE ENT
+035100-            "ER.   .   .   .   .  ".
+035200
+035300*<MSG06>
+035400     05      FILLER          PIC X(073)  VALUE
+035500             "FALTA CONFERENCIA DO PROCESSO - DOCUMENTO DEVE SER L
+035600-            "IBERADO P/ DIGITACAO.".
+035700
+035800*<MSG07>
+035900     05      FILLER          PIC X(073)  VALUE
+036000             "ESSA FICHA NAO PERTENCE AO DESPACHANTE INDICADO....
+036100-            "  .   .   .   .   .  ".
+036200
+036300*<MSG08>
+036400     05      FILLER          PIC X(073)  VALUE
+036500             "REGISTRO DO GEVER INDICA QUE O CADASTRAMENTO ESTA CO
+036600-            "NCLUIDO - CONSULTE...".
+036700
+036800*<MSG09>
+036900     05      FILLER          PIC X(073)  VA
+037000             "DIGITE OS DADOS FALTANTES, CONFIRA E TECLE <ENTER> .
+037100-            "   .   . .  .   .   .".
+037200
+037300*<MSG10>
+037400     05      FILLER          PIC X(073)  VALUE
+037500             "ENTRE COM AS INFORMACOES DA FICHA E TECLE ENTER....
+037600-            "  .   .   .   .   .  ".
+037700
+037800*<MSG11>
+037900     05      FILLER          PIC X(073)  VALUE
+038000             "FICHA CADASTRAL ATUALIZADA. FACA A TRANSACAO EDUT...
+038100-            "  .   .   .   .   .  ".
+038200
+038220*<MSG12>
+038240     05      FILLER          PIC X(073)  VALUE
+038260             "STATUS DA FICHA SEM APROVACAO ......................
+038265-            "  .   .   .   .   .  ".
+038270
+038275*<MSG13>
+038280     05      FILLER          PIC X(073)  VALUE
+038285             "FICHA APROVADA COM RESSALVAS, NECESSITA VERIFICACAO.
+038290-            "  .   .   .   .   .  ".
+038295
+038300
+038400
+038500
+038600
+038700
+038800*
+038900 01          TAB-DE-MENSAGEM REDEFINES   TABELA-DE-MENSAGENS.
+039000     05      TBA-MSG         PIC X(073)
+039100                             OCCURS  13.
+039200
+039300
+039400/
+039500*****************************************************************
+039502**    GER-STATUS-REG :                                          *
+039506**    01 - FICHA CADASTRAL RECEBIDA SISTEMA ECRV
+039508**    02 - AGUARDANDO PROTOCOLIZACAO DO PROCESSO
+039510**    03 - AGUARDANDO CONFERENCIA
+039512**    04 - PROCESSO CONFERIDO / FALTAM DOCUMENTOS
+039514**    05 - LIBERADO PARA DIGITACAO
+039516**    06 - DOCUMENTO DIGITADO 'OK'
+039518**    07 - DOC. DIGITADO / IMPEDIMENTO-DIVERGENCIA
+039520**    08 - DOCUMENTO EMITIDO/LIBERADO PARA ENTREGA
+039522**    09 - PROCESSO CONCLUIDO
+039524**    10 - FICHA C/ DIVERGENCIA - RETIROU OS DOCTOS
+039526**    11 - PROCESSO INCOMPLETO - AGUARDANDO DOCUMENTOS
+039528**    12 - DEVOLVIDO
+039529**    13 - PROCESSO ENVIADO AO SUPORTE
+039530**    14 - BAIXA EFETUADA
+039531**    15 - PEDIDO LACRACAO RECEBIDO PELO FABRICANTE
+039532**    16 - AGUARDANDO PROCESSAMENTO (lic. oficial)
+039533**    17 - LICENC OK BASE ESTADUAL - AGUARDANDO 237 (lic. oficial)
+039534*-----------------------------------------------------------------
+039536**
+039538**    GER-FILLER1:
+039540*     0 = ECRV  (DESPACHANTE E OPER POSTO PRESENCIAL)
+039542*     1 = POUPATEMPO OU POSTO
+039544*     2 = PORTAL
+039546*     3 = PORTAL DETRAN E ECRV - PT DETRAN ECRV
+039548*     4 = PORTAL POUPATEMPO E ECRV - PT PPT ECRV
+039550*     5 = APP DETRAN - MOBILE
+039552*     6 = TOTEM
+039554*     7 = APP POUPATEMPO DIGITAL - PT_DIGITAL (APP BOLSO)
+039556*     8 = BALCAO þNICO DIGITAL - BU DIGITAL
+039558*     9 = ATENDENTE, OPER POSTO DIGITAL - AT DIGITAL
+039560**
+039562** tipo de cliente da string (in-tipo-cliente + 2 = GER-FILLER1 a
+039564** partir do 3, os anteriores s¥o antes da pandemia):
+039566*
+039568*  1 = PT DETRAN ECRV
+039570*  2 = PT PPT ECRV
+039572*  3 = MOBILE
+039574*  4 = TOTEM
+039576*  5 = PT_DIGITAL
+039578*  6 = BU DIGITAL
+039580*  7 = AT DIGITAL
+039581*-----------------------------------------------------------------
+039582**
+039583**    STATUS FICHA ECRV (GER-STATUS-CRV) V720:
+039585*  01 = APROVADO
+039586*  02 = REPROVADO
+039587*  03 = EM ANALISE
+039588*  04 = REENVIADO
+039589*  05 = PROCESSO FINALIZADO
+039590*  06 = CANCELADO DETRAN
+039591*  07 = EXCLUIDO CRV
+039592*  08 = APROVADO COM RESSALVAS
+039593*  09 = APROVADO ELETRONICAMENTE
+039594*  10 = REANALISE
+039595*  17 = CONSISTIDO VIA SISTEMA/IPVA PAGO
+039597*  22 = PROC.SEMI-AUTOM/APROVADO
+039598*  23 = PROC.SEMI-AUTOM/INCONSISTENCIA
+039599*  33 = PROC.SEMI-AUTOM/INCONSIS (gevt811)
+039601*  34 = Hiperautoma§¥o Aprovado
+039603*  35 = Hiperautoma§¥o/Sucesso
+039605*  36 = Hiperautoma§¥o/Inconsistªncia
+039607
+039609*-----------------------------------------------------------------
+039611
+039700
+039800
+039900/
+040000******************************************************************
+040100*        TABELA  DE  MESES                                       *
+040200******************************************************************
+040300*
+040400 01          TABELA-MESES.
+040500     05      FILLER          PIC X(014)  VA  "01 -  JANEIRO ".
+040600     05      FILLER          PIC X(014)  VA  "02 - FEVEREIRO".
+040700     05      FILLER          PIC X(014)  VA  "03 -   MARCO  ".
+040800     05      FILLER          PIC X(014)  VA  "04 -   ABRIL  ".
+040900     05      FILLER          PIC X(014)  VA  "05 -    MAIO  ".
+041000     05      FILLER          PIC X(014)  VA  "06 -   JUNHO  ".
+041100     05      FILLER          PIC X(014)  VA  "07 -   JULHO  ".
+041200     05      FILLER          PIC X(014)  VA  "08 -  AGOSTO  ".
+041300     05      FILLER          PIC X(014)  VA  "09 - SETEMBRO ".
+041400     05      FILLER          PIC X(014)  VA  "10 -  OUTUBRO ".
+041500     05      FILLER          PIC X(014)  VA  "11 -  NOVEMBRO".
+041600     05      FILLER          PIC X(014)  VA  "12 -  DEZEMBRO".
+041700
+041800
+041900 01          TAB-DE-MESES    REDEFINES   TABELA-MESES.
+042000     05      TBC-MESES       OCCURS  12  TIMES
+042100                             INDEXED BY  IC1.
+042200       10    TBC-MES         PIC 9(002).
+042300       10    FILLER          PIC X(003).
+042400       10    TBC-MES-EXT     PIC X(009).
+042500
+042600
+042700
+042800/
+042900******************************************************************
+043000*        TABELA  DE  CODIGOS  DE  CONTROLE  ON-LINE              *
+043100******************************************************************
+043200*
+043300     COPY        "MAPA/CODIGOS".
+043400
+043501
+043502*
+043503 COMMUNICATION SECTION.
+043504 INPUT HEADER COMS-IN;
+043505        CONVERSATION AREA.
+043506        02 HEADER-MAPA-E.
+043507           05 H-MAPA-E  PIC  X(25).
+043508 OUTPUT HEADER COMS-OUT;
+043509        CONVERSATION AREA.
+043510        02 HEADER-MAPA-S.
+043511           05 H-MAPA-S  PIC  X(25).
+043512
+043600 PROCEDURE   DIVISION.
+043700**********************
+043800*
+047100******************************************************************
+047200*            MONITORA[]O                                         *
+047300******************************************************************
+047400*
+047500 000-E-MONITOR   SECTION.
+047600*
+047700 000-1-MONITOR.
+047800
+047900     IF      ATTRIBUTE  RESTARTED  OF  MYSELF  =  VALUE  TRUE
+048000
+048100             DISPLAY "PC/GEV/T005/DB : TERMINO ANORMAL"
+048200             GO                      TO      000-S-MONITOR
+048300     ELSE
+048400             NEXT    SENTENCE.
+048500
+048600
+048700     PERFORM 010-E-INICIO            THRU    010-S-INICIO.
+048800
+048802     PERFORM  020-E-PROCESSO          THRU    020-S-PROCESSO
+048803          UNTIL STATUSVALUE OF COMS-IN = 99.
+049200
+049300     PERFORM 240-E-FINAL             THRU    240-S-FINAL.
+049400
+049500
+049600
+049700 000-S-MONITOR.
+049800     STOP    RUN.
+049900*
+050000*----------------------------------------------------------------*
+050100
+050200/
+050300******************************************************************
+050400*        INICIALIZA[]O                                           *
+050500******************************************************************
+050600*
+050700 010-E-INICIO.
+050800
+050901      MOVE ATTRIBUTE NAME OF ATTRIBUTE EXCEPTIONTASK
+050902         OF ATTRIBUTE EXCEPTIONTASK OF MYSELF TO LINKTOCOMS.
+050903      CHANGE ATTRIBUTE TITLE OF "DCILIBRARY" TO LINKTOCOMS.
+050904      ENABLE INPUT COMS-IN KEY "ONLINE".
+051300
+051400
+051500     OPEN    INQUIRY DB01
+051600       ON    EXCEPTION
+051700             DISPLAY "PC/GEV/T005/DB : OPEN ERROR TDBGEVER"
+051800             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+051900             CALL    SYSTEM          DMTERMINATE.
+052000
+052005     OPEN    INQUIRY DB02
+052010       ON    EXCEPTION
+052015             DISPLAY "PC/GEV/T005/DB : OPEN ERROR TDBDETRAN"
+052020             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+052025             CALL    SYSTEM          DMTERMINATE.
+052030
+052035    OPEN    INQUIRY DB03
+052040       ON    EXCEPTION
+052045             DISPLAY "PC/GEV/T005/DB : OPEN ERROR TDBBLOQUEIOS"
+052050             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+052055             CALL    SYSTEM          DMTERMINATE.
+052060
+052065
+052100
+052200     ACCEPT  AX-DATE         FROM    DATE.
+052300
+052400     MOVE    AX-DATE-MES             TO      AX-DATE-MM
+052500                                             AX-TELA-MES.
+052600     MOVE    AX-DATE-DIA             TO      AX-DATE-DD
+052700                                             AX-TELA-DIA.
+052800     MOVE    AX-DATE-ANO             TO      AX-DATE-AAAA
+052900                                             AX-TELA-ANO.
+053000
+053100 010-S-INICIO.
+053200     EXIT.
+053300
+053400*----------------------------------------------------------------*
+053500
+053600/
+053700******************************************************************
+053800*        P R O C E S S A M E N T O                               *
+053900******************************************************************
+054000*
+054100 020-E-PROCESSO.
+054200
+054300
+054701      MOVE  SPACES TO C-MAPA.
+054702      RECEIVE COMS-IN MESSAGE INTO C-MAPA.
+054703      IF STATUSVALUE OF COMS-IN = 99
+054704                 GO TO 020-S-PROCESSO.
+054705      IF FUNCTIONSTATUS OF COMS-IN < 0
+054706                 GO TO 020-S-PROCESSO.
+054707      IF STATUSVALUE OF COMS-IN  NOT = 0  AND
+054708         STATUSVALUE OF COMS-IN  NOT = 80 AND
+054709         STATUSVALUE OF COMS-IN  NOT = 89 AND
+054710         STATUSVALUE OF COMS-IN  NOT = 90 AND
+054711         STATUSVALUE OF COMS-IN  NOT = 91 AND
+054712         STATUSVALUE OF COMS-IN  NOT = 92 AND
+054713         STATUSVALUE OF COMS-IN  NOT = 93 AND
+054714         STATUSVALUE OF COMS-IN  NOT = 94 AND
+054715         STATUSVALUE OF COMS-IN  NOT = 97
+054716       DISPLAY "PC/GEV/T005/DB : INV.KEY - AVISAR ANALISE"
+054717       DIVIDE  0               INTO    CT-TIMELIMIT.
+054718      MOVE H-MAPA-E   TO C-HEADER.
+054800
+054900     IF      AX-AUXILIAR             =       1
+055000             MOVE    0               TO      AX-AUXILIAR
+055100             GO                      TO      020-S-PROCESSO
+055200     ELSE
+055300             MOVE    0               TO      CT-TIMELIMIT.
+055400
+055500     IF      MAPA-E-S                =       "ENDEND"
+055600             MOVE    ATTRIBUTE   TASKVALUE   OF
+055700                     MYSELF          TO      CT-TIMELIMIT
+055800             GO                      TO      020-S-PROCESSO
+055900     ELSE
+056000             NEXT    SENTENCE.
+056100
+056200
+056300
+056400     MOVE    TELA                    TO      AX-TELA.
+056500
+056600
+056700     ACCEPT  AX-TIME                 FROM    TIME.
+056800
+056900     MOVE    0                       TO      IA1.
+057000
+057100     MOVE    USUARIO                 TO      AX-USUARIO.
+057200
+057300
+057400     IF      GERACODE                =       "CAFI"
+057500             PERFORM 030-E-CAFI      THRU    030-S-CAFI
+057600     ELSE
+057700             DISPLAY "PC/GEV/T005/DB : TRANSACAO INVALIDA"
+057800             DIVIDE  0               INTO    CT-TIMELIMIT.
+057900
+058000
+058100
+058200
+058300
+058400
+058500 020-S-PROCESSO.
+058600     EXIT.
+058700
+058800******************************************************************
+058900* ENVIA MAPA CAFI01 COM A TRANSACAO CAF1 - MENU  (SUSPENSO)      *
+059000******************************************************************
+059100
+059200*XXX-E-XXXX.
+059300*
+059400*
+059500*
+059600*    MOVE    LOW-VALUES              TO      CAFI01-MENS.
+059700*
+059800*    MOVE    TBA-MSG(10)             TO      FI01MENS.
+059900*    MOVE    AX-TELA-DATA            TO      FI01DATA.
+060000*
+060100*    ACCEPT  AX-TIME                 FROM    TIME.
+060200*    MOVE    AX-T-HH                 TO      AX-TEL-HH.
+060300*    MOVE    AX-T-MM                 TO      AX-TEL-MM.
+060400*    MOVE    AX-T-SS                 TO      AX-TEL-SS.
+060500*    MOVE    AX-TELA-HORA            TO      FI01HORA.
+060600*
+060700*    MOVE    "CAFI01"                TO      MAPA-E-S.
+060800*    MOVE    "CAFM"                  TO      CO01CODE.
+060900*    MOVE    COM-EWRITE              TO      AID-WRITECODE.
+061000*    MOVE    WCC-WRNR                TO      WCC.
+061100*    MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+061200*    MOVE    ZEROS                   TO      ENDERECO-BASE.
+061300*
+061400*    WRITE   CAFI01  INVALID    KEY
+061500*            DISPLAY "INVALID KEY REMOTE - CAFI01"
+061600*            DIVIDE  0               INTO    CT-TIMELIMIT.
+061700*
+061800*
+061900*
+062000*
+062100*
+062200*
+062300*XXX-S-XXXX.
+062400*    EXIT.
+062500
+062600
+062700/----------------------------------------------------------------*
+062800* TRANSACAO INICIAL PARA CADASTRAMENTO - CAPTURA FICHA GEVER     *
+062900*----------------------------------------------------------------*
+063000
+063100 030-E-CAFI.
+063200
+063300     MOVE    CONTEUDO                TO      AX-CONTEUDO.
+063400
+063500     UNSTRING AX-CONTEUDO     DELIMITED  BY   "," OR " " INTO
+063600                              AX-CONT-FICHA-AN ,
+063700                              AX-CONT-ANO-AN.
+063800
+063900
+064000     INSPECT AX-CONT-FICHA-AN REPLACING  ALL " " BY "0".
+064100     INSPECT AX-CONT-ANO-AN   REPLACING  ALL " " BY "0".
+064200
+064300
+064400
+064500     IF      AX-CONT-FICHA-AN        NOT     NUMERIC      OR
+064600             AX-CONT-FICHA           =       0
+064700             MOVE    03              TO      IA1
+064800
+064900             PERFORM 110-E-MENS03    THRU    110-S-MENS03
+065000             GO                      TO      030-S-CAFI
+065100     ELSE
+065200             NEXT    SENTENCE.
+065300
+065400     IF      AX-CONT-ANO-AN          NOT     NUMERIC      OR
+065500             AX-CONT-ANO             =       0
+065600             MOVE    04              TO      IA1
+065700
+065800             PERFORM 110-E-MENS03    THRU    110-S-MENS03
+065900             GO                      TO      030-S-CAFI
+066000     ELSE
+066100             NEXT    SENTENCE.
+066200
+066300
+066400
+066500     MOVE    SPACES                  TO      CH-NF-SEG.
+066600
+066700
+066800
+066900
+067000
+067100
+067200     PERFORM 080-E-PESQ-GEVER        THRU    080-S-PESQ-GEVER.
+067300
+067400     IF      IA1                     >       0
+067500
+067600             PERFORM 110-E-MENS03    THRU    110-S-MENS03
+067700             GO                      TO      030-S-CAFI
+067800     ELSE
+067900             NEXT    SENTENCE.
+067905
+067910*** TRATA NOVA TAXA
+067915
+067916     MOVE    SPACES                  TO      AX-AUT-DIG-DUT.
+067920     MOVE    SPACES                  TO      AX-CONTEUDO-AUT.
+067925     MOVE    ZEROS                   TO      AX-TAMANHO-AUT.
+067930
+067935
+067940     UNSTRING    GER-AUT-DIGITAL DELIMITED   BY      " "     OR
+067945                                                     LOW-VALUES
+067950                 INTO            AX-CONTEUDO-AUT,
+067955                 COUNT           AX-TAMANHO-AUT.
+067956
+067964
+067966     IF      AX-TAMANHO-AUT          =       18
+067970             MOVE    AX-CONTEUDO-AUT TO      AX-AUT-DIG-DUT
+067975             MOVE    SPACES          TO      AX-AUT-COMPL
+067980     ELSE
+067985             NEXT    SENTENCE.
+067986
+067990
+068000
+068005*** MOVE AUTENTICACAO DIGITAL
+068010
+068015     MOVE    GER-AUT-DIGITAL         TO      AX-AUT-DUT.
+068020*     MOVE    GER-AUT-EMPL            TO      AX-AUT-EMPL.
+068022     MOVE    "S"                     TO      CH-NF-SEG.
+068024     MOVE    "S"                     TO      CH-NF-SLV.
+068025
+068030** OPCAO 1 2 e 3 Verifica se cnpj eh de seguradora
+068033     IF      GER-OPCAO               =       1 OR 2 OR 3 OR  6
+068036        IF   GER-ID-CONTR            =       2
+068039             PERFORM  270-E-SEGURADORADS     THRU
+068042                                             270-S-SEGURADORADS.
+068045
+068048
+068051***--------> VERIFICA SE RENAVE E 258P
+068053
+068054     MOVE    0                       TO      CH-RENAVE.
+068055
+068057     IF      GER-IND-RENAVE          =       0
+068060             NEXT    SENTENCE
+068063     ELSE
+068066             PERFORM 120-E-RENAVE    THRU    120-S-RENAVE.
+068078***--------------------------------------------------------------
+068081
+068084
+068100     IF      GER-OPCAO               =       1
+068105        IF   CH-NF-SEG          =       "N"
+068110             PERFORM 280-E-COFI11    THRU    280-S-COFI11
+068115        ELSE
+068200             PERFORM 040-E-COFI04    THRU    040-S-COFI04
+068300     ELSE
+068305     IF      (GER-OPCAO               =      2  OR 3 OR 6)   AND
+068310             (CH-NF-SEG               =      "N"     OR
+068312              CH-NF-SLV               =      "N")
+068315              PERFORM 290-E-COFI10    THRU    290-S-COFI10
+068320     ELSE
+068400     IF      GER-OPCAO               =       2  OR 3 OR 5 OR 6
+068405                                                OR 12 OR 15
+068450        IF   AX-USU-12               =       "VS"  OR
+068500             AX-USU-6                =       9
+068600             PERFORM 060-E-COFI01    THRU    060-S-COFI01
+068700        ELSE
+068800             PERFORM 070-E-COFI03    THRU    070-S-COFI03
+068900     ELSE
+068905     IF      GER-OPCAO               =       11       AND
+068910            (GER-MUNIC-PLACA         =       07107  OR
+068912             GER-IN-TROCA-MERC       >       0)
+068915        IF   AX-USU-12               =       "VS"  OR
+068917             AX-USU-6                =       9
+068920             PERFORM 060-E-COFI01    THRU    060-S-COFI01
+068925        ELSE
+068930             PERFORM 070-E-COFI03    THRU    070-S-COFI03
+068935     ELSE
+068940     IF      GER-OPCAO               =       11       AND
+068945             GER-MUNIC-PLACA    NOT  =       07107
+068946       IF    CH-RENAVE               =       1
+068948             PERFORM 320-E-RENA04    THRU    320-S-RENA04
+068951       ELSE
+068952             MOVE    11              TO      IA1
+068955             PERFORM 110-E-MENS03    THRU    110-S-MENS03
+068960             GO                      TO      030-S-CAFI
+068965     ELSE
+069000             MOVE    02              TO      IA1
+069100             PERFORM 110-E-MENS03    THRU    110-S-MENS03
+069200             GO                      TO      030-S-CAFI.
+069300
+069400 030-S-CAFI.
+069500     EXIT.
+069600
+069700/----------------------------------------------------------------*
+069800*         ENVIA MAPA COFI04 -  PRIMEIRO CADASTRAMENTO            *
+069900*----------------------------------------------------------------*
+070000
+070100 040-E-COFI04.
+070200
+070300
+070400     MOVE    SPACES                  TO      COFI04-MENS.
+070500
+070510     IF      GER-TRANSACAO           =       3000
+070520             MOVE    "P"             TO      CO04DESP
+070530     ELSE
+070600             MOVE    GER-DESP-SSP    TO      AX-T-DESP
+070700             MOVE    AX-T-DESP       TO      CO04DESP
+070710
+070800     MOVE    GER-VISTORIADOR         TO      CO04VIST.
+070900
+070905     IF GER-CPF-USUSTAT > ZEROS
+070910        MOVE  GER-CPF-USUSTAT        TO      CO04CONF
+070915     ELSE
+070920        MOVE    GER-CONFERENTE       TO      AX-CONFERENTE
+070925        IF      AX-CONF-NUM             NUMERIC
+070930             MOVE  AX-CONF-NUM       TO      CO04CONF
+070935        ELSE
+070940             MOVE SPACES             TO      CO04CONF-NUL.
+071010
+071020     IF      GER-PLACA-MERC          =       SPACES  OR
+071030                                             LOW-VALUES
+071100             MOVE    SPACES          TO      CO04PLAC
+071110     ELSE
+071120             MOVE    GER-PLACA-MERC  TO      AX-PLACA-TELA
+071130                                             CO04PLAC.
+071160
+071170
+071200     MOVE    GER-MUNIC-PLACA         TO      CO04MUNI.
+071300     MOVE    GER-CHASSI              TO      CO04CHAS.
+071310
+071320     IF      GER-TRANSACAO           =       3000
+071330             NEXT    SENTENCE
+071340     ELSE
+071400             MOVE    GER-TIPO        TO      CO04TIPO
+071500             MOVE    GER-CATEGORIA   TO      CO04CATE
+071600             MOVE    GER-AUT-DIGITAL TO      CO04AUTENT
+071700*             MOVE    GER-AUT-EMPL    TO      CO04AUTPLA
+071800       IF    GER-PROCEDENCIA         =       1
+071900             MOVE    "X"             TO      CO04IMPO
+072000       ELSE
+072010             MOVE    SPACES          TO      CO04IMPO.
+072020
+072030*      TRATA NOVA TAXA
+072032
+072034       MOVE  SPACES                  TO      CO04TAXA.
+072040
+072050       IF    AX-TAMANHO-AUT          =       18
+072060             MOVE    AX-AUT-DIG-DUT  TO      CO04TAXA
+072070             MOVE    SPACES          TO      CO04AUTENT
+072080             GO                      TO      040-10-COFI04
+072090       ELSE
+072100             NEXT    SENTENCE.
+072110
+072112**********   TAXA ANTIGA
+072114     IF      AX-AUT-DUT-8(1)         NOT =   SPACES   AND
+072116             AX-AUT-DUT-8(2)         NOT =   SPACES   AND
+072118             AX-AUT-DUT-8(3)         NOT =   SPACES   AND
+072120             AX-AUT-DUT-8(4)         NOT =   SPACES   AND
+072122             AX-AUT-DUT-8(5)         NOT =   SPACES   AND
+072124             AX-AUT-DUT-8(6)         NOT =   SPACES   AND
+072126             AX-AUT-DUT-8(7)         NOT =   SPACES   AND
+072128             AX-AUT-DUT-8(8)         NOT =   SPACES
+072130             MOVE GER-AUT-DIGITAL    TO      CO04AUTENT
+072132     ELSE
+072134             MOVE AX-AUT-DUT-8(1)    TO      AX-AUT-DIGITAL
+072136             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+072138             IF   CH-NOTFOUND        =       1
+072140                  MOVE GER-AUT-DIGITAL       TO      CO04AUTENT
+072142             ELSE
+072144                  MOVE EAU-SENHA     TO      CO04AUTENT.
+072146****QDO entrar PLACA mercosul(com letra) NAO tem pgto TAXA
+072148*     IF      AX-AUT-EMPL-8(1)        NOT =   SPACES   AND
+072150*             AX-AUT-EMPL-8(2)        NOT =   SPACES   AND
+072152*             AX-AUT-EMPL-8(3)        NOT =   SPACES   AND
+072154*             AX-AUT-EMPL-8(4)        NOT =   SPACES   AND
+072156*             AX-AUT-EMPL-8(5)        NOT =   SPACES   AND
+072158*             AX-AUT-EMPL-8(6)        NOT =   SPACES   AND
+072160*             AX-AUT-EMPL-8(7)        NOT =   SPACES   AND
+072162*             AX-AUT-EMPL-8(8)        NOT =   SPACES
+072164*             MOVE GER-AUT-EMPL       TO      CO04AUTPLA
+072166*     ELSE
+072168*             MOVE AX-AUT-EMPL-8(1)   TO      AX-AUT-DIGITAL
+072170*             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+072172*             IF   CH-NOTFOUND        =       1
+072174*                  MOVE GER-AUT-EMPL  TO      CO04AUTPLA
+072176*             ELSE
+072178*                  MOVE EAU-SENHA     TO      CO04AUTPLA.
+072180
+072182
+072184*
+072200
+072220 040-10-COFI04.
+072240
+072260
+072300     MOVE    TBA-MSG(09)             TO      CO04MENS.
+072400
+072500     MOVE    AX-TELA-DATA            TO      CO04DATA.
+072600
+072700     ACCEPT  AX-TIME                 FROM    TIME.
+072800     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+072900     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+073000     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+073100     MOVE    AX-TELA-HORA            TO      CO04HORA.
+073200
+073300
+073400     MOVE    "COFI04"                TO      MAPA-E-S.
+073500     MOVE    "CAV1"                  TO      CO04CODE.
+073600     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+073700     MOVE    WCC-WRNR                TO      WCC.
+073800     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+073900     MOVE    ZEROS                   TO      ENDERECO-BASE.
+074000
+074301     MOVE  421    TO  TEXTLENGTH OF COMS-OUT.
+074302     MOVE  0              TO  DESTCOUNT.
+074303     MOVE  C-HEADER       TO  H-MAPA-S.
+074304     SEND  COMS-OUT     FROM  C-MAPA.
+074305     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+074306        STATUSVALUE OF COMS-OUT NOT = 89 AND
+074307        STATUSVALUE OF COMS-OUT NOT = 96 AND
+074308        STATUSVALUE OF COMS-OUT NOT = 97 AND
+074309        STATUSVALUE OF COMS-OUT NOT = 92
+074310       MOVE 99 TO STATUSVALUE OF COMS-IN
+074311        DISPLAY "INVALID KEY REMOTE - COFI04"
+074312        DIVIDE  0               INTO    CT-TIMELIMIT.
+074400
+074500
+074600 040-S-COFI04.
+074700     EXIT.
+074800
+074900/
+075000******************************************************************
+075100*         ENVIA MAPA COFI01 COM A TRANSACAO TC01                 *
+075200******************************************************************
+075300
+075400 060-E-COFI01.
+075500*
+075600
+075700     MOVE    SPACES                  TO      COFI01-MENS.
+075800
+075900
+076000     IF      GER-DESP-SSP            =       99999
+076010             MOVE    "P"             TO      CO01DESP
+076020     ELSE
+076100             MOVE    GER-DESP-SSP    TO      AX-T-DESP
+076200             MOVE    AX-T-DESP       TO      CO01DESP.
+076210
+076300     MOVE    GER-VISTORIADOR         TO      CO01VIST.
+076305
+076310     IF      GER-CPF-USUSTAT > ZEROS
+076315        MOVE    GER-CPF-USUSTAT      TO      CO01CONF
+076320     ELSE
+076325        MOVE    GER-CONFERENTE       TO      AX-CONFERENTE
+076330        IF      AX-CONF-NUM             NUMERIC
+076335             MOVE  AX-CONF-NUM       TO      CO01CONF
+076340        ELSE
+076345             MOVE SPACES             TO      CO01CONF-NUL.
+076400
+076500
+076600     MOVE    GER-PLACA-MERC          TO      CO01PLAC.
+077100     MOVE    GER-MUNIC-PLACA         TO      CO01MUNI.
+077200     MOVE    GER-CHASSI              TO      CO01CHAS.
+077300     MOVE    GER-TIPO                TO      CO01TIPO.
+077400     MOVE    GER-CATEGORIA           TO      CO01CATE.
+077500     MOVE    GER-OPCAO               TO      CO01OPC.
+077600     MOVE    GER-CPF-CGC             TO      CO01CPFG.
+077603
+077606
+077609     MOVE    SPACES                  TO      CO01TRME.
+077700
+077705     IF      GER-OPCAO               =       11
+077706       IF    GER-IN-TROCA-MERC       =       1 OR 2
+077707             MOVE    9               TO      CO01OPC
+077708             MOVE    AX-TROCA-PLAMER TO      CO01TRME
+077709       ELSE
+077710             MOVE    4               TO      CO01OPC
+077715     ELSE
+077716     IF      GER-OPCAO               =       2 OR 5
+077717       IF    GER-IN-TROCA-MERC       =       1 OR 2
+077718             MOVE    AX-TROCA-PL     TO      CO01TRME
+077719       ELSE
+077720             NEXT    SENTENCE
+077721     ELSE
+077722     IF      GER-OPCAO               =       12
+077725             MOVE 7                  TO      CO01OPC
+077730     ELSE
+077735     IF      GER-OPCAO               =       15
+077740             MOVE 9                  TO      CO01OPC
+077743     ELSE
+077767             NEXT    SENTENCE.
+077769
+077771
+077773     IF      CO01TRME                =       SPACES
+077775       IF    CH-RENAVE               =       1
+077779             MOVE    AX-RENAVE-P     TO      CO01TRME.
+077785
+077800
+077900
+078000     MOVE    SPACES                  TO      CO01IMPO.
+078005
+078010*    TRATA NOVA TAXA
+078015
+078020     MOVE    SPACES                  TO      CO01TAXA.
+078022
+078028
+078030     IF      AX-TAMANHO-AUT          =       18
+078035             MOVE    AX-AUT-DIG-DUT  TO      CO01TAXA
+078040             GO                      TO      060-10-COFI01
+078045     ELSE
+078050             NEXT    SENTENCE.
+078055
+078060
+078065
+078070*      TRATA TAXA ANTIGA
+078075
+078100
+078200     MOVE    GER-AUT-DIGITAL         TO      CO01TXSEFAZ.
+078210*
+078300
+078305**********
+078310     IF      GER-OPCAO               =       3     AND
+078315             GER-UF                  NOT =   "SP"
+078320             PERFORM 260-E-VERIF-AUT THRU    260-S-VERIF-AUT.
+078325
+078330**********
+078350
+078400 060-10-COFI01.
+078450
+078500     MOVE    TBA-MSG(09)             TO      CO01MENS.
+078600*
+078700
+078800     MOVE    AX-TELA-DATA            TO      CO01DATA.
+078900
+079000     ACCEPT  AX-TIME                 FROM    TIME.
+079100     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+079200     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+079300     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+079400     MOVE    AX-TELA-HORA            TO      CO01HORA.
+079500
+079600     MOVE    "COFI01"                TO      MAPA-E-S.
+079700     MOVE    "TCO2"                  TO      CO01CODE.
+079800     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+079900     MOVE    WCC-WRNR                TO      WCC.
+080000     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+080100     MOVE    ZEROS                   TO      ENDERECO-BASE.
+080200
+080501     MOVE    0468            TO      TEXTLENGTH OF COMS-OUT.
+080502     MOVE  0              TO  DESTCOUNT.
+080503     MOVE  C-HEADER       TO  H-MAPA-S.
+080504     SEND  COMS-OUT     FROM  C-MAPA.
+080505     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+080506        STATUSVALUE OF COMS-OUT NOT = 89 AND
+080507        STATUSVALUE OF COMS-OUT NOT = 96 AND
+080508        STATUSVALUE OF COMS-OUT NOT = 97 AND
+080509        STATUSVALUE OF COMS-OUT NOT = 92
+080510       MOVE 99 TO STATUSVALUE OF COMS-IN
+080511        DISPLAY "INVALID KEY REMOTE - COFI01"
+080512        DIVIDE  0               INTO    CT-TIMELIMIT.
+080800*
+080900*
+081000*
+081100*
+081200 060-S-COFI01.
+081300     EXIT.
+081400
+081500
+081600******************************************************************
+081700*    ENVIA COFI03 COM TRANSACAO  TCO1 NOVA                       *
+081800******************************************************************
+081900
+082000 070-E-COFI03.
+082100
+082200
+082300     MOVE    SPACES                  TO      COFI03-MENS.
+082400
+082500     MOVE    GER-OPCAO               TO      CO03OPCA.
+082600     MOVE    GER-PLACA-MERC          TO      CO03PLAC.
+083000
+083100     MOVE    GER-MUNIC-PLACA         TO      CO03MUNI.
+083110
+083120     IF      GER-RENAVAM             >       0
+083200             MOVE    GER-RENAVAM     TO      CO03RENA.
+083300
+083310     IF      GER-UF-PLACA-ANT        NOT =   "SP" AND SPACES
+083320             MOVE    GER-UF-PLACA-ANT TO     CO03UFAN.
+083322
+083324
+083332*
+083335**********
+083336*    TRATA NOVA TAXA / TAXA ANTIGA
+083340
+083350     MOVE  SPACES                    TO      CO03TAXA.
+083352
+083355     IF    AX-TAMANHO-AUT            =       18
+083360           MOVE    AX-AUT-CHAVE      TO      CO03TAXA
+083365           MOVE    SPACES            TO      CO03AUTD
+083375     ELSE
+083376       IF  GER-OPCAO                 =       3     AND
+083378           GER-UF                    NOT =   "SP"
+083380           PERFORM 260-E-VERIF-AUT   THRU    260-S-VERIF-AUT.
+083385
+083390**********
+083400*
+083402     MOVE    SPACES                  TO      CO03TRME.
+083404
+083405     IF      GER-OPCAO               =       11
+083407       IF    GER-IN-TROCA-MERC       =       1 OR 2
+083409             MOVE 9                  TO      CO03OPCA
+083411             MOVE AX-TROCA-PLAMER    TO      CO03TRME
+083413       ELSE
+083414             MOVE 4                  TO      CO03OPCA
+083415     ELSE
+083416     IF      GER-OPCAO               =       2 OR 5
+083417       IF    GER-IN-TROCA-MERC       =       1 OR 2
+083418             MOVE    AX-TROCA-PL     TO      CO03TRME
+083419       ELSE
+083420             NEXT    SENTENCE
+083421     ELSE
+083422     IF      GER-OPCAO               =       12
+083425             MOVE 7                  TO      CO03OPCA
+083430     ELSE
+083435     IF      GER-OPCAO               =       15
+083440             MOVE 9                  TO      CO03OPCA
+083464     ELSE
+083467             NEXT    SENTENCE.
+083469
+083471
+083473     IF      CO03TRME                =       SPACES
+083475       IF    CH-RENAVE               =       1
+083477             MOVE    AX-RENAVE-P     TO      CO03TRME.
+083479
+083500*
+083503     IF      GER-OPCAO               =       3
+083506       IF    GER-UF-PLACA-ANT        NOT =   "SP" AND SPACES AND
+083509                                             LOW-VALUES
+083512             MOVE    GER-CPF-CGC     TO      CO03CPFG.
+083515
+083518*
+083600
+083700     MOVE    AX-TELA-DATA            TO      CO03DATA.
+083800
+083900     ACCEPT  AX-TIME                 FROM    TIME.
+084000     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+084100     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+084200     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+084300     MOVE    AX-TELA-HORA            TO      CO03HORA.
+084400
+084500     MOVE    "COFI03"                TO      MAPA-E-S.
+084600     MOVE    "TCO6"                  TO      CO03CODE.
+084700     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+084800     MOVE    WCC-WRNR                TO      WCC.
+084900     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+085000     MOVE    ZEROS                   TO      ENDERECO-BASE.
+085100
+085401     MOVE  279    TO  TEXTLENGTH OF COMS-OUT.
+085402     MOVE  0              TO  DESTCOUNT.
+085403     MOVE  C-HEADER       TO  H-MAPA-S.
+085404     SEND  COMS-OUT     FROM  C-MAPA.
+085405     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+085406        STATUSVALUE OF COMS-OUT NOT = 89 AND
+085407        STATUSVALUE OF COMS-OUT NOT = 96 AND
+085408        STATUSVALUE OF COMS-OUT NOT = 97 AND
+085409        STATUSVALUE OF COMS-OUT NOT = 92
+085410       MOVE 99 TO STATUSVALUE OF COMS-IN
+085411        DISPLAY "PC/GEV/T005/DB - INV.KEY - COFI03"
+085412        DIVIDE  0               INTO    CT-TIMELIMIT.
+085800*
+085900*
+086000
+086100 070-S-COFI03.
+086200     EXIT.
+086300
+086400
+086500
+086600/----------------------------------------------------------------*
+086700*        VERIFICA EXISTENCIA DE FICHA PARA O DESPACHANTE         *
+086800*----------------------------------------------------------------*
+086900
+087000 080-E-PESQ-GEVER.
+087200
+087300     MOVE    0                       TO      CH-NOTFOUND.
+087400
+087500
+087600     FIND    GERFICHASE              AT
+087700             GER-NRO-FICHA           =       AX-CONT-FICHA AND
+087800             GER-ANO                 =       AX-CONT-ANO
+087900       ON    EXCEPTION
+088000       IF    DMSTATUS(NOTFOUND)
+088100             MOVE    1               TO      CH-NOTFOUND
+088200             MOVE    01              TO      IA1
+088300             GO                      TO      080-S-PESQ-GEVER
+088400       ELSE
+088500             DISPLAY "PC/GEV/T005/DB - ERRO FIND GERFICHASE"
+088600             CALL    SYSTEM  DMTERMINATE.
+088700
+088800
+088900
+089000
+089100
+089200
+089300
+089400     IF      GER-STATUS-REG          =       6
+089450**---------> DOCUMENTO DIGITADO 'OK'
+089500             MOVE    11              TO      IA1
+089600     ELSE
+089603*
+089700     IF      GER-STATUS-REG          =       5
+089702**---------> LIBERADO PARA DIGITACAO - PODE ENTRAR NO GAAT010
+089705      IF    GER-DESP-SSP            =       88888
+089710         IF  GER-FILLER1             >       2
+089715             IF      GER-STATUS-ECRV    =   1 OR  8 OR 9  OR 17 OR
+089720                                           19 OR 22 OR 23 OR
+089725                                           34 OR 35 OR 36 OR 37
+089730                     NEXT    SENTENCE
+089735             ELSE
+089740                     MOVE    12              TO      IA1
+089745         ELSE
+089750             NEXT    SENTENCE
+089755       ELSE
+089760         IF  GER-STATUS-ECRV         =      1 OR  8 OR 9  OR 17 OR
+089765                                           19 OR 22 OR 23 OR
+089770                                           34 OR 35 OR 36 OR 37
+089775             NEXT    SENTENCE
+089780         ELSE
+089785             MOVE    12              TO      IA1
+089790     ELSE
+089795*
+089800     IF      GER-STATUS-REG          =       7
+089805**---------> DOC. DIGITADO COM IMPEDIMENTO-DIVERGENCIA
+089810       IF    GER-STATUS-ECRV         =      1 OR 8  OR 9  OR 17 OR
+089815                                           19 OR 22 OR 23 OR
+089820                                           34 OR 35 OR 36 OR 37
+089927             NEXT    SENTENCE
+089928       ELSE
+089930             MOVE    12              TO      IA1
+089960     ELSE
+089963*
+089966     IF      GER-STATUS-REG          =       4   AND
+089969             GER-STATUS-ECRV         =       8
+089972**---------> APROVADO C/ RESSALVAS - FALTA ALGUM DOC - RED 208305
+089975             MOVE    13              TO      IA1
+089978     ELSE
+089981*
+090000             MOVE    06              TO      IA1.
+090003
+090006
+090009     IF      IA1                     >       0
+090012             GO      TO                      080-S-PESQ-GEVER.
+090015
+090018
+090021
+090024     IF      GER-STATUS-ECRV         =       8
+090027**---------> APROVADO C/ RESSALVAS - FALTA ALGUM DOC - RED 208305
+090030             MOVE    13              TO      IA1.
+090100
+090200
+090300 080-S-PESQ-GEVER.
+090400     EXIT.
+090500
+090600/
+090700******************************************************************
+090800*        ENVIO  DO  MAPA  CCCC99                                 *
+090900******************************************************************
+091000*
+091100 090-E-CCCC99.
+091200
+091300
+091400     MOVE    TBA-MSG (IA1)           TO      CCCC99-MENS.
+091500
+091600
+091700     MOVE    "CCCC99"                TO      MAPA-E-S.
+091800     MOVE    COM-WRITE               TO      AID-WRITECODE.
+091900     MOVE    WCC-WRNR                TO      WCC.
+092000
+092100     MOVE    "C"                     TO      TIPO-TERMINAL.
+092200     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+092300
+092701     MOVE  80    TO  TEXTLENGTH OF COMS-OUT.
+092702     MOVE  0              TO  DESTCOUNT.
+092703     MOVE  C-HEADER       TO  H-MAPA-S.
+092704     SEND  COMS-OUT     FROM  C-MAPA.
+092705     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+092706        STATUSVALUE OF COMS-OUT NOT = 89 AND
+092707        STATUSVALUE OF COMS-OUT NOT = 96 AND
+092708        STATUSVALUE OF COMS-OUT NOT = 97 AND
+092709        STATUSVALUE OF COMS-OUT NOT = 92
+092710       MOVE 99 TO STATUSVALUE OF COMS-IN
+092711        DISPLAY "PC/GEV/T005/DB : WRITE ERROR CCCC99"
+092712        DIVIDE  0               INTO    CT-TIMELIMIT.
+092900
+093000 090-S-CCCC99.
+093100     EXIT.
+093200
+093300******************************************************************
+093400*        ENVIO  DO  MAPA  MENS01                                 *
+093500******************************************************************
+093600*
+093700 100-E-MENS01.
+093800
+093900
+094000     MOVE    TBA-MSG (IA1)           TO      MENSAGEM.
+094100     MOVE    SPACES                  TO      MENSPACE.
+094200
+094300     MOVE    "MENS01"                TO      MAPA-E-S.
+094400     MOVE    COM-WRITE               TO      AID-WRITECODE.
+094500     MOVE    WCC-WRNR                TO      WCC.
+094600     MOVE    0                       TO      ENDERECO-BASE.
+094700     MOVE    SPACES                  TO      TIPO-TERMINAL.
+094800     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+094900
+095301     MOVE  156    TO  TEXTLENGTH OF COMS-OUT.
+095302     MOVE  0              TO  DESTCOUNT.
+095303     MOVE  C-HEADER       TO  H-MAPA-S.
+095304     SEND  COMS-OUT     FROM  C-MAPA.
+095305     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+095306        STATUSVALUE OF COMS-OUT NOT = 89 AND
+095307        STATUSVALUE OF COMS-OUT NOT = 96 AND
+095308        STATUSVALUE OF COMS-OUT NOT = 97 AND
+095309        STATUSVALUE OF COMS-OUT NOT = 92
+095310       MOVE 99 TO STATUSVALUE OF COMS-IN
+095311        DISPLAY "PC/GEV/T005/DB : WRITE ERROR MENS01"
+095312        DIVIDE  0               INTO    CT-TIMELIMIT.
+095400
+095500
+095600 100-S-MENS01.
+095700     EXIT.
+095800
+095900******************************************************************
+096000*        ENVIO  DO  MAPA  MENS03                                 *
+096100******************************************************************
+096200*
+096300 110-E-MENS03.
+096400
+096500
+096600     MOVE    TBA-MSG (IA1)           TO      MENSAGEM.
+096700     MOVE    SPACES                  TO      MENSPACE.
+096800
+096900     MOVE    "MENS03"                TO      MAPA-E-S.
+097000     MOVE    COM-WRITE               TO      AID-WRITECODE.
+097100     MOVE    WCC-WRNR                TO      WCC.
+097200     MOVE    0                       TO      ENDERECO-BASE.
+097300     MOVE    SPACES                  TO      TIPO-TERMINAL.
+097400     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+097500
+097901     MOVE  156    TO  TEXTLENGTH OF COMS-OUT.
+097902     MOVE  0              TO  DESTCOUNT.
+097903     MOVE  C-HEADER       TO  H-MAPA-S.
+097904     SEND  COMS-OUT     FROM  C-MAPA.
+097905     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+097906        STATUSVALUE OF COMS-OUT NOT = 89 AND
+097907        STATUSVALUE OF COMS-OUT NOT = 96 AND
+097908        STATUSVALUE OF COMS-OUT NOT = 97 AND
+097909        STATUSVALUE OF COMS-OUT NOT = 92
+097910       MOVE 99 TO STATUSVALUE OF COMS-IN
+097911        DISPLAY "PC/GEV/T005/DB : WRITE ERROR MENS03"
+097912        DIVIDE  0               INTO    CT-TIMELIMIT.
+098000
+098100
+098200 110-S-MENS03.
+098300     EXIT.
+098302
+098304/
+098306******************************************************************
+098308*    VERIFICA OS DADOS DO RENAVE                                 *
+098310******************************************************************
+098312
+098314 120-E-RENAVE.
+098316
+098318     MOVE    0                       TO      CH-RENAVE.
+098320
+098322     FIND    FIRST   RNVCHASSISE     AT
+098324             RNV-CHASSI              =       GER-CHASSI
+098326       ON    EXCEPTION
+098328         IF  DMSTATUS(NOTFOUND)
+098330             GO                      TO      120-S-RENAVE
+098332         ELSE
+098334             DISPLAY "PC/GEV/T005/DB - FIND ERROR RNVCHASSISE"
+098336             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+098338             CALL    SYSTEM  DMTERMINATE.
+098340
+098342
+098344     IF      RNV-DT-INCL259          =       0
+098346       IF    RNV-TIPO-OPERACAO       =       "P"
+098348             MOVE    1               TO      CH-RENAVE.
+098364
+098366
+098368 120-S-RENAVE.
+098370     EXIT.
+098372
+098400
+098500/
+098600******************************************************************
+098700*            ERRO NO ACESSO/ATUALIZACAO DOS BANCOS               *
+098800******************************************************************
+098900*
+099000 200-E-ERRODB.
+099100*
+099200*
+099300     DISPLAY " *** ERRO     D.M.S.  II     ***".
+099400     IF      DMSTATUS(ABORT)         DISPLAY "ABORT"         ELSE
+099500     IF      DMSTATUS(AUDITERROR)    DISPLAY "AUDITERROR"    ELSE
+099600     IF      DMSTATUS(CLOSEERROR)    DISPLAY "CLOSEERROR"    ELSE
+099700     IF      DMSTATUS(DEADLOCK)      DISPLAY "DEADLOCK"      ELSE
+099800     IF      DMSTATUS(DUPLICATES)    DISPLAY "DUPLICATES"    ELSE
+099900     IF      DMSTATUS(INUSE)         DISPLAY "INUSE"         ELSE
+100000     IF      DMSTATUS(IOERROR)       DISPLAY "IOERROR"       ELSE
+100100     IF      DMSTATUS(KEYCHANGED)    DISPLAY "KEYCHANGED"    ELSE
+100200     IF      DMSTATUS(LIMITERROR)    DISPLAY "LIMITERROR"    ELSE
+100300     IF      DMSTATUS(NORECORD)      DISPLAY "NORECORD"      ELSE
+100400     IF      DMSTATUS(NOTFOUND)      DISPLAY "NOTFOUND"      ELSE
+100500     IF      DMSTATUS(NOTLOCKED)     DISPLAY "NOTLOCKED"     ELSE
+100600     IF      DMSTATUS(OPENERROR)     DISPLAY "OPENERROR"     ELSE
+100700     IF      DMSTATUS(READONLY)      DISPLAY "READONLY"      ELSE
+100800     IF      DMSTATUS(SECURITYERROR) DISPLAY "SECURITYERROR" ELSE
+100900     IF      DMSTATUS(SYSTEMERROR)   DISPLAY "SYSTEMERROR"   ELSE
+101000     IF      DMSTATUS(VERSIONERROR)  DISPLAY "VERSIONERROR".
+101100*
+101200
+101300     DISPLAY "*** PC/GEV/T005/DB    CANCELADO ***".
+101400     DISPLAY "STRUCTURE - "  DMSTATUS(DMSTRUCTURE).
+101500     DISPLAY "TYPE      - "  DMSTATUS(DMERRORTYPE).
+101600
+101700
+101800
+101900*
+102000 200-S-ERRODB.
+102100     EXIT.
+102200
+102300*----------------------------------------------------------------*
+102400
+102500/
+102600******************************************************************
+102700*        FINALIZA[]O  DO  PROGRAMA                               *
+102800******************************************************************
+102900*
+103000 240-E-FINAL.
+103100
+103200
+103300     SET     MYSELF  (PUNCHLIMIT)    TO      13.
+103400
+103500     SET     MYSELF  (OPTIONS)       TO      1955.
+103600
+103900
+104000     CLOSE   DB01
+104100        ON   EXCEPTION
+104200             DISPLAY "PC/GEV/T005/DB : CLOSE ERROR TDBGEVER"
+104300             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+104400             CALL    SYSTEM          DMTERMINATE.
+104500
+104505     CLOSE   DB02
+104510        ON   EXCEPTION
+104515             DISPLAY "PC/GEV/T005/DB : CLOSE ERROR TDBDETRAN"
+104520             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+104525             CALL    SYSTEM          DMTERMINATE.
+104600
+104650     CLOSE   DB03
+104700        ON   EXCEPTION
+104750             DISPLAY "PC/GEV/T005/DB : CLOSE ERROR TDBBLOQUEIOS"
+104800             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+104850             CALL    SYSTEM          DMTERMINATE.
+104900
+105000
+105100 240-S-FINAL.
+105200     EXIT.
+105300
+105400/
+105500******************************************************************
+105600*           ACESSA ECRVAUTENTICVADS                              *
+105700******************************************************************
+105800
+105900 250-E-ECRVAUT.
+106000
+106100     MOVE    0                       TO      CH-NOTFOUND.
+106200
+106300     FIND    FIRST   EAUSENHASE      AT
+106400             EAU-SENHA-08            =       AX-AUT-DIGITAL   AND
+106500             EAU-CPF-CGC             =       GER-CPF-CGC
+106600        ON   EXCEPTION
+106700             IF   DMSTATUS (NOTFOUND)
+106800                  MOVE  1            TO      CH-NOTFOUND
+106900             ELSE
+107000                  DISPLAY "PC/GEV/T005/DB : FIND ERROR EAUSENHASE"
+107100                  PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+107200                  CALL    SYSTEM          DMTERMINATE.
+107300
+107400
+107500 250-S-ECRVAUT.
+107600     EXIT.
+107700
+107800/
+107900******************************************************************
+108000*  VERIFICA/CAPTURA  AUTENTICACAO DIGITAL - OP 3  UF DIF SP      *
+108100******************************************************************
+108200
+108300 260-E-VERIF-AUT.
+108400
+108500     IF      AX-AUT-DUT-8(1)         NOT =   SPACES   AND
+108600             AX-AUT-DUT-8(2)         NOT =   SPACES   AND
+108700             AX-AUT-DUT-8(3)         NOT =   SPACES   AND
+108800             AX-AUT-DUT-8(4)         NOT =   SPACES   AND
+108900             AX-AUT-DUT-8(5)         NOT =   SPACES   AND
+109000             AX-AUT-DUT-8(6)         NOT =   SPACES   AND
+109100             AX-AUT-DUT-8(7)         NOT =   SPACES   AND
+109200             AX-AUT-DUT-8(8)         NOT =   SPACES
+109300       IF    AX-USU-12               =       "VS"  OR
+109310             AX-USU-6                =       9
+109400             MOVE GER-AUT-DIGITAL    TO      CO01TXSEFAZ
+109500       ELSE
+109600             MOVE AX-AUT-DUT-8(1)    TO      CO03AUTD
+109700     ELSE
+109800             MOVE AX-AUT-DUT-8(1)    TO      AX-AUT-DIGITAL
+109900             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+110000             IF   CH-NOTFOUND        =       1
+110100               IF AX-USU-12                  =       "VS"  OR
+110120                  AX-USU-6                   =       9
+110200                  MOVE GER-AUT-DIGITAL       TO      CO01TXSEFAZ
+110300               ELSE
+110400                  MOVE AX-AUT-DUT-8(1)       TO      CO03AUTD
+110500             ELSE
+110600             IF   AX-USU-12                  =       "VS"  OR
+110620                  AX-USU-6                   =       9
+110700                  MOVE EAU-SENHA             TO      CO01TXSEFAZ
+110800             ELSE
+110900                  MOVE EAU-SENHA             TO      AX-AUT-DUT
+111000                  MOVE AX-AUT-DUT-8(8)       TO      CO03AUTD.
+111100
+113800
+113900
+114000 260-S-VERIF-AUT.
+114100     EXIT.
+114200
+114300
+114400/
+114500******************************************************************
+114600*                ACESSA   SEGURADORADS                           *
+114700******************************************************************
+114800
+114900 270-E-SEGURADORADS.
+114920
+114940     MOVE    "N"                     TO      CH-NF-SEG.
+114960     MOVE    "S"                     TO      CH-NF-SLV.
+114980
+115000     FIND    KEY  OF   SEGCNPJSE     AT
+115020             SEG-CNPJ                =       GER-CPF-CGC
+115040        ON   EXCEPTION
+115060             IF   DMSTATUS (NOTFOUND)
+115080                  MOVE  "S"          TO      CH-NF-SEG
+115100                  PERFORM   275-E-SALVADOS
+115120                                     THRU    275-S-SALVADOS
+115140             ELSE
+115160                  DISPLAY "PC/GEV/T005/DB : FIND ERROR SEGCNPJSE"
+115180                  PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+115200                  CALL    SYSTEM          DMTERMINATE.
+115220
+115240
+115260 270-S-SEGURADORADS.
+115280     EXIT.
+115300/
+115320******************************************************************
+115340*                ACESSA   SEGURADORADS                           *
+115360******************************************************************
+115380
+115400 275-E-SALVADOS.
+115420
+115440     MOVE    "N"                     TO      CH-NF-SLV.
+115460
+115480     FIND    KEY  OF   SLVCNPJSE     AT
+115500             SLV-CNPJ                =       GER-CPF-CGC
+115520        ON   EXCEPTION
+115540             IF   DMSTATUS (NOTFOUND)
+115560                  MOVE  "S"          TO      CH-NF-SLV
+115580             ELSE
+115600                  DISPLAY "PC/GEV/T005/DB : FIND ERROR SLVCNPJSE"
+115620                  PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+115640                  CALL    SYSTEM          DMTERMINATE.
+115660
+115680
+115700 275-S-SALVADOS.
+115720     EXIT.
+115740
+116600
+116700/----------------------------------------------------------------*
+116800*         ENVIA MAPA COFI11 -  PRIMEIRO CADASTR. SEGURADORA      *
+116900*----------------------------------------------------------------*
+117000
+117100 280-E-COFI11.
+117200
+117300
+117400     MOVE    SPACES                  TO      COFI11-MENS.
+117500
+117600     MOVE    AX-TELA-DATA            TO      FI11DATA.
+117700
+117800     ACCEPT  AX-TIME                 FROM    TIME.
+117900     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+118000     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+118100     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+118200     MOVE    AX-TELA-HORA            TO      FI11HORA.
+118300
+118400     PERFORM 300-E-POR-CHASSI        THRU    300-S-POR-CHASSI.
+118405
+118500     IF      GER-PLACA-MERC          =       SPACES  OR
+118600                                             LOW-VALUES
+118700             MOVE    SPACES          TO      FI11PLAC
+118800     ELSE
+118900             MOVE    GER-PLACA-MERC  TO      FI11PLAC.
+119300
+119400
+119500     MOVE    GER-MUNIC-PLACA         TO      FI11MUNI.
+119600     MOVE    GER-CPF-CGC             TO      FI11CNPJ.
+119605
+119610
+119615*      TRATA NOVA TAXA
+119620
+119625       MOVE  SPACES                  TO      FI11TAXA.
+119630
+119635       IF    AX-TAMANHO-AUT          =       18
+119640             MOVE    AX-AUT-CHAVE    TO      FI11TAXA
+119645             MOVE    SPACES          TO      FI11BDUT
+119650             GO                      TO      280-10-COFI11
+119655       ELSE
+119660             NEXT    SENTENCE.
+119665
+119670
+119675*      TRATA TAXA ANTIGA
+119680
+119685
+119700     IF      AX-AUT-DUT-8(1)         NOT =   SPACES   AND
+119800             AX-AUT-DUT-8(2)         NOT =   SPACES   AND
+119900             AX-AUT-DUT-8(3)         NOT =   SPACES   AND
+120000             AX-AUT-DUT-8(4)         NOT =   SPACES   AND
+120100             AX-AUT-DUT-8(5)         NOT =   SPACES   AND
+120200             AX-AUT-DUT-8(6)         NOT =   SPACES   AND
+120300             AX-AUT-DUT-8(7)         NOT =   SPACES   AND
+120400             AX-AUT-DUT-8(8)         NOT =   SPACES
+120500             MOVE AX-AUT-DUT-8(8)    TO      FI11BDUT
+120600     ELSE
+120700             MOVE AX-AUT-DUT-8(1)    TO      AX-AUT-DIGITAL
+120800             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+120900             IF   CH-NOTFOUND        =       1
+121000                  MOVE AX-AUT-DUT-8(1)       TO      FI11BDUT
+121100             ELSE
+121200                  MOVE EAU-SENHA     TO      FI11BDUT.
+121300
+121400*     IF      AX-AUT-EMPL-8(1)        NOT =   SPACES   AND
+121500*             AX-AUT-EMPL-8(2)        NOT =   SPACES   AND
+121600*             AX-AUT-EMPL-8(3)        NOT =   SPACES   AND
+121700*             AX-AUT-EMPL-8(4)        NOT =   SPACES   AND
+121800*             AX-AUT-EMPL-8(5)        NOT =   SPACES   AND
+121900*             AX-AUT-EMPL-8(6)        NOT =   SPACES   AND
+122000*             AX-AUT-EMPL-8(7)        NOT =   SPACES   AND
+122100*             AX-AUT-EMPL-8(8)        NOT =   SPACES
+122200*             MOVE AX-AUT-EMPL-8(8)   TO      FI11BPLA
+122300*     ELSE
+122400*             MOVE AX-AUT-EMPL-8(1)   TO      AX-AUT-DIGITAL
+122500*             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+122600*             IF   CH-NOTFOUND        =       1
+122700*                  MOVE AX-AUT-EMPL-8(1)      TO      FI11BPLA
+122800*             ELSE
+122900*                  MOVE EAU-SENHA     TO      FI11BPLA.
+123000
+123200*
+123220
+123240 280-10-COFI11.
+123260
+123300
+123400     MOVE    TBA-MSG(09)             TO      FI11MENS.
+123500
+123600
+123700     MOVE    "COFI11"                TO      MAPA-E-S.
+123800     MOVE    "SEG1"                  TO      FI11CODE.
+123900     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+124000     MOVE    WCC-WRNR                TO      WCC.
+124100     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+124200     MOVE    ZEROS                   TO      ENDERECO-BASE.
+124300
+124400     MOVE    236                     TO  TEXTLENGTH OF COMS-OUT.
+124500     MOVE    0                       TO      DESTCOUNT.
+124600     MOVE    C-HEADER                TO      H-MAPA-S.
+124700     SEND    COMS-OUT                FROM    C-MAPA.
+124800
+124900     IF      STATUSVALUE OF COMS-OUT NOT =   0  AND
+125000             STATUSVALUE OF COMS-OUT NOT =   89 AND
+125100             STATUSVALUE OF COMS-OUT NOT =   96 AND
+125200             STATUSVALUE OF COMS-OUT NOT =   97 AND
+125300             STATUSVALUE OF COMS-OUT NOT =   92
+125400             MOVE 99                 TO     STATUSVALUE OF COMS-IN
+125500             DISPLAY "INVALID KEY REMOTE - COFI11"
+125600             DIVIDE  0               INTO    CT-TIMELIMIT.
+125700
+125800
+125900 280-S-COFI11.
+126000     EXIT.
+126100
+126200/----------------------------------------------------------------*
+126300*         ENVIA MAPA COFI10 -  TRANSFERENCIA PARA SEGURADORA     *
+126400*----------------------------------------------------------------*
+126500
+126600 290-E-COFI10.
+126700
+126800
+126900     MOVE    SPACES                  TO      COFI10-MENS.
+127000
+127100     MOVE    AX-TELA-DATA            TO      FI10DATA.
+127200
+127300     ACCEPT  AX-TIME                 FROM    TIME.
+127400     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+127500     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+127600     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+127700     MOVE    AX-TELA-HORA            TO      FI10HORA.
+127800
+127900     MOVE    GER-OPCAO               TO      FI10OPCA.
+128000
+128100     IF      GER-PLACA-MERC          =       SPACES  OR
+128200                                             LOW-VALUES
+128300             MOVE    SPACES          TO      FI11PLAC
+128400     ELSE
+128500             MOVE    GER-PLACA-MERC  TO      FI10PLAC
+128805             PERFORM 310-E-AVARIADOS THRU    310-S-AVARIADOS.
+128900
+129000
+129100     MOVE    GER-MUNIC-PLACA         TO      FI10MUNI.
+129200     MOVE    GER-RENAVAM             TO      FI10RENA.
+129300     MOVE    GER-CPF-CGC             TO      FI10CNPJ.
+129305
+129310*      TRATA NOVA TAXA
+129315
+129320       MOVE  SPACES                  TO      FI10TAXA.
+129325
+129330       IF    AX-TAMANHO-AUT          =       18
+129335             MOVE    AX-AUT-CHAVE    TO      FI10TAXA
+129340             MOVE    SPACES          TO      FI10BDUT
+129345             GO                      TO      290-10-COFI10
+129350       ELSE
+129355             NEXT    SENTENCE.
+129360
+129365
+129370*      TRATA TAXA ANTIGA
+129375
+129400
+129500     IF      AX-AUT-DUT-8(1)         NOT =   SPACES   AND
+129600             AX-AUT-DUT-8(2)         NOT =   SPACES   AND
+129700             AX-AUT-DUT-8(3)         NOT =   SPACES   AND
+129800             AX-AUT-DUT-8(4)         NOT =   SPACES   AND
+129900             AX-AUT-DUT-8(5)         NOT =   SPACES   AND
+130000             AX-AUT-DUT-8(6)         NOT =   SPACES   AND
+130100             AX-AUT-DUT-8(7)         NOT =   SPACES   AND
+130200             AX-AUT-DUT-8(8)         NOT =   SPACES
+130300             MOVE AX-AUT-DUT-8(8)    TO      FI10BDUT
+130400     ELSE
+130500             MOVE AX-AUT-DUT-8(1)    TO      AX-AUT-DIGITAL
+130600             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+130700             IF   CH-NOTFOUND        =       1
+130800                  MOVE AX-AUT-DUT-8(8)       TO      FI10BDUT
+130900             ELSE
+131000                  MOVE EAU-SENHA     TO      FI10BDUT.
+131100
+131200*     IF      AX-AUT-EMPL-8(1)        NOT =   SPACES   AND
+131300*             AX-AUT-EMPL-8(2)        NOT =   SPACES   AND
+131400*             AX-AUT-EMPL-8(3)        NOT =   SPACES   AND
+131500*             AX-AUT-EMPL-8(4)        NOT =   SPACES   AND
+131600*             AX-AUT-EMPL-8(5)        NOT =   SPACES   AND
+131700*             AX-AUT-EMPL-8(6)        NOT =   SPACES   AND
+131800*             AX-AUT-EMPL-8(7)        NOT =   SPACES   AND
+131900*             AX-AUT-EMPL-8(8)        NOT =   SPACES
+132000*             MOVE AX-AUT-EMPL-8(8)   TO      FI10BPLA
+132100*     ELSE
+132200*             MOVE AX-AUT-EMPL-8(1)   TO      AX-AUT-DIGITAL
+132300*             PERFORM 250-E-ECRVAUT   THRU    250-S-ECRVAUT
+132400*             IF   CH-NOTFOUND        =       1
+132500*                  MOVE AX-AUT-EMPL-8(8)      TO      FI10BPLA
+132600*             ELSE
+132700*                  MOVE EAU-SENHA     TO      FI10BPLA.
+132750
+132800
+132850 290-10-COFI10.
+132900
+133000*
+133100
+133200     MOVE    TBA-MSG(09)             TO      FI10MENS.
+133300
+133400
+133500     MOVE    "COFI10"                TO      MAPA-E-S.
+133600     MOVE    "SEG2"                  TO      FI10CODE.
+133700     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+133800     MOVE    WCC-WRNR                TO      WCC.
+133900     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+134000     MOVE    ZEROS                   TO      ENDERECO-BASE.
+134100
+134200     MOVE    0333                    TO  TEXTLENGTH OF COMS-OUT.
+134300     MOVE    0                       TO      DESTCOUNT.
+134400     MOVE    C-HEADER                TO      H-MAPA-S.
+134500     SEND    COMS-OUT                FROM    C-MAPA.
+134600
+134700     IF      STATUSVALUE OF COMS-OUT NOT =   0  AND
+134800             STATUSVALUE OF COMS-OUT NOT =   89 AND
+134900             STATUSVALUE OF COMS-OUT NOT =   96 AND
+135000             STATUSVALUE OF COMS-OUT NOT =   97 AND
+135100             STATUSVALUE OF COMS-OUT NOT =   92
+135200             MOVE 99                 TO     STATUSVALUE OF COMS-IN
+135300             DISPLAY "INVALID KEY REMOTE - COFI10"
+135400             DIVIDE  0               INTO    CT-TIMELIMIT.
+135500
+135600
+135700 290-S-COFI10.
+135800     EXIT.
+135900
+136000/*****************************************************************
+136100*                 ENVIA DE COFI11 MONTA PREENCHIDA               *
+136200******************************************************************
+136300
+136400 300-E-POR-CHASSI.
+136500
+136600
+136700     FIND    LAST  AVARIADOSSE2      AT
+136800             AVA-CHASSI               =      GER-CHASSI
+136900       ON    EXCEPTION
+137000         IF  DMSTATUS(NOTFOUND)
+137100         DISPLAY "NOTF POR CHASSI"
+137200             MOVE  SPACES            TO     FI11PLAC
+137300                                            FI11OPC1
+137400                                            FI11OPC2
+137500                                            FI11OPC3
+137600             GO                      300-S-POR-CHASSI
+137700         ELSE
+137800             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+137900             CALL    SYSTEM  DMTERMINATE.
+138000
+138600
+138700     IF      AVA-MONTA               =      1
+138800             MOVE "X"                TO     FI11OPC1
+138900     ELSE
+139000     IF      AVA-MONTA               =      2
+139100             MOVE "X"                TO     FI11OPC2
+139200     ELSE
+139300     IF      AVA-MONTA               =      3
+139400             MOVE "X"                TO     FI11OPC3.
+139500
+139600
+139700 300-S-POR-CHASSI.
+139800     EXIT.
+139900
+140000******************************************************************
+140100*                 Acessa avariados por placa                     *
+140200******************************************************************
+140300
+140320310-E-AVARIADOS.
+140340
+140360     MOVE    "N"                     TO      CH-NF-AVA.
+140380
+140400     FIND    LAST  AVARIADOSMSE      AT
+140420             AVA-PLACA-MERC          =      GER-PLACA-MERC
+140440       ON    EXCEPTION
+140460         IF  DMSTATUS(NOTFOUND)
+140480             MOVE  "S"               TO     CH-NF-AVA
+140500             MOVE  SPACES            TO     FI10OPC1
+140520                                            FI10OPC2
+140540                                            FI10OPC3
+140560             GO                      310-10-AVARIADOS
+140580         ELSE
+140600             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+140620             CALL    SYSTEM  DMTERMINATE.
+140640
+140660
+140680     IF      AVA-MONTA               =      1
+140700             MOVE "X"                TO     FI10OPC1
+140720     ELSE
+140740     IF      AVA-MONTA               =      2
+140760             MOVE "X"                TO     FI10OPC2
+140780     ELSE
+140800     IF      AVA-MONTA               =      3
+140820             MOVE "X"                TO     FI10OPC3.
+140840
+140860
+141020     MOVE    " - SEGURADORA            "
+141040                                     TO      CH-DESCR-ORIGEM.
+141060     MOVE    AVA-SEGURADORA          TO      FI10CNPJ.
+141080     MOVE    AVA-ORIGEM              TO      CH-COD-ORIGEM.
+141100     MOVE    CH-ORIGEM               TO      FI10ORI.
+141120     MOVE    AVA-NUM-REL             TO      FI10RAV.
+141140
+141160
+141180 310-10-AVARIADOS.
+141200
+141220     MOVE    "N"                     TO      CH-NF-BLO.
+141240     MOVE    "N"                     TO      CH-NF-AVH.
+141260
+141280     SET     BLOPLAMSE2              TO      BEGINNING.
+141300
+141320 310-20-AVARIADOS.
+141340*Pesquisa Bloqueios e Identifica Dados De Autoridade de Transito
+141360     FIND    NEXT    BLOPLAMSE2      AT
+141380             BLO-PLACA-MERC          =       GER-PLACA-MERC
+141400       ON    EXCEPTION
+141420       IF    DMSTATUS(NOTFOUND)
+141440             MOVE    "S"             TO      CH-NF-BLO
+141460             GO                      TO      310-90-AVARIADOS
+141480       ELSE
+141500             DISPLAY "PC/GEV/T005/DB - ERROFIND BLOQUEIODS"
+141520             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+141540             CALL    SYSTEM  DMTERMINATE.
+141560
+141580     IF      BLO-TIP-BLOQ            NOT = 03 AND 14 AND 40 AND 41
+141600             GO                      TO      310-20-AVARIADOS.
+141620
+141880     MOVE    "N"                     TO      CH-NF-AVH.
+141900
+141920     FIND    LAST  AVARIAHISTMSE     AT
+141940             AVH-PLACA-MERC          =       BLO-PLACA-MERC  AND
+141960             AVH-DT-INCLUSAO         =       BLO-DT-INCLUSAO AND
+141980             AVH-HR-INCLUSAO         =       BLO-HR-INCLUSAO
+142000       ON    EXCEPTION
+142020         IF  DMSTATUS(NOTFOUND)
+142040             MOVE  ZEROS             TO      IA1
+142060             MOVE  "S"               TO      CH-NF-AVH
+142080             GO                      310-90-AVARIADOS
+142100         ELSE
+142120             PERFORM 200-E-ERRODB    THRU    200-S-ERRODB
+142140             CALL    SYSTEM  DMTERMINATE.
+142160
+142180     IF      AVH-DT-OCORR            >       ZEROS
+142200             MOVE    AVH-DT-OCORR    TO      AX-DATA-OCORR
+142220             MOVE    AX-ANO-OCORR    TO      AX-ANO-AUX
+142240             MOVE    AX-MES-OCORR    TO      AX-MES-AUX
+142260             MOVE    AX-DIA-OCORR    TO      AX-DIA-AUX
+142280             MOVE    AX-DATA-AUX     TO      FI10DTOC.
+142300
+142320     MOVE    AVH-NRO-BOAT            TO      FI10BAT.
+142340     MOVE    AVH-ANO-BOAT            TO      FI10ANO.
+142360
+142380 310-90-AVARIADOS.
+142400
+142420*Apresenta Classificacao quando somente existir bloqueio
+142440     IF      CH-NF-AVA               =       "S"
+142460         IF  CH-NF-BLO               =       "N"
+142480             IF  BLO-TIP-BLOQ        =       14 OR 40
+142500                 MOVE  "X"           TO      FI10OPC2
+142520             ELSE
+142540             IF  BLO-TIP-BLOQ        =       03 OR 41
+142560                 MOVE  "X"           TO      FI10OPC3.
+142580
+142600     IF      CH-NF-AVA               =       "S"
+142620         IF  CH-NF-BLO               =       "N"
+142640             IF  CH-NF-AVH           =       "N"
+142820                 IF   AVH-ORIGEM     =       2
+142840                       MOVE    " - AUTORIDADE DE TRANSITO"
+142860                                     TO      CH-DESCR-ORIGEM
+142880                       MOVE    AVH-ORIGEM
+142900                                     TO      CH-COD-ORIGEM
+142920                       MOVE    CH-ORIGEM
+142940                                     TO      FI10ORI.
+142960
+142980
+143000 310-S-AVARIADOS.
+143020     EXIT.
+143600
+143700******************************************************************
+143800*         ENVIA MAPA RENA04 COM A TRANSACAO DUT1                 *
+143900******************************************************************
+144000
+144100 320-E-RENA04.
+144200
+144300     MOVE    SPACES                  TO      RENA04-MENS.
+144400
+144500     MOVE    GER-PLACA-MERC          TO      RE04PLAC.
+144600     MOVE    GER-MUNIC-PLACA         TO      RE04MUNI.
+144700     MOVE    1                       TO      RE04TTRN.
+144800
+144900     MOVE    SPACES                  TO      RE04AUTENT.
+145000
+145100     IF      AX-TAMANHO-AUT          =       18
+145200             MOVE    AX-AUT-DIG-DUT  TO      RE04AUTENT
+145300     ELSE
+145400       IF    GER-AUT-DIGITAL         =       SPACES
+145500             NEXT    SENTENCE
+145600       ELSE
+145700             MOVE    GER-AUT-DIGITAL TO      RE04AUTENT.
+145800
+145900
+146000     MOVE    TBA-MSG(09)             TO      RE04MENS.
+146100     MOVE    AX-TELA-DATA            TO      RE04DATA.
+146200
+146300     ACCEPT  AX-TIME                 FROM    TIME.
+146400     MOVE    AX-T-HH                 TO      AX-TEL-HH.
+146500     MOVE    AX-T-MM                 TO      AX-TEL-MM.
+146600     MOVE    AX-T-SS                 TO      AX-TEL-SS.
+146700     MOVE    AX-TELA-HORA            TO      RE04HORA.
+146800
+146900     MOVE    "RENA04"                TO      MAPA-E-S.
+147000     MOVE    "DUT1"                  TO      RE04CODE.
+147100     MOVE    COM-EWRITE              TO      AID-WRITECODE.
+147200     MOVE    WCC-WRNR                TO      WCC.
+147300     MOVE    "S"                     TO      ULTIMA-MENSAGEM.
+147400     MOVE    ZEROS                   TO      ENDERECO-BASE.
+147500
+148000     MOVE  331    TO  TEXTLENGTH OF COMS-OUT.
+148100     MOVE  0              TO  DESTCOUNT.
+148200     MOVE  C-HEADER       TO  H-MAPA-S.
+148300     SEND  COMS-OUT     FROM  C-MAPA.
+148400     IF STATUSVALUE OF COMS-OUT NOT = 0  AND
+148500        STATUSVALUE OF COMS-OUT NOT = 89 AND
+148600        STATUSVALUE OF COMS-OUT NOT = 96 AND
+148700        STATUSVALUE OF COMS-OUT NOT = 97 AND
+148800        STATUSVALUE OF COMS-OUT NOT = 92
+148900       MOVE 99 TO STATUSVALUE OF COMS-IN
+149000        DISPLAY "INVALID KEY REMOTE - RENA04"
+149100        DIVIDE  0               INTO    CT-TIMELIMIT.
+149300
+149500
+149600 320-S-RENA04.
+149700     EXIT.
+149800/
+149900

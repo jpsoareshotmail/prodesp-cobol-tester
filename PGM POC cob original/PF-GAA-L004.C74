@@ -1,0 +1,146 @@
+000000* VERSION  6.1   ; SAVED 20260508 12:02:53                    |6.0
+001000$$SET SHARING=SHAREDBYALL
+002000$$SET TEMPORARY
+003000 IDENTIFICATION  DIVISION.
+004000
+005000*PROGRAM-ID.     PC-GAA-L004.
+006000 AUTHOR.         RUI SANTOS.
+007000 DATE-WRITTEN.   30/10/2018.
+008000 SECURITY.
+009000
+010000*
+011000******************************************************************
+012000*    OBJETIVO:                                                   *
+013000*            VERIFICAR SE A PLACA ESTA NO FORMATO DE PLACAS      *
+014000*            PERMITIDAS PARA O ESTADO DE SAO PAULO               *
+015000*                                                                *
+016000*    RETORNOS:                                                   *
+017000*           00  =  PLACA INVALIDA                                *
+018000*           11  =  PLACA MERCOSUL - SAO PAULO                    *
+018500*           12  =  PLACA MERCOSUL - OUTROS ESTADOS               *
+019000*           21  =  PLACA ANTIGA   - SAO PAULO                    *
+021000*           22  =  PLACA ANTIGA   - OUTROS ESTADOS               *
+022000*           33  =  PLACA DE 2 LETRAS - CARROS                    *
+023000*           34  =  PLACA DE 2 LETRAS - MOTOS                     *
+024000*                                                                *
+025000******************************************************************
+026000*                                                                *
+027000*    PATCH     DATA      O.S.     PROGRAMADOR      ANALISTA      *
+028000*    =====     ====      ====     ===========      ========      *
+029000*                                                                *
+030000*     ___    17/05/2022  ____     VLG              VGL           *
+031000*     ___    __/__/__    ____     ___________     __________     *
+032000*                                                                *
+033000*    DATA     ANA /PRGM                   Descri§¥o              *
+034000*    ====     =========    ====================================  *
+035000*                                                                *
+036000*   06/10/23  DJCD/DJCD    Inclusao de novo Range de Placas      *
+036010*   06/09/24  LEE / LEE    INCLUSAO DE NOVA FAIXA DE PLACAS      *
+037000*   08/08/25  LEE / LEE    INCLUSAO NOVA FAXIA DE PLACAS         *
+038000*   06/05/26  JWD / JWD    INC. N FAIXA UOG0001 - USB9999        *
+039000*   __/__/__  ____/____    ____________________________________  *
+040000*   __/__/__  ____/____    ____________________________________  *
+045000*                                                                *
+046000******************************************************************
+047000
+048000 ENVIRONMENT DIVISION.
+049000
+050000 CONFIGURATION   SECTION.
+051000*************************
+052000*
+053000 OBJECT-COMPUTER.    A15.
+054000 SPECIAL-NAMES.
+055000*
+056000     DECIMAL-POINT                IS                 COMMA.
+057000/
+058000 DATA        DIVISION.
+059000
+060000 WORKING-STORAGE SECTION.
+061000
+062000 01          LC-PARM.
+063000
+064000     05      LC-RETORNO              PIC 9(002).
+065000
+066000     05      LC-PLACA                PIC X(010).
+067000
+068000     05      LC-PLACA-R              REDEFINES LC-PLACA.
+069000       10    LC-FAIXA.
+070000         15  FILLER                  PIC X(002).
+071000         15  LC-FAIXA-3              PIC X(001).
+072000       10    LC-MILHAR               PIC X(001).
+073000       10    LC-SERIE                PIC X(001).
+074000       10    LC-DEZENA               PIC X(002).
+074500       10    FILLER                  PIC X(003).
+075000
+076000 PROCEDURE   DIVISION                USING   LC-PARM.
+077000
+078000 010-E-PROCEDURE.
+079000
+080000***   PLACA NAO INFORMADA
+081000      IF LC-PLACA                   =     SPACES
+082000         MOVE  00                   TO    LC-RETORNO
+083000         GO                         TO    010-S-PROCEDURE
+084000      ELSE
+085000         NEXT SENTENCE.
+086000
+087000***   VERIFICA SE PLACA DE 2 LETRAS
+088000      IF  LC-FAIXA-3                IS    NUMERIC
+089000         IF LC-DEZENA               =     SPACES
+090000            MOVE  34                TO    LC-RETORNO
+091000         ELSE
+092000            MOVE  33                TO    LC-RETORNO
+093000         GO                         TO    010-S-PROCEDURE
+094000      ELSE
+095000         NEXT SENTENCE.
+096000
+097000***   VERIFICA SE A PLACA E VALIDA
+098000      IF    LC-MILHAR               NOT IS NUMERIC    OR
+099000            LC-DEZENA               NOT IS NUMERIC    OR
+100000            LC-FAIXA                NOT IS ALPHABETIC OR
+101000            (LC-SERIE               NOT IS NUMERIC    AND
+102000             LC-SERIE               NOT IS ALPHABETIC)
+103000         MOVE  00                   TO    LC-RETORNO
+104000         GO                         TO    010-S-PROCEDURE
+105000      ELSE
+106000         NEXT SENTENCE.
+107000
+108000***   VERIFICA SE A PLACA E DE OUTRO ESTADO
+108500*
+109000      IF   (LC-FAIXA                <     "BFA"       OR
+110000            LC-FAIXA                >     "GKI")      AND
+111000*
+111200*
+111400           (LC-FAIXA                <     "QSN"       OR
+112000            LC-FAIXA                >     "QSZ")      AND
+112100*
+112200           (LC-FAIXA                <     "SSR"       OR
+112300            LC-FAIXA                >     "SWZ")      AND
+112350           (LC-FAIXA                <     "TIO"       OR
+112360            LC-FAIXA                >     "TMJ")      AND
+112380           (LC-FAIXA                <     "UDA"       OR
+112400            LC-FAIXA                >     "UGV")      AND
+112402           (LC-FAIXA                <     "UOG"       OR
+112404            LC-FAIXA                >     "USB")
+112500*
+112600*   Range 2 de SP => SAV|SAV (N¥o esta considerando)
+113000**         (LC-FAIXA                NOT = "SAV")
+114000
+115000            IF LC-SERIE             IS    NUMERIC
+116000               MOVE  22             TO    LC-RETORNO
+116100               GO                   TO    010-S-PROCEDURE
+117000            ELSE
+118000               MOVE  12             TO    LC-RETORNO
+119000            GO                      TO    010-S-PROCEDURE
+120000      ELSE
+121000         NEXT SENTENCE.
+122000
+123000
+124000***   PLACA DE SAO PAULO
+125000      IF LC-SERIE                   IS    NUMERIC
+126000         MOVE  21                   TO    LC-RETORNO
+127000      ELSE
+128000         MOVE  11                   TO    LC-RETORNO.
+129000
+130000
+131000 010-S-PROCEDURE.
+132000     EXIT PROGRAM.

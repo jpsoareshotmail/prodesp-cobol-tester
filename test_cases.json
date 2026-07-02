@@ -1,0 +1,241 @@
+{
+  "suite": "COBOL Legacy System Tests",
+  "versao": "1.0",
+  "data": "2026-07-02",
+  "programas": [
+    {
+      "id": "PF-GAA-L004",
+      "nome": "Validador de Placas",
+      "descricao": "Valida placas veiculares brasileiras",
+      "entrada": "placa (string, ate 10 caracteres)",
+      "saida": "codigo (inteiro 0-34)",
+      "testes": [
+        {
+          "test_id": "TC-001",
+          "nome": "Mercosul SP - Faixa AA",
+          "entrada": "AAA0A00",
+          "saida_esperada": 11,
+          "categoria": "Positivo",
+          "prioridade": "CRITICA",
+          "descricao": "Placa Mercosul padrao de Sao Paulo"
+        },
+        {
+          "test_id": "TC-002",
+          "nome": "Mercosul SP - Faixa AB",
+          "entrada": "ABC1234",
+          "saida_esperada": 11,
+          "categoria": "Positivo",
+          "prioridade": "CRITICA",
+          "descricao": "Placa Mercosul faixa AB"
+        },
+        {
+          "test_id": "TC-003",
+          "nome": "Mercosul SP - Ultima Faixa",
+          "entrada": "JWD0A00",
+          "saida_esperada": 11,
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Placa Mercosul ultima faixa validada"
+        },
+        {
+          "test_id": "TC-004",
+          "nome": "Mercosul Outros Estados",
+          "entrada": "XYZ1234",
+          "saida_esperada": 12,
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Placa Mercosul de outro estado"
+        },
+        {
+          "test_id": "TC-005",
+          "nome": "Placa Antiga SP",
+          "entrada": "SP1234",
+          "saida_esperada": 21,
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Placa antiga com placa de SP"
+        },
+        {
+          "test_id": "TC-006",
+          "nome": "Placa Antiga Outros",
+          "entrada": "RJ1234",
+          "saida_esperada": 22,
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Placa antiga de outro estado"
+        },
+        {
+          "test_id": "TC-007",
+          "nome": "2 Letras - Carro",
+          "entrada": "AB12C34",
+          "saida_esperada": 33,
+          "categoria": "Positivo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa com apenas 2 letras - carro"
+        },
+        {
+          "test_id": "TC-008",
+          "nome": "2 Letras - Moto",
+          "entrada": "MN123",
+          "saida_esperada": 34,
+          "categoria": "Positivo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa com apenas 2 letras - moto"
+        },
+        {
+          "test_id": "TC-020",
+          "nome": "Entrada Vazia",
+          "entrada": "",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "CRITICA",
+          "descricao": "Placa vazia deve retornar invalida"
+        },
+        {
+          "test_id": "TC-021",
+          "nome": "Apenas Numeros",
+          "entrada": "123456",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "CRITICA",
+          "descricao": "Placa com apenas numeros eh invalida"
+        },
+        {
+          "test_id": "TC-022",
+          "nome": "Apenas Letras",
+          "entrada": "ABCDEF",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa com apenas letras eh invalida"
+        },
+        {
+          "test_id": "TC-023",
+          "nome": "Com Espacos",
+          "entrada": "ABC 1234",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa com espacos eh invalida"
+        },
+        {
+          "test_id": "TC-024",
+          "nome": "Com Caracteres Especiais",
+          "entrada": "ABC@1234",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa com caracteres especiais eh invalida"
+        },
+        {
+          "test_id": "TC-025",
+          "nome": "Muito Longa",
+          "entrada": "ABCDEFGHIJ1234",
+          "saida_esperada": 0,
+          "categoria": "Negativo",
+          "prioridade": "MEDIA",
+          "descricao": "Placa acima de 10 caracteres eh invalida"
+        }
+      ]
+    },
+    {
+      "id": "PF-GAA-B100-DB",
+      "nome": "Processador de Banco de Dados",
+      "descricao": "Processa arquivo de dados e gera saida",
+      "entrada": "arquivo de dados sequencial",
+      "saida": "registros processados",
+      "testes": [
+        {
+          "test_id": "TC-040",
+          "nome": "Arquivo Vazio",
+          "entrada": "arquivo_vazio.seq",
+          "saida_esperada": "0 registros",
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Deve processar arquivo vazio sem erro"
+        },
+        {
+          "test_id": "TC-041",
+          "nome": "Arquivo Pequeno",
+          "entrada": "arquivo_10_registros.seq",
+          "saida_esperada": "10 registros processados",
+          "categoria": "Positivo",
+          "prioridade": "CRITICA",
+          "descricao": "Deve processar 10 registros corretamente"
+        },
+        {
+          "test_id": "TC-042",
+          "nome": "Arquivo Grande",
+          "entrada": "arquivo_10000_registros.seq",
+          "saida_esperada": "10000 registros processados",
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Deve processar 10K registros"
+        },
+        {
+          "test_id": "TC-043",
+          "nome": "Arquivo Corrompido",
+          "entrada": "arquivo_corrompido.seq",
+          "saida_esperada": "erro gracioso",
+          "categoria": "Negativo",
+          "prioridade": "ALTA",
+          "descricao": "Deve tratar arquivo corrompido sem crash"
+        }
+      ]
+    },
+    {
+      "id": "PF-GEV-T005-DB",
+      "nome": "Tabela de Empadronizacao",
+      "descricao": "Consulta tabela de empadronizacao veicular",
+      "entrada": "id_veiculo",
+      "saida": "dados_veiculo",
+      "testes": [
+        {
+          "test_id": "TC-050",
+          "nome": "Tabela Carrega",
+          "entrada": "1",
+          "saida_esperada": "dados encontrados",
+          "categoria": "Positivo",
+          "prioridade": "CRITICA",
+          "descricao": "Tabela deve carregar sem erros"
+        },
+        {
+          "test_id": "TC-051",
+          "nome": "Consulta Valida",
+          "entrada": "100",
+          "saida_esperada": "registro encontrado",
+          "categoria": "Positivo",
+          "prioridade": "ALTA",
+          "descricao": "Deve encontrar registro valido"
+        },
+        {
+          "test_id": "TC-052",
+          "nome": "ID Inexistente",
+          "entrada": "999999",
+          "saida_esperada": "nao encontrado",
+          "categoria": "Negativo",
+          "prioridade": "MEDIA",
+          "descricao": "Deve tratar ID inexistente"
+        }
+      ]
+    }
+  ],
+  "métricas": {
+    "performance": {
+      "validacao_ms": 100,
+      "processamento_por_registro_ms": 1,
+      "compilacao_segundos": 30
+    },
+    "cobertura": {
+      "linhas_testadas": "80%",
+      "programas_testados": 3,
+      "casos_teste": 26
+    }
+  },
+  "criterios_aceitacao": {
+    "taxa_sucesso_minima": "95%",
+    "testes_criticos": "100%",
+    "tempo_medio_ms": 100,
+    "sem_erros_criticos": true
+  }
+}

@@ -1,0 +1,209 @@
+╔════════════════════════════════════════════════════════════════╗
+║        DESCRIÇÕES DOS PROGRAMAS NA INTERFACE DE SELEÇÃO        ║
+╚════════════════════════════════════════════════════════════════╝
+
+O QUE FOI ADICIONADO:
+═══════════════════════════════════════════════════════════════════
+
+✨ Descrição detalhada para cada programa
+  └─ Objetivo: O que o programa faz
+  └─ Entrada: Dados de entrada necessários
+  └─ Saída: Resultado do processamento
+
+📋 Lista expandida com informações completas
+  ├─ Nome do programa
+  ├─ Descrição curta
+  ├─ Objetivo detalhado
+  ├─ Entrada esperada
+  └─ Saída gerada
+
+🎨 Melhor visualização na interface
+  ├─ Cores verde para objetivo
+  ├─ Texto menor para detalhes
+  ├─ Separadores entre programas
+  └─ Botão ⚡ Testar mantido
+
+
+EXEMPLO DE VISUALIZAÇÃO:
+═══════════════════════════════════════════════════════════════════
+
+┌─ GAA (16 programas) ───────────────────────────────────────────┐
+│                                                                │
+│ ☐ PF-GAA-L004                               [⚡ Testar]       │
+│   Validador de Placas Veiculares                              │
+│   📋 Verifica se a placa está no formato permitido para SP    │
+│   Entrada: Placa (texto até 10 caracteres)                    │
+│   Saída: Código (00-34) e descrição do tipo                   │
+│                                                                │
+│ ☐ PF-GAA-L005                               [⚡ Testar]       │
+│   Consulta Dados de Veículo                                   │
+│   📋 Devolve ao chamador a placa formatada no padrão LLLNNNN  │
+│   Entrada: Placa e documento RENAVAM                          │
+│   Saída: Placa formatada e dados do veículo                   │
+│                                                                │
+│ ... (14 mais)                                                  │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
+
+
+ARQUIVOS CRIADOS:
+═══════════════════════════════════════════════════════════════════
+
+NOVO:
+  ✓ program_descriptions.py
+    ├─ 42 programas com descrições completas
+    ├─ Objetivo, entrada, saída
+    ├─ Funcão get_program_description()
+    └─ Função get_all_programs_with_descriptions()
+
+MODIFICADO:
+  ✓ web_app.py
+    ├─ Importação de program_descriptions
+    └─ Enriquecimento de /api/programas com descrições
+
+  ✓ templates/index.html
+    ├─ Exibição de objetivo em verde
+    ├─ Exibição de entrada/saída em cinza
+    ├─ Melhor espaçamento
+    └─ CSS para separadores
+
+
+ESTRUTURA DAS DESCRIÇÕES:
+═══════════════════════════════════════════════════════════════════
+
+Para cada programa (42 no total):
+
+{
+  "nome": "PF-GAA-L004",
+  "categoria": "GAA",
+  "descricao": "Validador de Placas Veiculares",
+  "objetivo": "Verifica se a placa está no formato permitido...",
+  "entrada": "Placa (texto até 10 caracteres)",
+  "saida": "Código (00-34) e descrição do tipo"
+}
+
+Informações incluem:
+  ✓ Nome: Código do programa
+  ✓ Categoria: GAA, GEV ou GAT
+  ✓ Descrição: Título descritivo
+  ✓ Objetivo: O que o programa realiza
+  ✓ Entrada: Dados necessários
+  ✓ Saída: Resultado esperado
+
+
+PROGRAMAS COM DESCRIÇÕES:
+═══════════════════════════════════════════════════════════════════
+
+GAA (16 programas):
+  1. PF-GAA-L004 - Validador de Placas Veiculares
+  2. PF-GAA-L005 - Consulta Dados de Veículo
+  3. PF-GAA-L007 - Validação de Documentação
+  4. PF-GAA-B100-DB - Banco de Dados - Veículos
+  5. PF-GAA-L012-DB - Emissão de Documentos
+  6. PF-GAA-L015 - Processamento de Transferência
+  7. PF-GAA-L032-DB - Verificação de Registro
+  8. PF-GAA-L050-DB - Verificar CIRETRAN e POUPA-TEMPO
+  9. PF-GAA-L115-DB - Consulta de Dados
+  10. PF-GAA-T013-DB - Verificação de Bloqueios e Débitos
+  11. PF-GAA-T018-DB - Cadastrar Dados de Veículo
+  12. PF-GAA-T255-DB - Solicitar Autorização de CRV
+  13. PF-GAA-T640-DB - Emissão de CRV - Interior
+  14. PF-GAA-T792-DB - Registro Especial
+  15. PF-GAA-T920-DB - Assinatura Digital
+
+GEV (26 programas):
+  1. PF-GEV-L006-DB - Gestão de Empadronização Veicular
+  2. PF-GEV-T005-DB - Tabela de Combustíveis
+  3. PF-GEV-T020-DB - Tabela de Cores
+  4. PF-GEV-T021-DB - Tabela de Categorias Veiculares
+  5. PF-GEV-T050-DB - Tabela de Marcas Veiculares
+  6. PF-GEV-T430-DB - Tabela de Circunscrições
+  7-26. [20 programas adicionais de empadronização]
+
+GAT (2 programas):
+  1. PF-GAT-L006-DB - Gestão de Autoridades de Trânsito
+  2. PF-GAT-T030-DB - Tabela de Penalidades
+
+
+FLUXO NA INTERFACE:
+═══════════════════════════════════════════════════════════════════
+
+1. Usuário clica em "🎯 Selecionar Programas"
+   └─ Seletor abre
+
+2. Lista carregada com:
+   ├─ ☐ Checkbox para cada programa
+   ├─ Nome do programa
+   ├─ Descrição curta
+   ├─ 📋 Objetivo (em verde)
+   ├─ Entrada esperada (em cinza)
+   ├─ Saída gerada (em cinza)
+   └─ ⚡ Botão Testar
+
+3. Usuário pode:
+   ├─ Selecionar programas
+   ├─ Ver detalhes antes de selecionar
+   ├─ Clicar em ⚡ Testar para executor individual
+   └─ Ou [✓ Todos] para marcar tudo
+
+
+EXEMPLO DE PROGRAMA COM DESCRIÇÃO:
+═══════════════════════════════════════════════════════════════════
+
+Programa: PF-GEV-L006-DB
+
+Nome: Gestão de Empadronização Veicular
+
+Descrição: Gerencia todo o processo de empadronização de veículos.
+Coordena licenciamento, placas e documentos.
+
+Objetivo: Processar empadronização completa
+
+Entrada:
+  - Placa (texto)
+  - Ano (número)
+  - Marca (texto)
+  - Modelo (texto)
+
+Saída:
+  - Documentação de empadronização
+  - Código de retorno
+  - Mensagem de status
+
+
+ENDPOINT API ENRIQUECIDO:
+═══════════════════════════════════════════════════════════════════
+
+GET /api/programas
+
+Resposta anterior:
+{
+  "GAA": [
+    {"nome": "...", "arquivo": "...", "descricao": "..."}
+  ]
+}
+
+Resposta AGORA:
+{
+  "GAA": [
+    {
+      "nome": "PF-GAA-L004",
+      "arquivo": "PF-GAA-L004.C74",
+      "descricao": "Validador de Placas Veiculares",
+      "objetivo": "Verifica se a placa está no formato permitido...",
+      "entrada": "Placa (texto até 10 caracteres)",
+      "saida": "Código (00-34) e descrição do tipo"
+    }
+  ]
+}
+
+
+STATUS: ✅ IMPLEMENTADO
+
+Data: 2026-07-02
+Versão: 2.4.0
+
+Agora o usuário vê uma descrição completa de cada programa antes de
+selecionar, facilitando a escolha do programa a testar!
+
+═══════════════════════════════════════════════════════════════════

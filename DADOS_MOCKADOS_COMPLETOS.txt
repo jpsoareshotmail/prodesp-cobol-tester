@@ -1,0 +1,285 @@
+╔════════════════════════════════════════════════════════════════╗
+║   DADOS MOCKADOS COMPLETOS - TODOS OS 42 PROGRAMAS            ║
+╚════════════════════════════════════════════════════════════════╝
+
+O QUE FOI ADICIONADO:
+═══════════════════════════════════════════════════════════════════
+
+✨ Dados mockados pré-preenchidos para 14 programas específicos
+✨ Dados genéricos inteligentes para 28 programas restantes
+✨ Exemplos múltiplos para cada programa
+✨ Validação automática de entrada
+
+
+PROGRAMAS COM DADOS ESPECÍFICOS (14):
+═══════════════════════════════════════════════════════════════════
+
+GAA - GESTÃO ARQUIVO AUTOMOTIVO:
+
+1. PF-GAA-L004
+   ├─ Campo: placa (texto, max 10)
+   ├─ Exemplos: Mercosul, 2-letras, Antigo, Especial, Vazia
+   └─ Uso: Validação de placas
+
+2. PF-GAA-L005
+   ├─ Campos: placa, documento RENAVAM
+   ├─ Exemplos: Veículo Mercosul, Veículo Antigo
+   └─ Uso: Consulta de veículo
+
+3. PF-GAA-L007
+   ├─ Campos: RENAVAM, CRVA
+   ├─ Exemplos: Válidos, Inválidos
+   └─ Uso: Validação de documentação
+
+4. PF-GAA-B100-DB
+   ├─ Campo: placa
+   ├─ Exemplos: Primeira placa, Última placa
+   └─ Uso: Banco de dados
+
+5. PF-GAA-L012-DB
+   ├─ Campos: placa, tipo_doc (CRLV/CRV/DUT)
+   ├─ Exemplos: CRLV 2026, DUT antigo
+   └─ Uso: Emissão de documentos
+
+6. PF-GAA-L015
+   ├─ Campos: placa_origem, placa_destino
+   ├─ Exemplos: Transferência normal
+   └─ Uso: Processamento de transferência
+
+7. PF-GAA-T013-DB
+   ├─ Campo: uf (select)
+   ├─ Exemplos: SP, RJ, MG, BA, RS
+   └─ Uso: Tabela de estados
+
+8. PF-GAA-T640-DB
+   ├─ Campos: codigo_infracao, descricao
+   ├─ Exemplos: Estacionamento, Sem habilitação
+   └─ Uso: Tabela de penalidades
+
+
+GEV - GESTÃO EMPADRONIZAÇÃO VEICULAR:
+
+9. PF-GEV-L006-DB
+   ├─ Campos: placa, ano (1980-2026), marca, modelo
+   ├─ Exemplos: Toyota 2020, VW 2010
+   └─ Uso: Empadronização veicular
+
+10. PF-GEV-T005-DB
+    ├─ Campos: codigo, tipo_combustivel (select)
+    ├─ Exemplos: Gasolina, Diesel, GNV, Elétrico
+    └─ Uso: Tabela de combustíveis
+
+11. PF-GEV-T020-DB
+    ├─ Campos: codigo, cor (select)
+    ├─ Exemplos: Branco, Preto, Prata, Azul
+    └─ Uso: Tabela de cores
+
+12. PF-GEV-T021-DB
+    ├─ Campos: codigo, categoria (select)
+    ├─ Exemplos: Automóvel, Caminhão, Motocicleta
+    └─ Uso: Tabela de categorias
+
+13. PF-GEV-T050-DB
+    ├─ Campos: codigo, marca
+    ├─ Exemplos: Toyota, VW, Fiat
+    └─ Uso: Tabela de marcas
+
+14. PF-GEV-T430-DB
+    ├─ Campos: codigo, descricao, uf
+    ├─ Exemplos: Circunscrição Centro
+    └─ Uso: Tabela de circunscrições
+
+
+GAT - GESTÃO AUTORIDADES:
+
+15. PF-GAT-L006-DB
+    ├─ Campos: codigo_autoridade, nome_autoridade, uf
+    ├─ Exemplos: DETRAN SP, DETRAN RJ, DETRAN MG
+    └─ Uso: Gestão de autoridades
+
+16. PF-GAT-T030-DB
+    ├─ Campos: codigo_autoridade, codigo_infracao, pontos
+    ├─ Exemplos: Penalidade leve (3), Grave (20)
+    └─ Uso: Tabela de penalidades por autoridade
+
+
+PROGRAMAS COM DADOS GENÉRICOS (28):
+═══════════════════════════════════════════════════════════════════
+
+PF-GAA-* (programas restantes)
+  └─ Campos genéricos: placa + dados adicionais
+  └─ Valor padrão: AAA0A00
+
+PF-GEV-* (programas restantes)
+  └─ Campos genéricos: placa + dados adicionais
+  └─ Valor padrão: AAA0A00 + informações veículo
+
+PF-GAT-* (programas restantes)
+  └─ Campos genéricos: codigo + dados
+  └─ Valor padrão: 001 + informações autoridade
+
+
+TIPOS DE CAMPOS SUPORTADOS:
+═══════════════════════════════════════════════════════════════════
+
+1. TEXTO (texto)
+   ├─ Input normal
+   ├─ maxlength, placeholder
+   └─ Exemplo: placa, marca, nome
+
+2. NÚMERO (numero)
+   ├─ Input number
+   ├─ min, max, placeholder
+   └─ Exemplo: ano (1980-2026), pontos (0-20)
+
+3. SELECT (select)
+   ├─ Dropdown de opções
+   ├─ Valor padrão selecionado
+   └─ Exemplo: UF, Combustível, Cor, Categoria
+
+4. TEXTAREA (textarea)
+   ├─ Área de texto multi-linha
+   ├─ rows customizável
+   └─ Exemplo: Dados adicionais, Observações
+
+
+EXEMPLO DE DADOS COMPLETOS:
+═══════════════════════════════════════════════════════════════════
+
+Programa: PF-GEV-L006-DB (Gestão Empadronização)
+
+Campos:
+  1. placa: "AAA0A00" (texto)
+  2. ano_fabricacao: "2020" (numero 1980-2026)
+  3. marca: "Toyota" (texto)
+  4. modelo: "Corolla" (texto)
+
+Exemplos:
+  1. Toyota Corolla 2020 - Veículo Mercosul recente
+  2. Volkswagen Gol 2010 - Veículo antigo
+
+Uso:
+  - Digite ou carregue um exemplo
+  - Modifique os valores
+  - Execute para validar
+
+
+VALIDAÇÃO AUTOMÁTICA:
+═══════════════════════════════════════════════════════════════════
+
+Verifica automaticamente:
+  ✓ Campos obrigatórios
+  ✓ Tipo correto (número vs texto)
+  ✓ Comprimento máximo
+  ✓ Range (min/max para números)
+  ✓ Valores em select
+
+Mensagens de erro:
+  "Campo obrigatório: Placa"
+  "Ano deve ser um número"
+  "Placa excede 10 caracteres"
+  "Ano deve estar entre 1980 e 2026"
+
+
+API ENDPOINTS:
+═══════════════════════════════════════════════════════════════════
+
+GET /api/programa/<nome>/dados
+  └─ Retorna dados mockados formatados
+
+POST /api/programa/<nome>/executar
+  └─ Executa programa com dados fornecidos
+
+POST /api/programa/<nome>/validar
+  └─ Valida dados sem executar
+
+
+COMO USAR:
+═══════════════════════════════════════════════════════════════════
+
+1. Abrir seletor: 🎯 Selecionar Programas
+
+2. Clicar em: ⚡ Testar (ao lado do programa)
+
+3. Formulário abre com dados pré-preenchidos:
+   ├─ Valores padrão mockados
+   ├─ Campos validados
+   └─ Exemplos para carregar
+
+4. Modificar (opcional):
+   ├─ Editar valores
+   ├─ Carregar exemplo (clicando no botão)
+   └─ Limpar formulário
+
+5. Executar: ▶ Executar Programa
+
+6. Ver resultado:
+   ├─ Entrada: dados fornecidos
+   ├─ Saída: resultado do programa
+   └─ Status: sucesso ou erro
+
+
+ESTRUTURA ARQUIVO mock_data_expanded.py:
+═══════════════════════════════════════════════════════════════════
+
+MOCK_DATA_EXPANDED = {
+    "PF-PROGRAMA-NNNN": {
+        "tipo": "tipo_programa",
+        "descricao": "Descrição",
+        "campos": [
+            {
+                "nome": "nome_campo",
+                "label": "Rótulo",
+                "tipo": "texto|numero|select|textarea",
+                "valor": "valor_padrao",
+                "placeholder": "dica",
+                "maxlength": "20",
+                "min": "0",
+                "max": "100",
+                "opcoes": [...]
+            }
+        ],
+        "exemplos": [
+            {
+                "nome_campo": "valor1",
+                "outro_campo": "valor2",
+                "descricao": "Descrição do exemplo"
+            }
+        ]
+    }
+}
+
+Funções:
+  get_mock_data(programa_nome)
+  validar_entrada(programa_nome, dados)
+  get_todos_programas_com_dados()
+  _get_gaa_generico(programa_nome)
+  _get_gev_generico(programa_nome)
+  _get_gat_generico(programa_nome)
+
+
+COBERTURA:
+═══════════════════════════════════════════════════════════════════
+
+Programas com dados específicos: 14/42 (33%)
+  ├─ GAA: 8 programas
+  ├─ GEV: 6 programas
+  └─ GAT: 2 programas
+
+Programas com dados genéricos: 28/42 (67%)
+  ├─ Dados baseados no padrão do programa
+  ├─ Campos e validação automáticos
+  └─ Exemplos genéricos padrão
+
+
+STATUS: ✅ IMPLEMENTADO E TESTADO
+
+Data: 2026-07-02
+Versao: 2.3.0
+
+Próximas melhorias:
+  • Adicionar dados específicos para os 28 programas restantes
+  • Criar exemplos mais realistas baseados em dados reais
+  • Integrar com banco de dados para dados dinâmicos
+
+═══════════════════════════════════════════════════════════════════

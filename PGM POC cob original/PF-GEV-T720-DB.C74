@@ -1,0 +1,960 @@
+000000* VERSION 16.1   ; SAVED 20260504 15:30:28                    |16.
+000200 ID          DIVISION.
+000300***********************
+000400*
+000500 PROGRAM-ID.     PC-GEV-T720-DB.
+000600
+000700 AUTHOR.         CELIO.
+000750*ANALISTA.       VAGNER.
+000800
+000900 DATE-WRITTEN.   NOVEMBRO/2020.
+001000
+001100 DATE-COMPILED.
+001200
+001300 SECURITY.
+001400*
+001500*
+001600******************************************************************
+001700*                O   B   J   E   T   I   V   O                   *
+001800******************************************************************
+001900*                                                                *
+002000*        ATUALIZAR ANDAMENTO DA FICHA NO ECRV                    *
+002100*                                                                *
+002200*                                                                *
+002300******************************************************************
+002400*                                                                *
+002500*   TRANSACOES :                                                 *
+002600*                                                                *
+002700*    V720  -->  AVALIACAO DE FICHA PELO ECRV                     *
+002800*                                                                *
+002900*   WINDOW :  WDGEV10                                            *
+003000*                                                                *
+003100*                                                                *
+003200******************************************************************
+003300
+003400/
+003500******************************************************************
+003600*        A L T E R A C O E S    E F E T U A D A S                *
+003700*================================================================*
+003800*                                                                *
+003900*   PATCH     DATA     DEMANDA   ANA/PROG PROGRAMADOR            *
+004000*   -----     ----     ----      -------- -----------            *
+004100*                                                                *
+004200*    ___    31/03/21   10.860   SSA/CFS   INCL. CPF USUAR-CONFER.*
+004300*    ___    26/07/21   10.390   SSA/SSA   INCL REANALISE E APR EL*
+004400*    ___    08/03/22   12439    SSA/SSA   BU E AT DIG E INCL 17  *
+004500*    ___    28/07/22   12736    VLG/VLG   INCL PROC SEMI AUTOMAT_*
+004600*    ___    19/06/22   164865   SSA/SSA   299 P/ TRANSACAO 1560  *
+004700*    ___    19/06/22   ______   SSA/SSA   FREE GEVERDS           *
+004800*    ___    30/08/23   178760   SSA/SSA   NOVOS 34,35 E 36       *
+004900*    ___    12/01/23   C 158    SSA/SSA   PERMITIR APROV APOS REP*
+005000*    ___    13/03/24   202669   VLG/VLG   NOVO STATUS 37         *
+005100*  c.325    23/05/24   208305   SSA/SSA   SE STATUS CRV=8 PARAR  *
+005102*  c.325    01/07/24   208305   SSA/SSA   ACERTO PARA STATUS=8   *
+005104*    ---    15/07/24   202669   VLG/SSA   ACERTO PARA STATUS=37  *
+005200*    ___    26/07/24   ______   VLG/VLG   INIBIR MOVE ZERO       *
+005202*           29/07/24   208305   SSA/SSA   TRATAR STATUS-REG=07   *
+005500*   -----   13/09/24   208687   RPL/RPL   TRATAR GEV-TRANSACAO = *
+006000*                                         1621-1622 EXCL.GRV.INAT*
+006200*   -----   10/01/25   208687   RPL/RPL PARA TRANSA¸ùES:         *
+006300*                                       GEV-TRANSACAO=> 1621/1622*
+006800*                                       NAO GRAVAR GEVEXCLUIDODS *
+006900*   -----   13/01/2026                  RETIRAR STATUS 37        *
+006910*   -----   27/03/2026 260762   JWD/JWD INCL. STATUS 19 = 22     *
+006920*   -----   09/04/2026 260762   RPL/JWD CONTINUA CORRECAO ST-ECRV*
+006930*                                       STATUS 19 = 22           *
+006940*   -----   --------   ------   -------------------------------- *
+006950*   -----   --------   ------   -------------------------------- *
+006960*   -----   --------   ------   -------------------------------- *
+006970*   -----   --------   ------   -------------------------------- *
+007000******************************************************************
+007100/
+007200 ENVIRONMENT DIVISION.
+007300**********************
+007400*
+007500*
+007600 CONFIGURATION   SECTION.
+007700*************************
+007800*
+007900 SPECIAL-NAMES.
+008000*
+008100
+008200
+008300     DECIMAL-POINT   IS  COMMA.
+008400*
+008500*
+008600 INPUT-OUTPUT    SECTION.
+008700*************************
+008800*
+008900 FILE-CONTROL.
+009000*
+009200
+009300/
+009400 DATA        DIVISION.
+009500**********************
+009600*
+009700*
+009800 FILE            SECTION.
+009900*************************
+010000*
+010100*
+010800
+010900 DATA-BASE       SECTION.
+011000*************************
+011100*
+011200*
+011300 DB          DB01    =       TDBGEVER.
+011500
+011600 01          GEVERDS.
+011700
+011710 01          GEVEXCLUIDODS.
+011800
+011900 01          GEVRDSDS.
+012400
+012500/
+012600 WORKING-STORAGE SECTION.
+012700*************************
+012800*
+013100
+013200******************************************************************
+013300*        AREAS  DE  CONTROLE  DE  PROGRAMA  ON  LINE             *
+013400******************************************************************
+013500*
+013600
+013700 77          LINKTOCOMS           PIC X(256).
+013800
+013900 77          USER-DESG            REAL.
+014000
+014100 77          USER-FLAG            PIC S9(011) BINARY.
+014200
+014300 01          USER-NAME            PIC X(010).
+014400
+014500 77          STATION-DESG         REAL.
+014600
+014700
+014800 01          STATION-NAME.
+014900     05      FILLER               PIC X(005).
+015000     05      LSN-TERMINAL         PIC 9(006).
+015200
+015300
+015400 01          AX-AGENDA-OUT        PIC X(017)  VA  "AGGEVT720".
+015500
+015600 77          AX-AGENDA-DESG       REAL.
+015700
+015800 77          AX-CALL-ERROR        PIC S9(011) BINARY.
+016000
+016100/
+016200**           AREA-IN       ======>   ENTRADA DOS PARAMETROS
+016300
+016400 01          AREA-IN.
+016500
+016600     05      IN-FIXA.
+016700       10    IN-CODE              PIC X(004).
+016800       10    IN-SEQ               PIC 9(008).
+016900       10    IN-ID-PS             PIC 9(004).
+017000       10    IN-TR-DATA           PIC 9(008).
+017100       10    IN-TR-HORA           PIC 9(006).
+017300     05      IN-VAR-X             PIC X(041).
+017500
+017600
+017700 01          AREA-IN-R1      REDEFINES   AREA-IN.
+017800     05      IN-R1-FIXA           PIC X(030).
+017900     05      IN-VAR.
+018000        10   IN-NRO-FICHA-X.
+018100          15 IN-NRO-FICHA         PIC 9(008).
+018200        10   IN-ANO-FICHA-X.
+018300          15 IN-ANO-FICHA         PIC 9(004).
+018400        10   IN-STA-FICHA-X.
+018500          15 IN-STA-FICHA         PIC 9(002).
+018600        10   IN-DT-ATUALIZ-X.
+018700          15 IN-DT-ATUALIZ        PIC 9(008).
+018800        10   IN-HR-ATUALIZ-X.
+018900          15 IN-HR-ATUALIZ        PIC 9(008).
+018910        10   IN-CPF-USUARIO-X.
+018920          15 IN-CPF-USUARIO       PIC 9(011).
+019000
+019200*        AREA-OUT    ====>   PARA ENVIAR RESPOSTAS E DADOS
+019300*
+019600 01          AREA-OUT             PIC X(045).
+019700
+019800 01          OUT-ERRO             REDEFINES   AREA-OUT.
+019900     05      OUT-ERRO-FIXA        PIC X(030).
+020000     05      OUT-ERRO-COD         PIC 9(003).
+020100     05      OUT-NRO-FICHA        PIC 9(008).
+020200     05      OUT-ANO-FICHA        PIC 9(004).
+020300
+020600*
+020700*------------>>    AREAS    PARA   CONTROLES
+020800*
+020900*
+021100 77          IA1                  PIC 9(003)  BINARY.
+021300
+022300/
+022400******************************************************************
+022500*            CHAVES                                              *
+022600******************************************************************
+022700*
+022900 01          CH-NOTFOUND          PIC X(001).
+024700
+024800/
+024900******************************************************************
+025000*                                                                *
+025100*    AREAS AUXILIARES:                                           *
+025200*                                                                *
+025300******************************************************************
+025400*
+025600 01          AX-DATE-4AMMDD       PIC 9(008).
+025700 01          AX-DATE-4AMD-R  REDEFINES   AX-DATE-4AMMDD.
+025800     05      AX-DATE-ANO          PIC 9(004).
+025900     05      AX-DATE-MES          PIC 9(002).
+026000     05      AX-DATE-DIA          PIC 9(002).
+026200
+026300 01          AX-DATA-DDMM4A       PIC 9(008).
+026400 01          AX-DDMM4A-R1    REDEFINES   AX-DATA-DDMM4A.
+026500     05      AX-DDMM4A-DIA        PIC 9(002).
+026600     05      AX-DDMM4A-MES        PIC 9(002).
+026700     05      AX-DDMM4A-ANO        PIC 9(004).
+026900
+027000 01          AX-DDMMAA            PIC 9(006).
+027100 01          AX-DDMMAA-R     REDEFINES   AX-DDMMAA.
+027200     05      AX-DDMMAA-DD         PIC 9(002).
+027300     05      AX-DDMMAA-MM         PIC 9(002).
+027400     05      AX-DDMMAA-AA         PIC 9(002).
+027700
+027800 01          AX-TIME              PIC 9(008).
+027900 01          AX-TIME-R       REDEFINES   AX-TIME.
+028000     05      AX-HHMMSS            PIC 9(006).
+028100     05      FILLER               PIC 9(002).
+029000
+029100***------>   OUTRAS AREAS AUXILIARES
+029200*
+029400
+029500* 01          AX-NRO-FICHA         PIC 9(008)  COMP.
+029800
+029900 01          AX-CPF-CGC           PIC 9(014).
+030000 01          AX-CPF-CGC-R1   REDEFINES   AX-CPF-CGC.
+030100     05      FILLER               PIC 9(003).
+030200     05      AX-CPF               PIC 9(011).
+030300     05      AX-CPF-R        REDEFINES   AX-CPF.
+030400       10    AX-CPF-NUM           PIC 9(009).
+030500       10    AX-CPF-DIG           PIC 9(002).
+030600 01          AX-CPF-CGC-R2   REDEFINES   AX-CPF-CGC.
+030700     05      AX-CNPJ              PIC 9(014).
+030800     05      AX-CNPJ-R       REDEFINES   AX-CNPJ.
+030900       10    AX-CNPJ-NUM          PIC 9(012).
+031000       10    AX-CNPJ-DIG          PIC 9(002).
+032000
+032300/
+032400******************************************************************
+032500*    AREAS  UTILIZADAS  POR  LIBRARY  CALCDATA3 (PC/LIB/DATAS)   *
+032600******************************************************************
+032700*
+032800 01          WS-OPCONS.
+032900     05      WS-OPCAO             PIC 9(002).
+033000     05      WS-CONS              PIC X(001).
+033100
+033200 01          WS-DATA-VALIDA       PIC 9(008).
+033800
+033900/
+034000******************************************************************
+034100*            TABELA  DE  MENSAGENS  DE  ERRO                     *
+034200******************************************************************
+034300*
+034400 01          TABELA-DE-MENSAGENS.
+034600
+034700*(001)
+034800     05      FILLER               PIC X(075)  VALUE
+034900             "077-NUMERO DA FICHA CADASTRAL INVALIDO
+035000-            "                       ".
+035200*(002)
+035300     05      TBA-MSG-01           PIC X(075)  VALUE
+035400             "078-ANO DA FICHA CADASTRAL INVALIDO
+035500-            "                       ".
+035700*(003)
+035800     05      TBA-MSG-02           PIC X(075)  VALUE
+035900             "496-SITUACAO DO ANDAMENTO DA FICHA NO ECRV INVALIDA
+036000-            "                       ".
+036200*(004)
+036300     05      FILLER               PIC X(075)  VALUE
+036400             "497-DATA DE ATUALIZACAO DA SITUACAO DO ANDAMENTO DA
+036500-            " FICHA NO ECRV INVALIDA".
+036700*(005)
+036800     05      FILLER               PIC X(075)  VALUE
+036900             "498-HORA DE ATUALIZACAO DA SITUACAO DO ANDAMENTO DA
+037000-            "FICHA NO ECRV INVµLIDA ".
+037200*(006)
+037300     05      FILLER               PIC X(075)  VALUE
+037400             "073-FICHA CADASTRAL NAO ENCONTRADA NO CADASTRO. VERI
+037500-            "FIQUE                  ".
+037800
+037900 01          TAB-MENSAGENS   REDEFINES   TABELA-DE-MENSAGENS.
+038000     05      TBA-MENS             PIC X(075)  OCCURS  06.
+038100
+038200
+038202*-----------------------------------------------------------------
+038204**
+038206**    STATUS FICHA ECRV (GER-STATUS-ECRV) V720:
+038208*  01 = APROVADO
+038210*  02 = REPROVADO
+038212*  03 = EM ANALISE
+038214*  04 = REENVIADO
+038216*  05 = PROCESSO FINALIZADO
+038218*  06 = CANCELADO DETRAN
+038220*  07 = EXCLUIDO CRV
+038222*  08 = APROVADO COM RESSALVAS
+038224*  09 = APROVADO ELETRONICAMENTE
+038226*  10 = REANALISE
+038228*  17 = CONSISTIDO VIA SISTEMA/IPVA PAGO
+038230*  19 = RETAGUARDA_SEMI_AUTOMATICO
+038238*  22 = PROC.SEMI-AUTOM/APROVADO
+038248*  23 = PROC.SEMI-AUTOM/INCONSISTENCIA
+038249*  33 = PROC.SEMI-AUTOM/INCONSIS (gevt811)
+038250*  34 = Hiperautoma§¥o Aprovado
+038252*  35 = Hiperautoma§¥o/Sucesso
+038254*  36 = Hiperautoma§¥o/Inconsistªncia
+038256
+038260*-----------------------------------------------------------------
+038270**
+038280**    SITUACAO DA FICHA (IN-STA-FICHA) V720:
+038290
+038300*  01 - APROVADO
+038310*  02 - REPROVADO
+038320*  03 - EM ANALISE
+038330*  04 - REENVIADO
+038340*  05 - PROC FINALZ
+038350*  06 - CANC DETRAN
+038360*  07 - EXCL CRV
+038380*  08 - APR RESSALV
+038385
+038390*-----------------------------------------------------------------
+038500
+038600
+038800 COMMUNICATION SECTION.
+038900 INPUT HEADER COMS-IN;
+039000     PROGRAMDESG           IS COMS-IN-PROGRAM;
+039100     FUNCTIONSTATUS        IS COMS-IN-FUNCTION-STATUS;
+039200     FUNCTIONINDEX         IS COMS-IN-FUNCTION-INDEX;
+039300     USERCODE              IS COMS-IN-USERCODE;
+039400     SECURITYDESG          IS COMS-IN-SECURITY-DESG;
+039500     TRANSPARENT           IS COMS-IN-TRANSPARENT;
+039600     VTFLAG                IS COMS-IN-VT-FLAG;
+039700     TIMESTAMP             IS COMS-IN-TIMESTAMP;
+039800     STATION               IS COMS-IN-STATION;
+039900     TEXTLENGTH            IS COMS-IN-TEXT-LENGTH;
+040000     STATUSVALUE           IS COMS-IN-STATUS;
+040100     MESSAGECOUNT          IS COMS-IN-MSG-COUNT;
+040200     RESTART               IS COMS-IN-RST-LOC;
+040300     AGENDA                IS COMS-IN-AGENDA;
+040400     SDFINFO               IS COMS-IN-INFO.
+040600
+040700
+040800 OUTPUT HEADER COMS-OUT;
+040900     DESTCOUNT             IS COMS-OUT-COUNT;
+041000     TEXTLENGTH            IS COMS-OUT-TEXT-LENGTH;
+041100     STATUSVALUE           IS COMS-OUT-STATUS;
+041200     TRANSPARENT           IS COMS-OUT-TRANPARENT;
+041300     VTFLAG                IS COMS-OUT-VT-FLAG;
+041400     CONFIRMFLAG           IS COMS-OUT-CONFIRM-FLAG;
+041500     CONFIRMKEY            IS COMS-OUT-CONFIRMKEY;
+041600     DESTINATIONDESG       IS COMS-OUT-DESTINATION;
+041700     NEXTINPUTAGENDA       IS COMS-OUT-NEXT-INPUT-AG;
+041800     CASUALOUTPUT          IS COMS-OUT-CASUAL-OUTPUT;
+041900     SETNEXTINPUTAGENDA    IS COMS-OUT-SET-NEXT-AG;
+042000     RETAINTRANSACTIONMODE IS COMS-OUT-RETAIN-TRANMODE;
+042100     AGENDA                IS COMS-OUT-AGENDA;
+042200     SDFINFO               IS COMS-OUT-INFO.
+042500
+042600
+042700/
+042800 PROCEDURE   DIVISION.
+042900**********************
+043000
+043100******************************************************************
+043200*        ROTINA    MONITORA    DO    PROGRAMA                    *
+043300******************************************************************
+043400*
+043500 000-MONITORA    SECTION.
+043600
+043700 000-E-MONITORA.
+044000
+044100     PERFORM 010-E-INICIO            THRU    010-S-INICIO.
+044300
+044400     PERFORM 020-E-PROCESSA          THRU    020-S-PROCESSA
+044500             UNTIL   COMS-IN-STATUS  =       99.
+044700
+044800     PERFORM 900-E-FINAL             THRU    900-S-FINAL.
+045000
+045100
+045200 000-S-MONITORA.
+045300     STOP    RUN.
+045400
+045500/
+045600******************************************************************
+045700*                   INICIALIZACAO                                *
+045800******************************************************************
+045900*
+046000 010-E-INICIO.
+046200
+046300
+046400     MOVE    ATTRIBUTE NAME OF ATTRIBUTE EXCEPTIONTASK
+046500                            OF ATTRIBUTE EXCEPTIONTASK OF MYSELF
+046600                            TO LINKTOCOMS.
+046800
+046900     CHANGE  ATTRIBUTE TITLE OF "DCILIBRARY" TO LINKTOCOMS.
+047100
+047200     ENABLE  INPUT   COMS-IN         KEY     "ONLINE"
+047300
+047400     CALL    "GET_DESIGNATOR_USING_NAME  IN  DCILIBRARY"
+047500                                     USING   AX-AGENDA-OUT,
+047600                                     VALUE   AGENDA,
+047700                                             AX-AGENDA-DESG
+047800                                     GIVING  AX-CALL-ERROR.
+048100
+048200
+048300     OPEN    UPDATE      DB01
+048400       ON    EXCEPTION
+048500             DISPLAY "PC/GEV/T720/DB : OPEN ERROR DBGEVER"
+048600             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+048700             CALL    SYSTEM          DMTERMINATE.
+049100
+049200
+049300 010-S-INICIO.
+049400     EXIT.
+049500
+049600/
+049700******************************************************************
+049800*                P R O C E S S A M E N T O                       *
+049900******************************************************************
+050000*
+050100 020-E-PROCESSA.
+050400
+050500     MOVE    SPACES                  TO      AREA-IN
+050600                                             AREA-OUT.
+050700
+050800     RECEIVE COMS-IN MESSAGE         INTO    AREA-IN.
+050900
+051000     IF      COMS-IN-STATUS          =       0 OR 92 OR 93
+051100             NEXT    SENTENCE
+051200     ELSE
+051300     IF      COMS-IN-STATUS          =       99
+051400             GO                      TO      020-S-PROCESSA
+051500     ELSE
+051600             PERFORM 700-E-ERROCOMS  THRU    700-S-ERROCOMS
+051700             GO                      TO      020-S-PROCESSA.
+051900
+052000     MOVE    COMS-IN-USERCODE        TO      USER-DESG.
+052100
+052200     CALL    "GET_NAME_USING_DESIGNATOR  OF  DCILIBRARY"
+052300                                     USING   USER-DESG
+052400                                             USER-NAME
+052500                                     GIVING  USER-FLAG.
+052900
+053000     ACCEPT  AX-DATE-4AMMDD          FROM    DATE  YYYYMMDD.
+053300
+053400     ACCEPT  AX-TIME                 FROM    TIME.
+053420
+053440******************************************************************
+053460*     DISPLAY "-------------------------------------".
+053500*     DISPLAY "720-ENTRA IN-NRO-FICHA-X   = " IN-NRO-FICHA-X.
+053520*     DISPLAY "720-ENTRA IN-ANO-FICHA-X   = " IN-ANO-FICHA-X.
+053540*     DISPLAY "720-ENTRA IN-STA-FICHA-X   = " IN-STA-FICHA-X.
+053560*     DISPLAY "720-ENTRA IN-DT-ATUALIZ-X  = " IN-DT-ATUALIZ-X.
+053580*     DISPLAY "720-ENTRA IN-HR-ATUALIZ-X  = " IN-HR-ATUALIZ-X.
+053600*     DISPLAY "720-ENTRA IN-CPF-USUARIO-X = " IN-CPF-USUARIO-X.
+053700******************************************************************
+053800
+053900     IF      IN-CODE                 =       "V720"
+054000             PERFORM 030-E-TRNS      THRU    030-S-TRNS
+054100     ELSE
+054200             MOVE    239             TO      IA1
+054400             PERFORM 600-E-MSGOUT    THRU    600-S-MSGOUT.
+054600
+054700     FREE    GEVERDS.
+054703     FREE    GEVEXCLUIDODS.
+054800
+054900 020-S-PROCESSA.
+055000     EXIT.
+055100
+055200/
+055300******************************************************************
+055400*      TRATA  TRANSACAO  DE  COMUNICACAO  DE  VENDA  -  ICOV     *
+055500******************************************************************
+055600*
+055700 030-E-TRNS.
+056000
+056100     MOVE    ZEROS                   TO      IA1.
+056300
+056400     PERFORM 040-E-VERIF-IN          THRU    040-S-VERIF-IN.
+056420
+056440
+056460*     DISPLAY " 720- VOLTA DO 040-E-VERIF-IN!!!-------".
+056480
+056500
+056600
+056700     PERFORM 600-E-MSGOUT            THRU    600-S-MSGOUT.
+056800
+056900*     DISPLAY " 720- VOLTA DO 600-E-MSGOUT!!!-------".
+057000
+057100
+057200 030-S-TRNS.
+057300     EXIT.
+057400
+057500/
+057600******************************************************************
+057700*        CONSISTE  DADOS  RECEBIDOS                              *
+057800******************************************************************
+057900*
+058000 040-E-VERIF-IN.
+058100
+058200     IF      IN-NRO-FICHA-X          NOT     NUMERIC  OR
+058300             IN-NRO-FICHA            =       ZEROS
+058400             MOVE    077             TO      IA1
+058500             GO                      TO      040-S-VERIF-IN.
+058700
+058800     IF      IN-ANO-FICHA-X          NOT     NUMERIC  OR
+058900             IN-ANO-FICHA            =       ZEROS
+059000             MOVE    078             TO      IA1
+059100             GO                      TO      040-S-VERIF-IN.
+059180
+059200
+059300     IF      IN-STA-FICHA-X          NOT     NUMERIC  OR
+059400            (IN-STA-FICHA            <       1  OR
+059500                                     >       10)
+059510         IF  IN-STA-FICHA            =       17  OR 19 OR 22 OR
+059520                                             23  OR 34 OR 35 OR 36
+059530             NEXT    SENTENCE
+059550         ELSE
+059600             MOVE    496             TO      IA1
+059620
+059640*             DISPLAY " 720-040E MOV 496 P/ IA1 -----"
+059660
+059700             GO                      TO      040-S-VERIF-IN.
+059900
+060000     IF      IN-DT-ATUALIZ-X         NOT     NUMERIC  OR
+060100             IN-DT-ATUALIZ           =       ZEROS
+060200             MOVE    497             TO      IA1
+060220
+060240*             DISPLAY " 720-040E1 MOV 497 P/ IA1 -----"
+060260
+060300             GO                      TO      040-S-VERIF-IN.
+060400
+060500     MOVE    IN-DT-ATUALIZ           TO      AX-DATE-4AMMDD.
+060600     MOVE    AX-DATE-ANO             TO      AX-DDMM4A-ANO.
+060700     MOVE    AX-DATE-MES             TO      AX-DDMM4A-MES.
+060800     MOVE    AX-DATE-DIA             TO      AX-DDMM4A-DIA.
+060900
+061000     MOVE    AX-DATA-DDMM4A          TO      WS-DATA-VALIDA.
+061100     MOVE    1                       TO      WS-OPCAO.
+061200
+061300     CALL    "CALCDATA3              OF      PC/LIB/DATAS"
+061400                                     USING   WS-OPCONS
+061500                                             WS-DATA-VALIDA.
+061600
+061700     IF      WS-CONS                 NOT =   "C"
+061800             MOVE    497             TO      IA1
+061820
+061840*             DISPLAY " 720-040E MOV 497 P/ IA1 -----"
+061860*             DISPLAY " 720-040E WS-CONS    = "  WS-CONS
+061880
+061900             GO                      TO      040-S-VERIF-IN.
+062100
+062200     IF      IN-HR-ATUALIZ-X         NOT     NUMERIC  OR
+062300             IN-HR-ATUALIZ           =       ZEROS
+062400             MOVE    498             TO      IA1
+062420
+062440*             DISPLAY " 720-040E MOV 498 P/ IA1 -----"
+062460
+062500             GO                      TO      040-S-VERIF-IN.
+062600
+062700     IF      IN-CPF-USUARIO-X        =       SPACES
+062705             NEXT    SENTENCE
+062710     ELSE
+062715     IF      IN-CPF-USUARIO-X        NOT     NUMERIC
+062720             MOVE    027             TO      IA1
+062722
+062724*             DISPLAY " 720-040E1 MOV 027 P/ IA1 -----"
+062726
+062728             GO                      TO      040-S-VERIF-IN.
+062736
+062738
+062740     IF      IN-STA-FICHA            =       1  OR  8
+062742        IF   IN-CPF-USUARIO          >       ZEROS
+062745             NEXT    SENTENCE
+062750        ELSE
+062755             MOVE    027             TO      IA1
+062756
+062758*             DISPLAY " 720-040E MOV 027 P/ IA1 -----"
+062760
+062762             GO                      TO      040-S-VERIF-IN.
+062765
+062766*     DISPLAY " 720-040E VAI PRO 100-E -----".
+062770
+062800     PERFORM 100-E-LOCK-GEV          THRU    100-S-LOCK-GEV.
+063520
+063540*     DISPLAY "===== SAINDO DO 100-E-LOCK-GEVER =========".
+063600
+063700 040-S-VERIF-IN.
+063800     EXIT.
+064100
+064200/
+064300******************************************************************
+064400*        PESQUISA  O  ULTIMO  NRO. DE  FICHA  CADASTRAL          *
+064500******************************************************************
+064600*
+064700 100-E-LOCK-GEV.
+064705
+064710**************  GRAVA GEVERDS ************************************
+064716*     DISPLAY "---------------------------------------".
+064718*     DISPLAY "720-CHEGOU IN-NRO-FICHA-X   = " IN-NRO-FICHA-X.
+064720*     DISPLAY "720-CHEGOU IN-ANO-FICHA-X   = " IN-ANO-FICHA-X.
+064722*     DISPLAY "720-CHEGOU IN-STA-FICHA-X   = " IN-STA-FICHA-X.
+064724*     DISPLAY "720-CHEGOU IN-DT-ATUALIZ-X  = " IN-DT-ATUALIZ-X.
+064726*     DISPLAY "720-CHEGOU IN-HR-ATUALIZ-X  = " IN-HR-ATUALIZ-X.
+064728*     DISPLAY "720-CHEGOU IN-CPF-USUARIO-X = " IN-CPF-USUARIO-X.
+064730*     DISPLAY "---------------------------------------".
+064750
+064755
+064808
+064900     MOVE    "N"                     TO      CH-NOTFOUND.
+065100
+065200     LOCK    FIRST   GERFICHASE      AT
+065300             GER-NRO-FICHA           =       IN-NRO-FICHA  AND
+065400             GER-ANO                 =       IN-ANO-FICHA
+065500       ON    EXCEPTION
+065600        IF   DMSTATUS (DEADLOCK)     OR
+065700             DMSTATUS (ABORT)
+065800             WAIT    03
+065900             GO                      TO      100-E-LOCK-GEV
+066000        ELSE
+066100        IF   DMSTATUS (NOTFOUND)
+066200             MOVE    073             TO      IA1
+066300             MOVE    "S"             TO      CH-NOTFOUND
+066320
+066340*             DISPLAY " 720- MOV 073 P/ IA1 -----"
+066360
+066380
+066400             GO                      TO      100-S-LOCK-GEV
+066500        ELSE
+066600             DISPLAY "PC/GEV/T720/DB: FIND ERROR GERFICHACADDS"
+066700             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+066800             CALL    SYSTEM          DMTERMINATE.
+066810
+066820******************************************************************
+066825*     DISPLAY "720-    AQUI APOS LER GVERDS  ----!!!".
+066830*     DISPLAY "720-LEU GER-STATUS-REG    = "  GER-STATUS-REG.
+066840*     DISPLAY "720-LEU GER-STATUS-ECRV   = "  GER-STATUS-ECRV.
+066850*     DISPLAY "720-LEU GER-DT-STAT-ECRV  = "  GER-DT-STAT-ECRV.
+066860*     DISPLAY "720-LEU GER-HR-STAT-ECRV  = "  GER-HR-STAT-ECRV.
+066870*     DISPLAY "720-LEU GER-CPF-USUSTAT   = "  GER-CPF-USUSTAT.
+066880*     DISPLAY "720-LEU GER-TRANSACAO     = "  GER-TRANSACAO.
+066902*     DISPLAY "720-LEU GER-STATUS-REG    = "  GER-STATUS-REG.
+066904*     DISPLAY "720-LEU GER-STATUS-ECRV   = "  GER-STATUS-ECRV.
+066906*     DISPLAY "720-LEU IN-STA-FICHA      = "  IN-STA-FICHA.
+066908******************************************************************
+066910
+066912
+066914     IF      GER-TRANSACAO           =       "1560"
+066916             MOVE    299             TO      IA1
+066918
+066920*             DISPLAY " 720- MOV 299 P/ IA1 -----"
+066922
+066924             GO                      TO      100-S-LOCK-GEV
+066926     ELSE
+066928     IF      GER-STATUS-REG          =       7
+066930       IF    GER-STATUS-ECRV         =       10  AND
+066932            (IN-STA-FICHA            =       01  OR 02 OR 09
+066934                                     OR      17  OR 19 OR 22 OR 23
+066936                                     OR      34  OR 35 OR 36)
+066938             NEXT    SENTENCE
+066940       ELSE
+066942       IF    IN-STA-FICHA            =       01  OR  02  OR 04
+066944                                             OR 19 OR 22 OR 08
+066946                                             OR  10
+066948             NEXT    SENTENCE
+066950       ELSE
+066952             MOVE    299             TO      IA1
+066960
+066970*             DISPLAY " 720-1 MOV 299 P/ IA1 -----"
+066980
+066990             GO                      TO      100-S-LOCK-GEV
+067000     ELSE
+067002
+067014
+067016     IF      GER-STATUS-REG          >       4
+067018        IF   GER-STATUS-ECRV         =       01  AND
+067020             IN-STA-FICHA            =       08
+067022             NEXT  SENTENCE
+067024        ELSE
+067026        IF   GER-STATUS-ECRV         =       02  AND
+067028             IN-STA-FICHA            =       01
+067030             NEXT    SENTENCE
+067032        ELSE
+067034        IF   GER-STATUS-ECRV         =       09  OR  17  OR  19
+067036                                     OR      22  OR  23
+067038                                     OR      34  OR  35  OR  36
+067040                                     OR      08  OR  04
+067042             NEXT  SENTENCE
+067044        ELSE
+067046        IF   IN-STA-FICHA            =       04  OR  22 OR  19
+067048*RPL
+067050*             DISPLAY " 720- IF ATUAL.  COM OR 19   22 -----"
+067052             NEXT    SENTENCE
+067054
+067056        ELSE
+067058             MOVE    299             TO      IA1
+067060
+067062*             DISPLAY " 720-2 MOV 299 P/ IA1 -----"
+067064
+067066             GO                      TO      100-S-LOCK-GEV
+067068     ELSE
+067070             NEXT    SENTENCE.
+067072
+067074
+067076
+067078
+067080     IF      GER-STATUS-ECRV         =       08  OR  02
+067082***--------> APROVADO OU REPROVADO APOS APROV.RESSALV E REPROVADO
+067084       IF    IN-STA-FICHA            =       01  OR  02  OR  08
+067086*RPL
+067088                                                 OR  19  OR  22
+067090*             DISPLAY " 720- IF ATUALIZADO COM OR 19  22 -----"
+067092             NEXT  SENTENCE
+067094
+067096       ELSE
+067098       IF    IN-STA-FICHA            =       04
+067100***--------> STATUS 04 REENVIO DE DOCUMENTOS
+067102             FREE    GEVERDS
+067104
+067106             GO                      TO      100-S-LOCK-GEV
+067108       ELSE
+067110             MOVE    299             TO      IA1
+067112
+067114*             DISPLAY " 720-3 MOV 299 P/ IA1 -----"
+067120
+067130             GO                      TO      100-S-LOCK-GEV.
+067140
+067150     BEGIN-TRANSACTION               NO-AUDIT   GEVRDSDS
+067200        ON   EXCEPTION
+067300             DISPLAY "PC/GEV/T720/DB:BEGIN-TRANSACTION ERROR(GER)"
+067400             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+067500             CALL    SYSTEM          DMTERMINATE.
+067580
+067596
+067598     IF      GER-STATUS-ECRV         >       ZEROS
+067600             NEXT    SENTENCE
+067602     ELSE
+067604             GO                      TO      100-10-LOCK-GEV.
+067606
+067608******************************************************************
+067610* EXCLUSIVO PARA TRANSACOES 1621 E 1622 PULAR                    *
+067612*                GRAVACAO DO GEVEXCLUIDODS                       *
+067614******************************************************************
+067616     IF     (GER-TRANSACAO           =       1621 OR 1622)
+067618
+067620             GO                      TO      100-10-LOCK-GEV.
+067622******************************************************************
+067624
+067626
+067628     CREATE  GEVEXCLUIDODS
+067630        ON   EXCEPTION
+067632             DISPLAY "PC/GEV/T720/DB : CREATE ERROR GEVEXCLUIDODS"
+067634             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+067636             CALL    SYSTEM          DMTERMINATE.
+067640
+067650     MOVE    GEVERDS                 TO      GEVEXCLUIDODS.
+067660     MOVE    "V720"                  TO      GEX-TRANS-EXCL.
+067670     ACCEPT  GEX-DT-EXCLUSAO         FROM    DATE YYYYMMDD.
+067680     ACCEPT  GEX-HR-EXCLUSAO         FROM    TIME.
+067690
+067700     STORE   GEVEXCLUIDODS
+067710        ON   EXCEPTION
+067720             DISPLAY "PC/GEV/T720/DB : STORE ERROR GEVEXCLUIDODS"
+067730             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+067740             CALL    SYSTEM          DMTERMINATE.
+067760
+067762 100-10-LOCK-GEV.
+067764
+067776
+067778     IF      IN-STA-FICHA            =       01 OR 09 OR 17 OR 19
+067780                                             OR 22 OR 23 OR 34 OR
+067782                                             35 OR 36
+067784         IF  GER-STATUS-REG          =       07
+067786             NEXT    SENTENCE
+067788         ELSE
+067790*RPL
+067792         IF  GER-STATUS-REG          <       05
+067794             MOVE    05              TO      GER-STATUS-REG
+067796
+067798             DISPLAY " 720-1 MOV 05 P/ GER-STATUS-REG ----"
+067800
+067802             ACCEPT  GER-DT-REC-DOCTS FROM   DATE YYYYMMDD
+067804
+067806         ELSE
+067808             NEXT    SENTENCE
+067810     ELSE
+067812     IF     (IN-STA-FICHA            =       08  AND
+067814             GER-STATUS-REG          <       06)
+067816***             GER-STATUS-REG          <       05)
+067818             MOVE    04              TO      GER-STATUS-REG
+067820
+067822             DISPLAY " 720-1 MOV 04 P/ GER-STATUS-REG ----"
+067824
+067826***             MOVE    05              TO      GER-STATUS-REG
+067828***             ACCEPT  GER-DT-REC-DOCTS FROM   DATE YYYYMMDD
+067830     ELSE
+067836             NEXT    SENTENCE.
+067838
+067840
+067850     MOVE    IN-STA-FICHA            TO      GER-STATUS-ECRV.
+067900     MOVE    IN-DT-ATUALIZ           TO      GER-DT-STAT-ECRV.
+068000     MOVE    IN-HR-ATUALIZ           TO      GER-HR-STAT-ECRV.
+068010
+068020     IF      IN-CPF-USUARIO-X        =       SPACES
+068022             MOVE    ZEROS           TO      GER-CPF-USUSTAT
+068030     ELSE
+068040             MOVE    IN-CPF-USUARIO  TO      GER-CPF-USUSTAT.
+068100
+068200     STORE   GEVERDS
+068300        ON   EXCEPTION
+068400             DISPLAY "PC/GEV/T720/DB : STORE ERROR GEVERDS"
+068500             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+068600             CALL    SYSTEM          DMTERMINATE.
+068660
+068800
+068900     END-TRANSACTION                 NO-AUDIT   GEVRDSDS
+068950        ON   EXCEPTION
+069000             DISPLAY "PC/GEV/T720/DB : END-TRANSACTION ERROR(GER)"
+069100             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+069200             CALL    SYSTEM          DMTERMINATE.
+069250
+069300
+069320**************  GRAVA GEVERDS ************************************
+069340*     DISPLAY "---------------------------------------".
+069350*     DISPLAY "720-FICOU GER-STATUS-REG   = "  GER-STATUS-REG.
+069360*     DISPLAY "720-FICOU GER-STATUS-ECRV  = "  GER-STATUS-ECRV.
+069380*     DISPLAY "720-FICOU GER-DT-STAT-ECRV = "  GER-DT-STAT-ECRV.
+069400*     DISPLAY "720-FICOU GER-HR-STAT-ECRV = "  GER-HR-STAT-ECRV.
+069420*     DISPLAY "720-FICOU GER-CPF-USUSTAT  = "  GER-CPF-USUSTAT.
+069440
+069460******************************************************************
+069480
+069580
+069700
+069800 100-S-LOCK-GEV.
+069900     EXIT.
+070000
+070100
+070200******************************************************************
+070300*        ENVIA  MENSAGEM                                         *
+070400******************************************************************
+070500*
+070600 600-E-MSGOUT.
+070900
+071000     MOVE    IN-R1-FIXA              TO      OUT-ERRO-FIXA.
+071100     MOVE    IA1                     TO      OUT-ERRO-COD.
+071200     MOVE    IN-NRO-FICHA            TO      OUT-NRO-FICHA.
+071300     MOVE    IN-ANO-FICHA            TO      OUT-ANO-FICHA.
+071400
+071500     MOVE    45                      TO      COMS-OUT-TEXT-LENGTH.
+071600
+071700     MOVE    0                       TO      COMS-OUT-STATUS.
+071800     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+071900     MOVE    1                       TO      COMS-OUT-COUNT.
+072000     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+072300
+072400     SEND    COMS-OUT                FROM    AREA-OUT.
+072800
+072900 600-S-MSGOUT.
+073000     EXIT.
+073100
+073200/
+073300******************************************************************
+073400*        ROTINA  DE  ERRO  DE  LEITURA                           *
+073500******************************************************************
+073600*
+073700 700-E-ERROCOMS.
+074000
+074100     DISPLAY "PC/GEV/T720/DB : PROBLEMAS NO COMS-IN".
+074200     DISPLAY "FUNCTIONINDEX = "  COMS-IN-FUNCTION-INDEX.
+074300
+074400
+074500     IF      COMS-IN-STATUS          =       20  OR  100  OR
+074600                                             101 OR  102
+074700             DISPLAY "PROBLEMAS COM A ESTACAO"
+074800     ELSE
+074900     IF      COMS-IN-STATUS          =       94  OR  95  OR  97
+075000             DISPLAY "DESTINO INVALIDO"
+075100     ELSE
+075200             DISPLAY "STATUSVALUE = "  COMS-IN-STATUS.
+075400
+075500
+075600     MOVE    1                       TO      COMS-OUT-COUNT.
+075700     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+075800     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+075900     MOVE    0                       TO      COMS-OUT-STATUS.
+076000     MOVE    045                     TO      COMS-OUT-TEXT-LENGTH.
+076100
+076200     MOVE    IN-R1-FIXA              TO      OUT-ERRO-FIXA.
+076220     MOVE    966                     TO      OUT-ERRO-COD.
+076240     MOVE    IN-NRO-FICHA            TO      OUT-NRO-FICHA.
+076260     MOVE    IN-ANO-FICHA            TO      OUT-ANO-FICHA.
+076400
+076500
+076600     SEND    COMS-OUT                FROM    AREA-OUT.
+076700
+076800     IF      COMS-OUT-STATUS         NOT =   0  AND  92
+076900             DISPLAY "ERRO NO ENVIO DA MENSAGEM".
+077100
+077200     MOVE    99                      TO      COMS-IN-STATUS.
+077600
+077700 700-S-ERROCOMS.
+077800     EXIT.
+077900
+078000/
+078100******************************************************************
+078200*            VERIFICA    ERRO    D.M.S.  II                      *
+078300******************************************************************
+078400*
+078500 800-E-ERRODB.
+078800
+078900     DISPLAY "PROGRAMA:      PC/GEV/T720/DB".
+079000     DISPLAY "***    ERRO    DE    DMS II    ***".
+079100
+079200     IF      DMSTATUS(NOTFOUND)      DISPLAY "NOTFOUND"      ELSE
+079300     IF      DMSTATUS(OPENERROR)     DISPLAY "OPENERROR"     ELSE
+079400     IF      DMSTATUS(ABORT)         DISPLAY "ABORT"         ELSE
+079500     IF      DMSTATUS(CLOSEERROR)    DISPLAY "CLOSEERROR"    ELSE
+079600     IF      DMSTATUS(SECURITYERROR) DISPLAY "SECURITYERROR" ELSE
+079700     IF      DMSTATUS(SYSTEMERROR)   DISPLAY "SYSTEMERROR"   ELSE
+079800     IF      DMSTATUS(IOERROR)       DISPLAY "IOERROR"       ELSE
+079900     IF      DMSTATUS(DATAERROR)     DISPLAY "DATAERROR"     ELSE
+080000     IF      DMSTATUS(DEADLOCK)      DISPLAY "DEADLOCK"      ELSE
+080100     IF      DMSTATUS(AUDITERROR)    DISPLAY "AUDITERROR"    ELSE
+080200     IF      DMSTATUS(DUPLICATES)    DISPLAY "DUPLICATES"    ELSE
+080300     DISPLAY "ERRO  NAO  IDENTIFICADO  NAS  CONDICOES  D.M.S. ".
+080500
+080600     MOVE    968                     TO      IA1.
+080800     PERFORM 600-E-MSGOUT            THRU    600-S-MSGOUT.
+081300
+081400 800-S-ERRODB.
+081500     EXIT.
+081600
+081700/
+081800******************************************************************
+081900*                R O T I N A     F I N A L                       *
+082000******************************************************************
+082100*
+082200 900-E-FINAL.
+082300
+082400     FREE    GEVERDS.
+082500
+082600     CLOSE   DB01
+082700        ON   EXCEPTION
+082800             DISPLAY "PC/GEV/T720/DB : CLOSE ERROR DBGEVER"
+082900             PERFORM 800-E-ERRODB    THRU    800-S-ERRODB
+083000             CALL    SYSTEM          DMTERMINATE.
+083300
+083400 900-S-FINAL.
+083500     EXIT.
+083600
+083700/

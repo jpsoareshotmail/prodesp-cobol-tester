@@ -1,0 +1,739 @@
+000000* VERSION   1.1  ; SAVED 20181126 09:36:26                    |000
+000100$$SET SHARING=SHAREDBYALL
+000200$$SET TEMPORARY
+000300 ID  DIVISION.
+000400*PROGRAM.        PC/GAA/L032/DB.
+000500 AUTHOR.         ALFREDO MIYAMOTO.
+000600*
+000700*ANALISTA.       SILVIA SALIA.
+000800*
+000900 DATE-WRITTEN.   28/09/2018.
+001000 INSTALLATION.   DPS.
+001100 DATE-COMPILED.
+001200*
+001300*================================================================*
+001400*    PC/GAA/L032/DB  - PLACA MERCOSUL                            *
+001500*                                                                *
+001600*    VERIFICA SE HA OCORRENCIA DE ROUBO/FURTO  NO DBFURTO        *
+001700*                                                                *
+001800*    PC/GAA/L032/DB  COPIA IDENTICA PC/GAA/L031/DB               *
+001900*                                                                *
+002000*================================================================*
+002100*                                                                *
+002200*                 ALTERACOES EFETUADAS                           *
+002300*                                                                *
+002400*    DATA    O.S.  PATCH  ANALISTA            PROGRAMADOR        *
+002500*                                                                *
+002600*  11/07/96  0321   001   SILVIA...........   SANDRA...........  *
+002700*                                                                *
+002800*================================================================*
+002900*            GERADO NEW FONTE EM 03/02/1999 PELO PCP             *
+003000*================================================================*
+003100*  04/05/99  0999   001   IRACI               ZENSO              *
+003200*  03/08/15  XXXX   002   CHIN............    CHIN............   *
+003300*  02/07/18  XXXX   003   SSA..............   ALF..............  *
+003400*  XX/XX/XX  XXXX   XXX   .................   .................  *
+003500*  XX/XX/XX  XXXX   XXX   .................   .................  *
+003600*  XX/XX/XX  XXXX   XXX   .................   .................  *
+003700*  XX/XX/XX  XXXX   XXX   .................   .................  *
+003800*  XX/XX/XX  XXXX   XXX   .................   .................  *
+003900*  XX/XX/XX  XXXX   XXX   .................   .................  *
+004000*  XX/XX/XX  XXXX   XXX   .................   .................  *
+004100*  XX/XX/XX  XXXX   XXX   .................   .................  *
+004200*  XX/XX/XX  XXXX   XXX   .................   .................  *
+004300*================================================================*
+004400*   Em 03/08/15 foi feita uma copia do GAA/L030 aumentando       *
+004500*     o campo do Parametro de retorno - AX-GAA-RET para 2 pos.   *
+004600*   Foram incluidos 4 novos retornos                             *
+004700*      - 6 - Extors¥o                                            *
+004800*      - 7 - Concuss¥o                                           *
+004900*      - 8 - Peculato                                            *
+005000*      - 9 - Outros Crimes                                       *
+005100*  Qdo todos pgms chamadores forem alterados para chamar         *
+005200*  GAA/L031 o pgm GAA/L030 sera desativado                       *
+005300*  GAA/L032 O PGM GAA/L031 SERA DESATIVADO                       *
+005400*                                                                *
+005500******************************************************************
+005600/
+005700 ENVIRONMENT     DIVISION.
+005800*
+005900 CONFIGURATION   SECTION.
+006000*
+006100 SPECIAL-NAMES.
+006200     DECIMAL-POINT   IS  COMMA.
+006300*
+006400 INPUT-OUTPUT    SECTION.
+006500
+006600 FILE-CONTROL.
+006700
+006800 DATA        DIVISION.
+006900
+007000 FILE        SECTION.
+007100
+007200 DATA-BASE   SECTION.
+007300
+007400 DB          DB01         =        TDBFURTO.
+007500
+007600 01          QUEIXADS.
+007700
+007800 01          RECUPERADODS.
+007900
+008000 01          ALERTADS.
+008100
+008200 DB          DB02         =        TTABELAS.
+008300
+008400 01          TABMUNBRDS.
+008500
+008600/
+008700 WORKING-STORAGE SECTION.
+008800******************************************************************
+008900*
+009000 01          AX-AAMMDD               PIC 9(006)  COMP.
+009100 01          AX-AAMMDD-R             REDEFINES   AX-AAMMDD.
+009200     05      AX-AMD-AA               PIC 9(002)  COMP.
+009300     05      AX-AMD-MM               PIC 9(002)  COMP.
+009400     05      AX-AMD-DD               PIC 9(002)  COMP.
+009500
+009600
+009700 77          CH-BCO                  PIC X(001)  VALUE "N".
+009800
+009900 77          CH-NOTFOUND             PIC X(001).
+010000
+010100 77          CH-GAA-UF               PIC X(002).
+010200
+010300 77          CH-GAA-MUNIC            PIC 9(005)  COMP.
+010400
+010500 77          CT-PESQ                 PIC 9(001).
+010600
+010700/
+010800******************************************************************
+010900*    PARAMETRO PARA VERIFICACAO DE BLOQUEIO NO DBFURTO           *
+011000******************************************************************
+011100
+011200 01          AX-LIB-GAAL032.
+011300
+011400     05      AX-GAA-PLACA.
+011500       10    AX-GAA-LETRA            PIC X(003).
+011600       10    AX-GAA-NUMERO           PIC 9(004)  COMP.
+011700
+011800     05      AX-GAA-MUNIC            PIC 9(005).
+011900
+012000     05      AX-GAA-CHASSIS          PIC X(022).
+012100
+012200     05      FILLER                  PIC 9(001).
+012300     05      AX-GAA-BLOQ             PIC 9(001).
+012400       88    AX-PAR                  VALUE  0 2 4 6 8.
+012500
+012600     05      AX-GAA-PLAMERC          PIC X(010).
+012700
+012800*
+012900*====> AX-PAR - DEVIDO A REFORMULACAO DO SISTEMA DE BLOQUEIO
+013000*
+013100*====> AX-GAA-RET     =  0  -> NENHUM REGISTRO FOI ENCONTRADO
+013200*                        1  -> ROUBO
+013300*                        2  -> FURTO
+013400*                        3  -> APROPRIACAO INDEBITA
+013500*                        4  -> ESTELIONATO
+013600*                        5  -> VEICULO E PESSOA DESAPARECIDA
+013700*                        6  -> EXTORSAO
+013800*                        7  -> CONCUSSAO
+013900*                        8  -> PECULATO
+014000*                        9  -> OUTROS CRIMES
+014100*                        88 -> VEICULO COM ALERTA DE FURTO/ROUBO
+014200
+014300*====> AX-GAA-RET-BLQ =  0  -> NADA CONSTA
+014400*                        1  -> SUBJUDICE
+014500*
+014600*====> AX-GAA-RET-DS  = "Q" -> QUEIXADS
+014700*                       "R" -> RECUPERADODS
+014800*                       "A" -> ALERTADS
+014900
+015000*====> AX-GAA-RET-NRO = RETORNA O NUMERO DO BO
+015100
+015200*====> AX-GAA-RET-UF  = RETORNA A UF DO BO
+015300
+015400*====> AX-GAA-RET-DEL = RETORNA A DELEGACIA DO BO
+015500
+015600*====> AX-GAA-RET-DT  = RETORNA A DATA
+015700
+015800*====> AX-GAA-RET-HR  = RETORNA A HORA
+015900
+016000
+016100 01          AX-GAA-RETL032.
+016200
+016300     05      AX-RET-PESQ.
+016400       10    AX-GAA-RET              PIC 9(002).
+016500       10    AX-GAA-RET-BLQ          PIC 9(001).
+016600       10    AX-GAA-RET-DS           PIC X(001).
+016700     05      AX-RET-SIT              PIC X(001).
+016800     05      AX-GAA-QUEIXA           PIC X(250).
+016900*
+017000*====> AX-RET-PESQ :
+017100*
+017200*      000   -> NADA CONSTA
+017300*      001   -> SUBJUDICE
+017400*      010Q  -> ROUBADO
+017500*      011Q  -> ROUBADO E SUBJUDICE
+017600*      010R  -> ROUBADO / RECUPERADO
+017700*      011R  -> ROUBADO / RECUPERADO E SUBJUDICE
+017800*      020Q  -> FURTADO
+017900*      021Q  -> FURTADO E SUBJUDICE
+018000*      020R  -> FURTADO / RECUPERADO
+018100*      021R  -> FURTADO / RECUPERADO E SUBJUDICE
+018200*      030Q  -> APROPRIACAO INDEBITA
+018300*      031Q  -> APROPRIACAO INDEBITA E SUBJUDICE
+018400*      030R  -> APROPRIACAO INDEBITA / RECUPERADO
+018500*      031R  -> APROPRIACAO INDEBITA / RECUPERADO E SUBJUDICE
+018600*      040Q  -> ESTELIONATO
+018700*      041Q  -> ESTELIONATO E SUBJUDICE
+018800*      040R  -> ESTELIONATO / RECUPERADO
+018900*      041R  -> ESTELIONATO / RECUPERADO E SUBJUDICE
+019000*      050Q  -> VEIC. E PESSOA DESAPARECIDA
+019100*      051Q  -> VEIC. E PESSOA DESAPARECIDA E SUBJUDICE
+019200*      050R  -> VEIC. E PESSOA DESAPARECIDA / RECUPERADO
+019300*      051R  -> VEIC. E PESSOA DESAPARECIDA / RECUPERADO SUBJUDICE
+019400*      060Q  -> EXTORSAO
+019500*      060R  -> EXTORSAO / RECUPERADO
+019600*      070Q  -> CONCUSSAO
+019700*      070R  -> CONCUSSAO / RECUPERADO
+019800*      080Q  -> PECULATO
+019900*      080R  -> PECULATO / RECUPERADO
+020000*      090Q  -> OUTROS CRIMES
+020100*      090R  -> OUTROS CRIMES  / RECUPERADO
+020200*      880A  -> VEIC. COM ALERTA DE FURTO/ROUBO
+020300*      9999  -> MUNICIPIO INVALIDO
+020400/
+020500******************************************************************
+020600*      TABELA DE CAPITAIS                                        *
+020700******************************************************************
+020800
+020900 01          TABELA-DE-CAPITAIS.
+021000
+021100     05      FILLER          PIC X(016)  VA  "AC00139 AL02785 ".
+021200     05      FILLER          PIC X(016)  VA  "AP00605 AM00255 ".
+021300     05      FILLER          PIC X(016)  VA  "BA03849 DF09701 ".
+021400     05      FILLER          PIC X(016)  VA  "CE01389 ES05705 ".
+021500     05      FILLER          PIC X(016)  VA  "GO09373 MA00921 ".
+021600     05      FILLER          PIC X(016)  VA  "MT09067 MS09051 ".
+021700     05      FILLER          PIC X(016)  VA  "MG04123 PA00427 ".
+021800     05      FILLER          PIC X(016)  VA  "PB02051 PR07535 ".
+021900     05      FILLER          PIC X(008)  VA  "PE02531 ".
+022000     05      FILLER          PIC X(016)  VA  "PI01219 RJ05865 ".
+022100     05      FILLER          PIC X(016)  VA  "RN01761 RS08801 ".
+022200     05      FILLER          PIC X(016)  VA  "RO00003 RR00301 ".
+022300     05      FILLER          PIC X(016)  VA  "SC08105 SE03105 ".
+022400     05      FILLER          PIC X(008)  VA  "TO09733 ".
+022500
+022600 01          TAB-CAP-R       REDEFINES       TABELA-DE-CAPITAIS.
+022700     05      TAB-CAPITAL     OC  26      INDEXED BY  IC1.
+022800       10    TAB-UF          PIC X(002).
+022900       10    TAB-CAP         PIC 9(005).
+023000       10    FILLER          PIC X(001).
+023100
+023200
+023300/
+023400 PROCEDURE   DIVISION                USING   AX-LIB-GAAL032
+023500                                             AX-GAA-RETL032.
+023600
+023700******************************************************************
+023800*    ROTINA PRINCIPAL DO PROGRAMA.                               *
+023900******************************************************************
+024000 000-E-PROGRAMA   SECTION.
+024100 000-E-PRINCIPAL.
+024200
+024300     IF      CH-BCO                  =       "S"
+024400             GO                      TO      000-05.
+024500
+024600     OPEN    INQUIRY DB01
+024700       ON    EXCEPTION
+024800             DISPLAY "PC/GAA/L032/DB - ERRO ABERTURA TDBFURTO "
+024900             CALL    SYSTEM DMTERMINATE.
+025000
+025100     OPEN    INQUIRY DB02
+025200       ON    EXCEPTION
+025300             DISPLAY "PC/GAA/L032/DB - ERRO ABERTURA TTABELAS "
+025400             CALL    SYSTEM DMTERMINATE.
+025500
+025600
+025700
+025800     MOVE    "S"                     TO      CH-BCO.
+025900
+026000
+026100 000-05.
+026200
+026300     MOVE    SPACES                  TO      AX-GAA-RETL032
+026400                                             AX-RET-SIT
+026500                                             AX-GAA-RET-DS.
+026600     MOVE    ZEROS                   TO      AX-GAA-RET
+026700                                             AX-GAA-RET-BLQ
+026800                                             CT-PESQ.
+026900     IF      AX-GAA-MUNIC            NOT =   ZEROS   AND
+027000             AX-GAA-MUNIC            NOT =   99999
+027100             MOVE    AX-GAA-MUNIC    TO      CH-GAA-MUNIC
+027200             PERFORM 030-E-FIND-TABMUN
+027300                                     THRU    030-S-FIND-TABMUN
+027400       IF    AX-RET-PESQ             =       "9999"
+027500             GO                      TO      000-S-EXIT.
+027600
+027700     IF      AX-GAA-CHASSIS          NOT =   SPACES
+027800             MOVE    "N"             TO      CH-NOTFOUND
+027900             PERFORM 020-E-FIND-CHAS THRU    020-S-FIND-CHAS
+028000       IF    CH-NOTFOUND             =       "N"
+028100             GO                      TO       000-20
+028200       ELSE
+028300             NEXT    SENTENCE
+028400     ELSE
+028500             NEXT    SENTENCE.
+028600
+028700
+028800 000-10.
+028900
+029000     IF      AX-GAA-MUNIC            =       ZEROS   OR
+029100             AX-GAA-MUNIC            =       99999
+029200             GO                      TO      000-20.
+029300
+029400     MOVE    "N"                     TO      CH-NOTFOUND.
+029500
+029600     PERFORM 010-E-FIND-PLAS         THRU    010-S-FIND-PLAS.
+029700
+029800
+029900     IF      CH-NOTFOUND             =       "S"         AND
+030000             CT-PESQ                 =       0           AND
+030100             CH-GAA-UF               NOT =   "SP"
+030200             PERFORM 040-E-PESQ-TAB  THRU    040-S-PESQ-TAB
+030300             ADD     1               TO      CT-PESQ
+030400             GO                      TO      000-10.
+030500
+030600     IF      AX-GAA-LETRA            >       " ZZ"
+030700             PERFORM 050-E-FIND-PLAS THRU    050-S-FIND-PLAS.
+030800
+030900 000-20.
+031000
+031100*
+031200     MOVE    0                       TO      AX-GAA-RET-BLQ.
+031300*
+031400*
+031500
+031600
+031700 000-S-EXIT.
+031800     EXIT PROGRAM.
+031900
+032000/
+032100******************************************************************
+032200*    PESQUISA POR PLACA NO QUEIXADS E NO RECUPERADODS            *
+032300******************************************************************
+032400
+032500  010-E-FIND-PLAS.
+032600
+032700
+032800     FIND   KEY OF   QXAPLASS        AT
+032900            QXA-PLACA                =       AX-GAA-PLACA    AND
+033000            QXA-UF-JURISD            =       CH-GAA-UF       AND
+033100            QXA-MUNICIPIO            =       CH-GAA-MUNIC
+033200       ON   EXCEPTION
+033300       IF   DMSTATUS (NOTFOUND)
+033400            GO                       TO      010-05-PLAC-MERC
+033500       ELSE
+033600            CALL     SYSTEM          DMTERMINATE.
+033700
+033800     FIND   QXAPLASS                 AT
+033900            QXA-PLACA                =       AX-GAA-PLACA    AND
+034000            QXA-UF-JURISD            =       CH-GAA-UF       AND
+034100            QXA-MUNICIPIO            =       CH-GAA-MUNIC
+034200       ON   EXCEPTION
+034300       IF   DMSTATUS (NOTFOUND)
+034400            GO                       TO      010-05-PLAC-MERC
+034500       ELSE
+034600            CALL     SYSTEM          DMTERMINATE.
+034700
+034800     MOVE   QXA-TIPO-DECL            TO      AX-GAA-RET.
+034900     MOVE   "Q"                      TO      AX-GAA-RET-DS.
+035000     MOVE   QUEIXADS                 TO      AX-GAA-QUEIXA.
+035100
+035200     GO                              TO      010-10-PLAC.
+035300
+035400
+035500 010-05-PLAC-MERC.
+035600
+035700
+035800     FIND   KEY OF   QXAPLASSX       AT
+035900            QXA-PLACAX               =       AX-GAA-PLAMERC  AND
+036000            QXA-UF-JURISD            =       CH-GAA-UF       AND
+036100            QXA-MUNICIPIO            =       CH-GAA-MUNIC
+036200       ON   EXCEPTION
+036300       IF   DMSTATUS (NOTFOUND)
+036400            GO                       TO      010-10-PLAC
+036500       ELSE
+036600            CALL     SYSTEM          DMTERMINATE.
+036700
+036800     FIND   QXAPLASSX                AT
+036900            QXA-PLACAX               =       AX-GAA-PLAMERC  AND
+037000            QXA-UF-JURISD            =       CH-GAA-UF       AND
+037100            QXA-MUNICIPIO            =       CH-GAA-MUNIC
+037200       ON   EXCEPTION
+037300       IF   DMSTATUS (NOTFOUND)
+037400            GO                       TO      010-10-PLAC
+037500       ELSE
+037600            CALL     SYSTEM          DMTERMINATE.
+037700
+037800     MOVE   QXA-TIPO-DECL            TO      AX-GAA-RET.
+037900     MOVE   "Q"                      TO      AX-GAA-RET-DS.
+038000     MOVE   QUEIXADS                 TO      AX-GAA-QUEIXA.
+038100
+038200
+038300 010-10-PLAC.
+038400
+038500     FIND   KEY OF   RECPLASS        AT
+038600            REC-PLACA                =       AX-GAA-PLACA    AND
+038700            REC-UF-JURISD            =       CH-GAA-UF       AND
+038800            REC-MUNICIPIO            =       CH-GAA-MUNIC
+038900       ON   EXCEPTION
+039000       IF   DMSTATUS (NOTFOUND)
+039100*
+039200            GO                       TO      010-15-PLAC-MERC
+039300       ELSE
+039400            CALL     SYSTEM          DMTERMINATE.
+039500
+039600     FIND   RECPLASS                 AT
+039700            REC-PLACA                =       AX-GAA-PLACA    AND
+039800            REC-UF-JURISD            =       CH-GAA-UF       AND
+039900            REC-MUNICIPIO            =       CH-GAA-MUNIC
+040000       ON   EXCEPTION
+040100       IF   DMSTATUS (NOTFOUND)
+040200*
+040300             GO                      TO      010-15-PLAC-MERC
+040400       ELSE
+040500            CALL     SYSTEM          DMTERMINATE.
+040600
+040700     MOVE    REC-TIPO-DECL           TO      AX-GAA-RET.
+040800     MOVE    "R"                     TO      AX-GAA-RET-DS.
+040900     MOVE    RECUPERADODS            TO      AX-GAA-QUEIXA.
+041000
+041100     GO                              TO      010-20-PLAC.
+041200
+041300
+041400 010-15-PLAC-MERC.
+041500
+041600
+041700     FIND   KEY OF   RECPLASSX       AT
+041800            REC-PLACAX               =       AX-GAA-PLAMERC  AND
+041900            REC-UF-JURISD            =       CH-GAA-UF       AND
+042000            REC-MUNICIPIO            =       CH-GAA-MUNIC
+042100       ON   EXCEPTION
+042200       IF   DMSTATUS (NOTFOUND)
+042300*
+042400            GO                       TO      010-20-PLAC
+042500       ELSE
+042600            CALL     SYSTEM          DMTERMINATE.
+042700
+042800     FIND   RECPLASSX                AT
+042900            REC-PLACAX               =       AX-GAA-PLAMERC  AND
+043000            REC-UF-JURISD            =       CH-GAA-UF       AND
+043100            REC-MUNICIPIO            =       CH-GAA-MUNIC
+043200       ON   EXCEPTION
+043300       IF   DMSTATUS (NOTFOUND)
+043400*
+043500             GO                       TO     010-20-PLAC
+043600       ELSE
+043700            CALL     SYSTEM          DMTERMINATE.
+043800
+043900     MOVE    REC-TIPO-DECL           TO      AX-GAA-RET.
+044000     MOVE    "R"                     TO      AX-GAA-RET-DS.
+044100     MOVE    RECUPERADODS            TO      AX-GAA-QUEIXA.
+044200
+044300
+044400
+044500 010-20-PLAC.
+044600
+044700     FIND    KEY OF ALEPLASS         AT
+044800             ALE-PLACA               =       AX-GAA-PLACA  AND
+044900             ALE-UF-JURISD           =       CH-GAA-UF     AND
+045000             ALE-MUNICIPIO           =       CH-GAA-MUNIC
+045100       ON    EXCEPTION
+045200       IF    DMSTATUS (NOTFOUND)
+045300
+045400             GO                      TO      010-30-PLAC-MERC
+045500       ELSE
+045600             CALL    SYSTEM          DMTERMINATE.
+045700
+045800     FIND    ALEPLASS                AT
+045900             ALE-PLACA               =       AX-GAA-PLACA  AND
+046000             ALE-UF-JURISD           =       CH-GAA-UF     AND
+046100             ALE-MUNICIPIO           =       CH-GAA-MUNIC
+046200       ON    EXCEPTION
+046300       IF    DMSTATUS (NOTFOUND)
+046400
+046500             GO                      TO      010-30-PLAC-MERC
+046600       ELSE
+046700             CALL    SYSTEM          DMTERMINATE.
+046800
+046900     MOVE    88                      TO      AX-GAA-RET.
+047000     MOVE    "A"                     TO      AX-GAA-RET-DS.
+047100     MOVE    ALERTADS                TO      AX-GAA-QUEIXA.
+047200
+047300     GO                              TO      010-S-FIND-PLAS.
+047400
+047500
+047600 010-30-PLAC-MERC.
+047700
+047800
+047900     FIND    KEY OF ALEPLASSX        AT
+048000             ALE-PLACAX              =       AX-GAA-PLAMERC  AND
+048100             ALE-UF-JURISD           =       CH-GAA-UF       AND
+048200             ALE-MUNICIPIO           =       CH-GAA-MUNIC
+048300       ON    EXCEPTION
+048400       IF    DMSTATUS (NOTFOUND)
+048500             MOVE    "S"             TO      CH-NOTFOUND
+048600             GO                      TO      010-S-FIND-PLAS
+048700       ELSE
+048800             CALL    SYSTEM          DMTERMINATE.
+048900
+049000     FIND    ALEPLASSX               AT
+049100             ALE-PLACAX              =       AX-GAA-PLAMERC  AND
+049200             ALE-UF-JURISD           =       CH-GAA-UF       AND
+049300             ALE-MUNICIPIO           =       CH-GAA-MUNIC
+049400       ON    EXCEPTION
+049500       IF    DMSTATUS (NOTFOUND)
+049600             MOVE    "S"             TO      CH-NOTFOUND
+049700             GO                      TO      010-S-FIND-PLAS
+049800       ELSE
+049900             CALL    SYSTEM          DMTERMINATE.
+050000
+050100     MOVE    88                      TO      AX-GAA-RET.
+050200     MOVE    "A"                     TO      AX-GAA-RET-DS.
+050300     MOVE    ALERTADS                TO      AX-GAA-QUEIXA.
+050400
+050500
+050600
+050700 010-S-FIND-PLAS.
+050800     EXIT.
+050900/
+051000******************************************************************
+051100*    PESQUISA POR CHASSI NO QUEIXADS E NO RECUPERADODS           *
+051200******************************************************************
+051300
+051400 020-E-FIND-CHAS.
+051500
+051600     FIND   KEY OF   QXACHASS        AT
+051700            QXA-CHASSIS              =       AX-GAA-CHASSIS
+051800       ON   EXCEPTION
+051900       IF   DMSTATUS (NOTFOUND)
+052000            GO                       TO      020-10-CHAS
+052100       ELSE
+052200            CALL     SYSTEM          DMTERMINATE.
+052300
+052400     FIND   QXACHASS                 AT
+052500            QXA-CHASSIS              =       AX-GAA-CHASSIS
+052600       ON   EXCEPTION
+052700       IF   DMSTATUS (NOTFOUND)
+052800            GO                       TO      020-10-CHAS
+052900       ELSE
+053000            CALL     SYSTEM          DMTERMINATE.
+053100
+053200     MOVE   QXA-TIPO-DECL            TO      AX-GAA-RET.
+053300     MOVE   "Q"                      TO      AX-GAA-RET-DS.
+053400     MOVE   QUEIXADS                 TO      AX-GAA-QUEIXA.
+053500
+053600 020-10-CHAS.
+053700
+053800     FIND   KEY OF   RECCHASS        AT
+053900            REC-CHASSIS              =       AX-GAA-CHASSIS
+054000       ON   EXCEPTION
+054100       IF   DMSTATUS (NOTFOUND)
+054200*
+054300            GO                       TO      020-20-CHAS
+054400       ELSE
+054500            CALL     SYSTEM          DMTERMINATE.
+054600
+054700     FIND   RECCHASS                 AT
+054800            REC-CHASSIS              =       AX-GAA-CHASSIS
+054900       ON   EXCEPTION
+055000       IF   DMSTATUS (NOTFOUND)
+055100*
+055200            GO                       TO      020-20-CHAS
+055300       ELSE
+055400            CALL     SYSTEM          DMTERMINATE.
+055500
+055600     MOVE    REC-TIPO-DECL           TO      AX-GAA-RET.
+055700     MOVE    "R"                     TO      AX-GAA-RET-DS.
+055800     MOVE    RECUPERADODS            TO      AX-GAA-QUEIXA.
+055900
+056000 020-20-CHAS.
+056100
+056200     FIND    KEY OF  ALECHASS        AT
+056300             ALE-CHASSIS             =       AX-GAA-CHASSIS
+056400       ON    EXCEPTION
+056500       IF    DMSTATUS (NOTFOUND)
+056600             MOVE    "S"             TO      CH-NOTFOUND
+056700             GO                      TO      020-S-FIND-CHAS
+056800       ELSE
+056900             CALL    SYSTEM          DMTERMINATE.
+057000
+057100     FIND    ALECHASS                AT
+057200             ALE-CHASSIS             =       AX-GAA-CHASSIS
+057300       ON    EXCEPTION
+057400       IF    DMSTATUS (NOTFOUND)
+057500             MOVE    "S"             TO      CH-NOTFOUND
+057600             GO                      TO      020-S-FIND-CHAS
+057700       ELSE
+057800             CALL    SYSTEM          DMTERMINATE.
+057900
+058000     MOVE    88                      TO      AX-GAA-RET.
+058100     MOVE    "A"                     TO      AX-GAA-RET-DS.
+058200     MOVE    ALERTADS                TO      AX-GAA-QUEIXA.
+058300
+058400 020-S-FIND-CHAS.
+058500     EXIT.
+058600/
+058700******************************************************************
+058800*    PESQUISA UF NO TABMUNBRDS                                   *
+058900******************************************************************
+059000
+059100 030-E-FIND-TABMUN.
+059200
+059300
+059400     FIND   TABMUNBRSE3              AT
+059500            BR-COD-MUN               =       CH-GAA-MUNIC
+059600       ON   EXCEPTION
+059700       IF   DMSTATUS (NOTFOUND)
+059800            MOVE     "9999"          TO      AX-RET-PESQ
+059900            GO                       TO      030-S-FIND-TABMUN
+060000       ELSE
+060100            DISPLAY  "PC/GAA/L032/DB : FIND ERROR TTABELAS"
+060200            CALL     SYSTEM          DMTERMINATE.
+060300
+060400     MOVE   BR-SIG-EST               TO      CH-GAA-UF.
+060500
+060600 030-S-FIND-TABMUN.
+060700     EXIT.
+060800/
+060900******************************************************************
+061000*    PESQUISA CAPITAL                                            *
+061100******************************************************************
+061200
+061300 040-E-PESQ-TAB.
+061400
+061500     SET     IC1                     TO      1.
+061600
+061700     SEARCH  TAB-CAPITAL
+061800       AT    END
+061900            DISPLAY "PC/GAA/L032/DB - UF INVALIDA"
+062000             DIVIDE  0               INTO    AX-GAA-RET
+062100       WHEN  TAB-UF (IC1)            =       CH-GAA-UF
+062200             MOVE    TAB-CAP (IC1)   TO      CH-GAA-MUNIC.
+062300
+062400 040-S-PESQ-TAB.
+062500     EXIT.
+062600/
+062700******************************************************************
+062800*    PESQUISA POR PLACA DE 3 LETRAS NO QUEIXADS E  RECUPERADODS  *
+062900******************************************************************
+063000
+063100 050-E-FIND-PLAS.
+063200
+063300
+063400     FIND   KEY OF   QXAPLASS        AT
+063500            QXA-PLACA                =       AX-GAA-PLACA
+063600       ON   EXCEPTION
+063700       IF   DMSTATUS (NOTFOUND)
+063800            GO                       TO      050-05-PLAC-MERC
+063900       ELSE
+064000            CALL     SYSTEM          DMTERMINATE.
+064100
+064200     FIND   QXAPLASS                 AT
+064300            QXA-PLACA                =       AX-GAA-PLACA
+064400       ON   EXCEPTION
+064500       IF   DMSTATUS (NOTFOUND)
+064600            GO                       TO      050-05-PLAC-MERC
+064700       ELSE
+064800            CALL     SYSTEM          DMTERMINATE.
+064900
+065000     MOVE   QXA-TIPO-DECL            TO      AX-GAA-RET.
+065100     MOVE   "Q"                      TO      AX-GAA-RET-DS.
+065200     MOVE   "S"                      TO      AX-RET-SIT.
+065300     MOVE   QUEIXADS                 TO      AX-GAA-QUEIXA.
+065400
+065500     GO                              TO      050-10-PLAC.
+065600
+065700
+065800 050-05-PLAC-MERC.
+065900
+066000     FIND   KEY OF   QXAPLASSX       AT
+066100            QXA-PLACAX               =       AX-GAA-PLAMERC
+066200       ON   EXCEPTION
+066300       IF   DMSTATUS (NOTFOUND)
+066400            GO                       TO      050-10-PLAC
+066500       ELSE
+066600            CALL     SYSTEM          DMTERMINATE.
+066700
+066800     FIND   QXAPLASSX                AT
+066900            QXA-PLACAX               =       AX-GAA-PLAMERC
+067000       ON   EXCEPTION
+067100       IF   DMSTATUS (NOTFOUND)
+067200            GO                       TO      050-10-PLAC
+067300       ELSE
+067400            CALL     SYSTEM          DMTERMINATE.
+067500
+067600     MOVE   QXA-TIPO-DECL            TO      AX-GAA-RET.
+067700     MOVE   "Q"                      TO      AX-GAA-RET-DS.
+067800     MOVE   "S"                      TO      AX-RET-SIT.
+067900     MOVE   QUEIXADS                 TO      AX-GAA-QUEIXA.
+068000
+068100
+068200
+068300 050-10-PLAC.
+068400
+068500     FIND   KEY OF   RECPLASS        AT
+068600            REC-PLACA                =       AX-GAA-PLACA
+068700       ON   EXCEPTION
+068800       IF   DMSTATUS (NOTFOUND)
+068900
+069000            GO                       TO      050-20-PLAC-MERC
+069100       ELSE
+069200            CALL     SYSTEM          DMTERMINATE.
+069300
+069400     FIND   RECPLASS                 AT
+069500            REC-PLACA                =       AX-GAA-PLACA
+069600       ON   EXCEPTION
+069700       IF   DMSTATUS (NOTFOUND)
+069800
+069900            GO                       TO      050-20-PLAC-MERC
+070000       ELSE
+070100            CALL     SYSTEM          DMTERMINATE.
+070200
+070300     MOVE    REC-TIPO-DECL           TO      AX-GAA-RET.
+070400     MOVE    "R"                     TO      AX-GAA-RET-DS.
+070500     MOVE    "S"                     TO      AX-RET-SIT.
+070600     MOVE    RECUPERADODS            TO      AX-GAA-QUEIXA.
+070700
+070800     GO                              TO      050-S-FIND-PLAS.
+070900
+071000 050-20-PLAC-MERC.
+071100
+071200
+071300     FIND   KEY OF   RECPLASSX       AT
+071400            REC-PLACAX               =       AX-GAA-PLAMERC
+071500       ON   EXCEPTION
+071600       IF   DMSTATUS (NOTFOUND)
+071700            MOVE     "S"             TO      CH-NOTFOUND
+071800            GO                       TO      050-S-FIND-PLAS
+071900       ELSE
+072000            CALL     SYSTEM          DMTERMINATE.
+072100
+072200     FIND   RECPLASSX                AT
+072300            REC-PLACAX               =       AX-GAA-PLAMERC
+072400       ON   EXCEPTION
+072500       IF   DMSTATUS (NOTFOUND)
+072600            MOVE     "S"             TO      CH-NOTFOUND
+072700            GO                       TO      050-S-FIND-PLAS
+072800       ELSE
+072900            CALL     SYSTEM          DMTERMINATE.
+073000
+073100     MOVE    REC-TIPO-DECL           TO      AX-GAA-RET.
+073200     MOVE    "R"                     TO      AX-GAA-RET-DS.
+073300     MOVE    "S"                     TO      AX-RET-SIT.
+073400     MOVE    RECUPERADODS            TO      AX-GAA-QUEIXA.
+073500
+073600
+073700 050-S-FIND-PLAS.
+073800     EXIT.

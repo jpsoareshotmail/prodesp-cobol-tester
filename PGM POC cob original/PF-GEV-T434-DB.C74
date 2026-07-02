@@ -1,0 +1,1064 @@
+000000* VERSION  10.1  ; SAVED 20200918 09:42:47                    |001
+000200 IDENTIFICATION    DIVISION.
+000300****************************
+000400
+000500 PROGRAM-ID.     PC-GEV-T434-DB.
+000600
+000700 AUTHOR.         MARCIA ZANOLO.
+000800
+000900 DATE-WRITTEN.   NOVEMBRO/2013.
+001000
+001100 DATE-COMPILED.
+001200
+001300 SECURITY.
+001400
+001500******************************************************************
+001600*                                                                *
+001700*    OBJETIVO  DO  PROGRAMA:                                     *
+001800*                                                                *
+001900*          O PROGRAMA TEM O OBJETIVO DE CANCELAR A SELECAO       *
+002000*          ATUAL DE PLACA PERSONALIZADA                          *
+002100*            TRANSACAO : V434                                    *
+002200******************************************************************
+002300*
+002400*    ALTERACOES EFETUADAS:                                       *
+002500*                                                                *
+002600*   DATA       ANALISTA/PROGRAMADOR  OBSERVACAO                  *
+002700*   =====      ====================  =========================== *
+002800*                                                                *
+002900*   03/02/2016 RUI     /MARIO         ALT ATRIBU NPL-SITUACAO    *
+002920*                                                                *
+002940*     DATA       OS    ANALISTA/PROGRAMADOR  OBSERVACAO          *
+002960*   ========  =======  ====================  ==========          *
+002980*                                                                *
+003000*   17/05/16  0389/16  VAGNER / ADHEMAR      ALT. SITUACAO       *
+003050*   15/08/16  0592/16  VAGNER / ADHEMAR      COMPLEMENTAR        *
+003100*   02/09/16  0634/16  RUI    / ADHEMAR      COMPLEMENTAR        *
+003150*   21/09/18  ..../..  VAGNER / VAGNER       PLACA MERCOSUL      *
+003200*   18/10/18           RUI / JWD  ALT AX-NUMERO E RETO 150-E     *
+003250*   21/12/18  ..../..  VLG / CFS  TRATAR NPL-FILLER-PL(NOVAPLACDS*
+003300*   13/02/19  ..../..  VLG / VLG  AJUSTE DESVINCULAR TAXA        *
+003350*   18/02/19  ..../..  VLG / VLG  DATA E HORA ATRIB PLACA SIT 10 *
+003400*   16/09/19  ..../..  VLG / LJS  ASSOC PLACA E PGTO TAXA        *
+003450*   25/08/20  ..../..  VLG / LJS  DESVINCULAR TAXASDS            *
+003500*   ../../..  ..../..  ...... / ...........  ..................  *
+003550*   ../../..  ..../..  ...... / ...........  ..................  *
+004000*                                                                *
+004100******************************************************************
+004200/
+004300 ENVIRONMENT DIVISION.
+004400**********************
+004500
+004600 CONFIGURATION   SECTION.
+004700*------------------------
+004800
+004900 SPECIAL-NAMES.
+005000
+005100     DECIMAL-POINT   IS  COMMA.
+005200
+005300 INPUT-OUTPUT    SECTION.
+005400*------------------------
+005500
+005600 FILE-CONTROL.
+005700
+005800/
+005900 DATA        DIVISION.
+006000**********************
+006100
+006200 FILE            SECTION.
+006300*------------------------
+006400
+006500 DATA-BASE       SECTION.
+006600*------------------------
+006700
+006800 DB  DB01    =     TDBDETRAN.
+006900
+007000 01         NOVAPLACDS.
+007100/
+007200 01         ESCPLACDS.
+007250/
+007300 01         PRODRDSDS.
+007350/
+007400 01         ECRVAUTENTICADS.
+007410
+007420/
+007430 DB  DB02    =     TDBTAXAS.
+007440
+007450 01         TAXASDS.
+007460/
+007470 01         TAXASRDSDS.
+007480
+007500/
+007600 WORKING-STORAGE SECTION.
+007700*-----------------------*
+007800
+007900*----------------------------------------------------------------*
+008000*        AREAS  DE  CONTROLE  DO  PROGRAMA  ON-LINE              *
+008100*----------------------------------------------------------------*
+008200
+008300
+008400 77          LINKTOCOMS      PIC  X(256).
+008500
+008600 77          USER-DESG                   REAL.
+008700
+008800 77          USER-NAME       PIC  X(010).
+008900
+009000 77          USER-FLAG       PIC S9(011) BINARY.
+009100
+009200 77          STATION-DESG                REAL.
+009300
+009400 77          AX-CALL-ERROR   PIC S9(011) BINARY.
+009410
+009420 77          SEED            PIC  9(011) USAGE BINARY.
+009430
+009440 77          RANDOM-RESULT               USAGE REAL.
+009450
+009460 77          AI1                         PIC 9(001)  VALUE ZEROS.
+009500
+009520 77          WS-HRATRIB                  PIC 9(008)  VALUE ZEROS.
+009540
+009560 77          WS-DTATRIB                  PIC 9(008)  VALUE ZEROS.
+009580
+009600 01          STATION-NAME.
+009700     05      FILLER          PIC  X(005).
+009800     05      LSN-TERMINAL    PIC  9(006).
+009900
+010000
+010100 01          AX-AGENDA-OUT   PIC  X(017)  VA  "AGGEVT434".
+010200
+010300 77          AX-AGENDA-DESG               REAL.
+010400
+010500 77          AX-LENGTH       PIC  9(011)  BINARY.
+010600
+010610*----------------------------------------------------------------*
+010620*   REGISTRO DE RETORNO DO SORTEIO
+010630*----------------------------------------------------------------*
+010640 01          AX-SORTEIO-R.
+010650   05        AX-SORTEIO      PIC 9(004)   OCCURS 3.
+010660
+010670 01          AX-SORT-MIN     PIC 9(004)   VALUE ZEROS.
+010680 01          AX-SORT-SUM     PIC 9(005)   VALUE ZEROS.
+010685
+010690
+010695*----------------------------------------------------------------*
+010700*   SEMENTE DE GERACAO DE NUMERO ALEATORIO
+010705*----------------------------------------------------------------*
+010710 01          WS-RAND             PIC 9V9(12).
+010715 01          WS-RAND-R           REDEFINES   WS-RAND.
+010720   05        FILLER              PIC 9(001).
+010725   05        WS-RAND-VALUE       PIC 9(004).
+010730   05        FILLER              PIC 9(007).
+010735
+010740
+010800*----------------------------------------------------------------*
+010900*        AREAS  HEADER - IN  -  OUT  -  ERRO                     *
+011000*----------------------------------------------------------------*
+011100
+011200
+011300
+011400 01          AREA-IN.
+011500     05      IN-FIXA.
+011600        10    IN-CODE         PIC X(004).
+011700        10    FILLER          PIC X(026).
+011800*       10    IN-IP           PIC X(010).
+011900*       10    IN-DATA         PIC 9(008).
+012000*       10    IN-HORA         PIC 9(008).
+012100     05      IN-RECEBE.
+012200       10    IN-CHASSI       PIC X(022).
+012300       10    IN-CPFCNPJ      PIC 9(014).
+012400
+012500
+012600*----------  AREA-OUT   PIC X(069)-------------
+012700
+012800
+012900 01          AREA-OUT.
+013000     05      OUT-FIXA        PIC X(030).
+013100     05      OUT-RETORNO     PIC 9(003).
+013200     05      OUT-CHASSI      PIC X(022).
+013300     05      OUT-CPFCNPJ     PIC 9(014).
+013400
+013500*
+013600/
+013700*
+013800***------>   SUBSCRITORES DO PROGRAMA
+013900*
+014000
+014100
+014200 77          IA1             PIC 9(003).
+014300
+014400*
+014500***------>   CHAVES UTILIZADAS NO PROGRAMA
+014600*
+014700
+014800*
+014900 77          CH-NOTFOUND     PIC X(001).
+015000
+015020 77          CH-EAU          PIC 9(001).
+015025
+015030 77          CH-TAX          PIC 9(001).
+015040
+015100
+015200
+015300***------>   AREAS PARA INVERSAO DE DATAS
+015400*
+015500
+015600 01          AX-DATAINV.
+015700     05      AX-AA           PIC 9(004).
+015800     05      AX-MM           PIC 9(002).
+015900     05      AX-DD           PIC 9(002).
+016000
+016100 01          AX-DATAINV-R    REDEFINES       AX-DATAINV
+016200                             PIC 9(008).
+016300
+016400 01          AX-DATAINV-R2   REDEFINES       AX-DATAINV.
+016500     05      AX-AAMM         PIC 9(006).
+016600     05      FILLER          PIC X(002).
+016700
+016800
+016900
+017000 01          AX-AAMMDD1      PIC 9(008).
+017100 01          AX-AAMMDD1-R    REDEFINES   AX-AAMMDD1.
+017200     05      AX-AMD-AA1      PIC 9(004).
+017300     05      AX-AMD-MM1      PIC 9(002).
+017400     05      AX-AMD-DD1      PIC 9(002).
+017500
+017600
+017700
+017800 01          AX-AAMMDD2      PIC 9(008).
+017900 01          AX-AAMMDD2-R    REDEFINES   AX-AAMMDD2.
+018000     05      AX-AMD-AA2      PIC 9(004).
+018100     05      AX-AMD-MM2      PIC 9(002).
+018200     05      AX-AMD-DD2      PIC 9(002).
+018300
+018400
+018500
+018600 01          AX-DT-INV1      PIC 9(008).
+018700 01          AX-DT-INV1-R    REDEFINES   AX-DT-INV1.
+018800     05      AX-DT-DD1       PIC 9(002).
+018900     05      AX-DT-MM1       PIC 9(002).
+019000     05      AX-DT-AA1       PIC 9(004).
+019100
+019200 01          AX-DTPROC       PIC 9(008).
+019300 01          AX-DTPROC-R     REDEFINES       AX-DTPROC.
+019400     05      AX-PROC-ANO     PIC 9(004).
+019500     05      AX-PROC-MES     PIC 9(002).
+019600     05      AX-PROC-DIA     PIC 9(002).
+019700
+019800 01          AX-NUMDATE      PIC X(010) TYPE IS NUMERIC-DATE.
+019900 01          AX-NUMDATE-R    REDEFINES       AX-NUMDATE.
+020000     05      AX-NUMDT-MES    PIC 9(002).
+020100     05      FILLER          PIC X(001).
+020200     05      AX-NUMDT-DIA    PIC 9(002).
+020300     05      FILLER          PIC X(001).
+020400     05      AX-NUMDT-ANO    PIC 9(004).
+020500
+020600*---- OUTRAS AREAS
+020700
+020800 01          AX-HORA-TIME    PIC 9(008).
+020900 01          AX-HORA-TIME-R  REDEFINES   AX-HORA-TIME.
+021000     05      AX-HHMMSS       PIC 9(006).
+021100     05      FILLER          PIC 9(002).
+021200
+021300*
+021400/
+023010*
+023100*
+023200*----------------------------------------------------------------*
+023300*           T A B E L A    D E    E R R O S                      *
+023400*----------------------------------------------------------------*
+023500
+023600 01          TABELA-ERROS.
+023700    05      FILLER          PIC X(073)  VA
+023800            "000 SEM ERROS........................................
+023900-           "...................".
+024000    05      FILLER          PIC X(073)  VA
+024100            "002 CHASSI NAO CADASTRADO............................
+024200-           "...................".
+024300    05      FILLER          PIC X(073)  VA
+024400            "027 CPF / CNPJ INVALIDO..............................
+024500-           "...................".
+024600    05      FILLER          PIC X(073)  VA
+024700            "282 REGISTRO NAO ATUALIZADO - ERRO DB................
+024800-           "...................".
+024900    05      FILLER          PIC X(073)  VA
+025000            "360 NAO EXISTEM PLACAS DISPONIVEIS COM OS PARAMETROS
+025100-           "DESEJADOS..........".
+025120    05      FILLER          PIC X(073)  VA
+025140            "469 PROBLEMA NA LIBERACAO DA TAXA DE ESCOLHA DE PLACA
+025160-           "...................".
+025180
+025300
+025400 01    TAB-ERRO    REDEFINES   TABELA-ERROS.
+025500    05      TBA-MSG         PIC X(073)  OCCURS  6.
+025600
+025700
+025800 01         WS-CHASSI       PIC X(022)  VA    SPACES.
+025900
+026000 01         WS-CPFCNPJ      PIC 9(014)  VA    ZEROS.
+026100
+026200
+026300/
+026400 COMMUNICATION SECTION.
+026500  INPUT HEADER COMS-IN;
+026600        PROGRAMDESG           IS COMS-IN-PROGRAM;
+026700        FUNCTIONSTATUS        IS COMS-IN-FUNCTION-STATUS;
+026800        FUNCTIONINDEX         IS COMS-IN-FUNCTION-INDEX;
+026900        USERCODE              IS COMS-IN-USERCODE;
+027000        SECURITYDESG          IS COMS-IN-SECURITY-DESG;
+027100        TRANSPARENT           IS COMS-IN-TRANSPARENT;
+027200        VTFLAG                IS COMS-IN-VT-FLAG;
+027300        TIMESTAMP             IS COMS-IN-TIMESTAMP;
+027400        STATION               IS COMS-IN-STATION;
+027500        TEXTLENGTH            IS COMS-IN-TEXT-LENGTH;
+027600        STATUSVALUE           IS COMS-IN-STATUS;
+027700        MESSAGECOUNT          IS COMS-IN-MSG-COUNT;
+027800        RESTART               IS COMS-IN-RST-LOC;
+027900        AGENDA                IS COMS-IN-AGENDA;
+028000        SDFINFO               IS COMS-IN-INFO.
+028100
+028200
+028300
+028400 OUTPUT HEADER COMS-OUT;
+028500        DESTCOUNT             IS COMS-OUT-COUNT;
+028600        TEXTLENGTH            IS COMS-OUT-TEXT-LENGTH;
+028700        STATUSVALUE           IS COMS-OUT-STATUS;
+028800        TRANSPARENT           IS COMS-OUT-TRANPARENT;
+028900        VTFLAG                IS COMS-OUT-VT-FLAG;
+029000        CONFIRMFLAG           IS COMS-OUT-CONFIRM-FLAG;
+029100        CONFIRMKEY            IS COMS-OUT-CONFIRMKEY;
+029200        DESTINATIONDESG       IS COMS-OUT-DESTINATION;
+029300        NEXTINPUTAGENDA       IS COMS-OUT-NEXT-INPUT-AG;
+029400        CASUALOUTPUT          IS COMS-OUT-CASUAL-OUTPUT;
+029500        SETNEXTINPUTAGENDA    IS COMS-OUT-SET-NEXT-AG;
+029600        RETAINTRANSACTIONMODE IS COMS-OUT-RETAIN-TRANMODE;
+029700        AGENDA                IS COMS-OUT-AGENDA;
+029800        SDFINFO               IS COMS-OUT-INFO.
+029900
+030000
+030100
+030200/
+030300 PROCEDURE   DIVISION.
+030400*--------------------*
+030500
+030600
+030700 MONITORA    SECTION.
+030800
+030900*
+031000 000-E-MONITORA.
+031100*
+031200
+031300     IF     ATTRIBUTE RESTARTED OF MYSELF  =  VALUE TRUE
+031400            DISPLAY "PC/GEV/T434/DB : TERMINO ANORMAL"
+031500            MOVE    997             TO      IA1
+031600            PERFORM 200-E-ENV-ERRO  THRU    200-S-ENV-ERRO
+031700            GO                      TO      000-S-MONITORA.
+031800
+031900
+032000     PERFORM 010-E-INICIO           THRU    010-S-INICIO.
+032100
+032200     PERFORM 030-E-PROCESSA         THRU    030-S-PROCESSA
+032300                                    UNTIL
+032400             COMS-IN-STATUS          =       99.
+032500
+032600     PERFORM 900-E-FINAL             THRU    900-S-FINAL.
+032700
+032800*
+032900 000-S-MONITORA.
+033000
+033100     STOP    RUN.
+033200
+033300*
+033400 010-E-INICIO.
+033500*
+033600     MOVE    ATTRIBUTE NAME OF ATTRIBUTE EXCEPTIONTASK
+033700                            OF ATTRIBUTE EXCEPTIONTASK OF MYSELF
+033800                            TO LINKTOCOMS.
+033900
+034000
+034100     CHANGE  ATTRIBUTE TITLE OF "DCILIBRARY" TO LINKTOCOMS.
+034200
+034300
+034400
+034500     ENABLE  INPUT  COMS-IN          KEY     "ONLINE"
+034600
+034700     CALL    "GET_DESIGNATOR_USING_NAME IN DCILIBRARY"
+034800                                    USING    AX-AGENDA-OUT,
+034900                                    VALUE    AGENDA,
+035000                                             AX-AGENDA-DESG
+035100                                    GIVING   AX-CALL-ERROR.
+035200
+035300
+035400
+035500      OPEN    UPDATE  DB01
+035600        ON    EXCEPTION
+035700              DISPLAY "PC/GEV/T434/DB - ERRO OPEN TDBDETRAN"
+035750              PERFORM 260-E-ERRODB   THRU    260-S-ERRODB
+035800              CALL    SYSTEM         DMTERMINATE.
+035810
+035820
+035830      OPEN    UPDATE  DB02
+035840        ON    EXCEPTION
+035850              DISPLAY "PC/GEV/T434/DB - ERRO OPEN TDBTAXAS"
+035860              PERFORM 260-E-ERRODB   THRU    260-S-ERRODB
+035870              CALL    SYSTEM         DMTERMINATE.
+035900
+036000
+036100*
+036200 010-S-INICIO.
+036300     EXIT.
+036400*
+036500/
+036600*----------------------------------------------------------------*
+036700*        ROTINA  DE  TRATAMENTO  DAS  TRANSACOES  DO  PROGRAMA   *
+036800*----------------------------------------------------------------*
+036900*
+037000 030-E-PROCESSA.
+037100*
+037200
+037300     MOVE    0                       TO      IA1.
+037400     MOVE    SPACES                  TO      AREA-IN
+037500                                             AREA-OUT.
+037600
+037700
+037800     RECEIVE COMS-IN MESSAGE         INTO    AREA-IN.
+037900
+038000
+038100     IF      COMS-IN-STATUS          =       00 OR 89 OR 92 OR
+038200                                             93 OR 97
+038300             NEXT    SENTENCE
+038400     ELSE
+038500     IF      COMS-IN-STATUS          =       99
+038600             GO                      TO      030-S-PROCESSA
+038700     ELSE
+038800             PERFORM 250-E-ERRO-COMS THRU    250-S-ERRO-COMS
+038900             GO                      TO      030-S-PROCESSA.
+039000
+039100     MOVE    COMS-IN-USERCODE        TO      USER-DESG.
+039200
+039300     CALL    "GET_NAME_USING_DESIGNATOR  OF  DCILIBRARY"
+039400                                USING   USER-DESG
+039500                                        USER-NAME
+039600                                GIVING  USER-FLAG.
+039700
+039800     ACCEPT  AX-HORA-TIME            FROM    TIME.
+039900     ACCEPT  AX-NUMDATE              FROM    DATE.
+040000     MOVE    AX-NUMDT-DIA            TO      AX-PROC-DIA.
+040100     MOVE    AX-NUMDT-MES            TO      AX-PROC-MES.
+040200     MOVE    AX-NUMDT-ANO            TO      AX-PROC-ANO.
+040300
+040400     MOVE    IN-FIXA                 TO      OUT-FIXA.
+040500     MOVE    000                     TO      OUT-RETORNO.
+040600
+040650     MOVE    ZEROS                   TO      CH-EAU
+040660                                             CH-TAX.
+040700
+040800     IF      IN-CODE                 =       "V434"
+040900             PERFORM 050-E-T434      THRU    050-S-T434
+041000     ELSE
+041100             MOVE    999             TO      IA1
+041200             PERFORM 200-E-ENV-ERRO  THRU    200-S-ENV-ERRO.
+041300
+041400
+041500     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+041600     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+041700
+041800     MOVE    1                       TO      COMS-OUT-COUNT.
+041900     MOVE    0                       TO      COMS-OUT-STATUS.
+042000
+042100     IF      IA1                     =       ZEROS
+042200             MOVE   ZEROS            TO      OUT-RETORNO
+042300             MOVE    070             TO      COMS-OUT-TEXT-LENGTH
+042400     ELSE
+042500             MOVE    100             TO      COMS-OUT-TEXT-LENGTH
+042600             MOVE   IA1              TO      OUT-RETORNO.
+042700
+042800     SEND    COMS-OUT                FROM    AREA-OUT.
+042900
+043000*
+043100 030-1-PROCESSO.
+043200*
+043300
+043400     FREE    NOVAPLACDS.
+043500     FREE    ECRVAUTENTICADS.
+043520     FREE    TAXASDS.
+043550
+043600*
+043700 030-S-PROCESSA.
+043800     EXIT.
+043900*
+044000/
+044100*----------------------------------------------------------------*
+044200*      ROTINA  DE  PESQUISA  COM  CHASSI E CPF/CNPJ              *
+044300*----------------------------------------------------------------*
+044400*
+044500 050-E-T434.
+044600*
+044700
+044800     MOVE    SPACES                   TO      WS-CHASSI.
+044900     MOVE    ZEROS                    TO      WS-CPFCNPJ.
+045000
+045100     MOVE    0                        TO      IA1 OUT-RETORNO.
+045200
+045300
+045400     IF      IN-CHASSI                =       SPACES  OR  ZEROS
+045500             MOVE   002               TO      IA1
+045600             PERFORM 200-E-ENV-ERRO   THRU    200-S-ENV-ERRO
+045700             GO                       TO      050-S-T434.
+045800
+045900     IF      IN-CPFCNPJ               =       ZEROS  OR  SPACES
+046000             MOVE   027               TO      IA1
+046100             PERFORM 200-E-ENV-ERRO   THRU    200-S-ENV-ERRO
+046200             GO                       TO      050-S-T434.
+046300
+046310
+046320*    PERFORM 910-E-LASTPLAC           THRU    910-S-LASTPLAC.
+046330*
+046340*    IF      CH-NOTFOUND              =       "S"
+046350*            NEXT    SENTENCE
+046360*    ELSE
+046370*      IF    EPC-NR-ORDEM             =       3
+046380*            MOVE     354             TO      IA1
+046390*            PERFORM 200-E-ENV-ERRO   THRU    200-S-ENV-ERRO
+046400*            GO                       TO      050-S-T434
+046410*      ELSE
+046420*            NEXT    SENTENCE.
+046430
+046450
+046500     SET     NOVAPLACDS               TO      BEGINNING.
+046550
+046600     PERFORM 100-E-LOCK-NVPLAC        THRU    100-S-LOCK-NVPLAC.
+046700
+046800
+046900     IF      CH-NOTFOUND              =       "S"
+047000             MOVE    360              TO      IA1
+047100             PERFORM 200-E-ENV-ERRO   THRU    200-S-ENV-ERRO
+047200             GO                       TO      050-S-T434
+047300     ELSE
+047400             PERFORM 080-E-RECREAR    THRU    080-S-RECREAR.
+047500
+047600
+047700*
+047800 050-S-T434.
+047900     EXIT.
+048000*
+048100/
+048200*----------------------------------------------------------------*
+048300*    ALTERAR REGISTRO NO PRODPLACDS                              *
+048400*----------------------------------------------------------------*
+048500*
+048600 080-E-RECREAR.
+048700*
+048804*    GERAR SEQUENCIA ALEATORIA
+048810
+048812     MOVE    1                   TO      AI1.
+048814
+048816     PERFORM 120-E-SORTEAR       THRU    120-S-SORTEAR
+048818                                 UNTIL   AI1 = 4.
+048820
+050000
+050020*  -->  Verifica existencia no TAXAS/ECRVAUTENTICADS
+050040
+050070
+050080     IF  NPL-SITUACAO                    =       5
+050082         PERFORM 160-E-TAXAS-LOCK        THRU    160-S-TAXAS-LOCK
+050084         IF  CH-TAX                      =       0
+050086             PERFORM 140-E-ECRV-AUT      THRU    140-S-ECRV-AUT
+050090             IF  CH-EAU                  =       0
+050092         DISPLAY "PC/GE/T434/DB - ERRO NA LIBERACAO TAXA/PLACA"
+050094         DISPLAY "PC/GE/T434/DB - CHASSI PESQUISA : " IN-CHASSI
+050096         DISPLAY "PC/GE/T434/DB - PLACA           : " NPL-PLACA
+050098         DISPLAY "PC/GE/T434/DB - SIT PLACA       : " NPL-SITUACAO
+050100                 MOVE   469              TO      IA1
+050110                 PERFORM 200-E-ENV-ERRO  THRU    200-S-ENV-ERRO
+050120                 GO                      TO      080-S-RECREAR.
+050130
+050140
+050200     BEGIN-TRANSACTION            NO-AUDIT   PRODRDSDS
+050300       ON   EXCEPTION
+050400        IF  DMSTATUS (DEADLOCK)      OR
+050500            DMSTATUS (ABORT)
+050600            WAIT    03
+050700            GO                       TO      080-E-RECREAR
+050800        ELSE
+050900            DISPLAY "PC/GEV/T434/DB : BEGIN-TRANS ERROR-080"
+051000            PERFORM 260-E-ERRODB     THRU    260-S-ERRODB
+051100            CALL    SYSTEM           DMTERMINATE.
+051200
+051300        PERFORM  130-E-RECR-REG      THRU    130-S-RECR-REG.
+051400
+051500        STORE NOVAPLACDS
+051600          ON EXCEPTION
+051700             DISPLAY "PC/GEV/T434/DB : STORE ERROR NOVAPLACDS"
+051800             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+051900             CALL    SYSTEM          DMTERMINATE.
+052000
+052020     IF      CH-EAU                  =       1
+052040             PERFORM 170-E-ATU-EAU   THRU    170-S-ATU-EAU
+052060     ELSE
+052080             NEXT    SENTENCE.
+052100
+052200     END-TRANSACTION              NO-AUDIT   PRODRDSDS
+052300        ON  EXCEPTION
+052400        IF  DMSTATUS (ABORT)
+052500            GO                       TO      080-E-RECREAR
+052600        ELSE
+052700            DISPLAY "PC/GEV/T434/DB : END-TRANSAC ERROR 080"
+052800            PERFORM 260-E-ERRODB     THRU    260-S-ERRODB
+052900            CALL    SYSTEM           DMTERMINATE.
+052910
+052920*    ATUALIZA TAXA AUTENTICACAO COD-PAG = 92
+052930
+052940     IF      CH-TAX                  =       1
+052950             PERFORM 165-E-TAXAS-ATU THRU    165-S-TAXAS-ATU.
+053000
+053100*
+053200 080-S-RECREAR.
+053300     EXIT.
+053400*
+053500/
+053600*----------------------------------------------------------------*
+053700*        ROTINA DE PESQUISA POR RENAVAM  NO PLRVEICDS            *
+053800*----------------------------------------------------------------*
+053900*
+054000 100-E-LOCK-NVPLAC.
+054100*
+054200
+054300     MOVE    "N"                     TO      CH-NOTFOUND.
+054400
+054500
+054600     LOCK    NOVAPLACSS6    AT
+054700             NPL-CHASSI              =       IN-CHASSI
+054800       ON    EXCEPTION
+054900         IF  DMSTATUS(NOTFOUND)
+055000             MOVE    "S"             TO      CH-NOTFOUND
+055100             GO                      TO      100-S-LOCK-NVPLAC
+055200         ELSE
+055300             DISPLAY "PC/GEV/T434/DB - LOCK NOVAPLACDS ERROR"
+055350             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+055400             CALL    SYSTEM          DMTERMINATE.
+055500
+055600
+055700*
+055800 100-S-LOCK-NVPLAC.
+055900     EXIT.
+056000*
+056002*----------------------------------------------------------------*
+056004*    SORTEAR VALOR
+056006*----------------------------------------------------------------*
+056008 120-E-SORTEAR.
+056010
+056012     MOVE    ZEROS               TO      AX-SORTEIO(AI1).
+056014
+056016***  SE NECESSARIO INICIALIZAR O SEED
+056018     IF  SEED                    EQUAL   0
+056020         ACCEPT  SEED            FROM    TIME
+056022     ELSE
+056024         NEXT SENTENCE.
+056026
+056028***  EFETUAR O SORTEIO
+056030     CALL "RANDOM OF GENERALSUPPORT"
+056032         USING   SEED
+056034         GIVING  RANDOM-RESULT.
+056036
+056038     MOVE    RANDOM-RESULT       TO      WS-RAND.
+056040
+056042***  MANTER A FAIXA MINIMA JUNTO COM AS EXISTENTES
+056044     IF  AI1                     =      1
+056046         COMPUTE AX-SORT-SUM = AX-SORT-MIN + WS-RAND-VALUE
+056048
+056050         IF  AX-SORT-SUM         >       9999
+056052             MOVE WS-RAND-VALUE  TO      AX-SORTEIO(AI1)
+056054         ELSE
+056056             MOVE AX-SORT-SUM    TO      AX-SORTEIO(AI1)
+056058     ELSE
+056060         MOVE WS-RAND-VALUE      TO      AX-SORTEIO(AI1).
+056062
+056064***  PROXIMO REGISTRO
+056066     ADD     1                   TO      AI1.
+056068
+056070 120-S-SORTEAR.
+056072     EXIT.
+056074
+056100/
+056200******************************************************************
+056300*      DELETAR E RECRIAR REGISTRO EM PRLVEICDS COM BLQUEIO       *
+056400******************************************************************
+056500*
+056600 130-E-RECR-REG.
+056700*
+056720     ACCEPT  WS-DTATRIB              FROM DATE YYYYMMDD.
+056740     ACCEPT  WS-HRATRIB              FROM TIME.
+056800
+056900     DELETE  NOVAPLACDS
+057000         ON  EXCEPTION
+057100             DISPLAY "PC/GEV/T434/DB : DELETE ERROR NOVAPLCDS"
+057200             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+057300             CALL    SYSTEM          DMTERMINATE.
+057400
+057500
+057600      RECREATE NOVAPLACDS
+057700         ON  EXCEPTION
+057800             DISPLAY "PC/GEV/T434/DB : RECREATE ERROR NOVAPLCDS"
+057900             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+058000             CALL    SYSTEM          DMTERMINATE.
+058100
+058120     MOVE   AX-SORTEIO(1)           TO   NPL-SORT1.
+058140     MOVE   AX-SORTEIO(2)           TO   NPL-SORT2.
+058160     MOVE   AX-SORTEIO(3)           TO   NPL-SORT3.
+058180     MOVE   SPACES                  TO   NPL-CHASSI.
+058200     MOVE   ZEROS                   TO   NPL-CPF-CGC
+058220                                         NPL-ORIGEM.
+058240
+058300     IF      NPL-SITUACAO            =   5   OR        4
+058540             MOVE   10               TO  NPL-SITUACAO
+058550             MOVE   WS-DTATRIB       TO  NPL-DT-ATRIB
+058552             MOVE   WS-HRATRIB       TO  NPL-HR-ATRIB
+058560     ELSE
+058580             MOVE   ZEROS            TO  NPL-SITUACAO
+058600                                         NPL-DT-ATRIB
+058620                                         NPL-HR-ATRIB.
+058640
+058660
+058700
+058800
+058900*
+059000 130-S-RECR-REG.
+059100     EXIT.
+059200*
+059202/
+059204*----------------------------------------------------------------*
+059206*        ROTINA DE PESQUISA PLACA NO ECRVAUTENTICADSS            *
+059208*----------------------------------------------------------------*
+059210*
+059212 140-E-ECRV-AUT.
+059214*
+059216
+059218     SET     ECRVAUTENTICASS1        TO      BEGINNING.
+059220
+059222     PERFORM 150-E-FIND-ECRV         THRU    150-S-FIND-ECRV.
+059238
+059240     IF      CH-NOTFOUND             =       "S"
+059242             MOVE    ZEROS           TO      CH-EAU
+059244             GO                      TO      140-S-ECRV-AUT
+059246     ELSE
+059248             MOVE    1               TO      CH-EAU.
+059250
+059252*
+059254 140-S-ECRV-AUT.
+059256     EXIT.
+059258*
+059260/
+059262*----------------------------------------------------------------*
+059264*        ROTINA DE PESQUISA PLACA NO ECRVAUTENTICADSS            *
+059266*----------------------------------------------------------------*
+059268*
+059270 150-E-FIND-ECRV.
+059272*
+059274
+059276     MOVE    "N"                     TO      CH-NOTFOUND.
+059278
+059280
+059282     LOCK    NEXT    ECRVAUTENTICAMSE        AT
+059286             EAU-PLACA-MERC          =       NPL-PLACA
+059288       ON    EXCEPTION
+059290         IF  DMSTATUS(NOTFOUND)
+059292             MOVE    "S"             TO      CH-NOTFOUND
+059294             GO                      TO      150-S-FIND-ECRV
+059296         ELSE
+059298             DISPLAY "PC/GEV/T434/DB -FIND ECRVAUTENTICAMSE ERROR"
+059300             PERFORM 260-E-ERRODB   THRU    260-S-ERRODB
+059302             CALL    SYSTEM         DMTERMINATE.
+059304
+059306     IF      EAU-FILLER              =       92
+059310             GO                      TO      150-S-FIND-ECRV
+059316     ELSE
+059318             GO                      TO      150-E-FIND-ECRV.
+059320
+059322*
+059324 150-S-FIND-ECRV.
+059326     EXIT.
+059384*
+059386
+059388/
+059390*----------------------------------------------------------------*
+059392*        ROTINA DE CONSISTENCIA DE TAXAS AUTENTICACAO - LOCK     *
+059394*----------------------------------------------------------------*
+059396*
+059398 160-E-TAXAS-LOCK.
+059400*
+059402
+059404     MOVE    1                       TO      CH-TAX.
+059406
+059408
+059410     LOCK    LAST    TAXPLACASS1     AT
+059412             TAX-SITUACAO            =       3           AND
+059414             TAX-PLACA-MERC          =       NPL-PLACA   AND
+059416             TAX-COD-PAG             =       92
+059418         ON  EXCEPTION
+059420             IF  DMSTATUS(NOTFOUND)
+059422                 MOVE    0           TO      CH-TAX
+059424                 GO                  TO      160-S-TAXAS-LOCK
+059426             ELSE
+059428                 DISPLAY "PC/GEV/T434/DB - LOCK TAXPLACASS1 ERROR"
+059430                 PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059432                 CALL    SYSTEM          DMTERMINATE.
+059434
+059436
+059438*
+059440 160-S-TAXAS-LOCK.
+059442     EXIT.
+059444*
+059446
+059448/
+059450*----------------------------------------------------------------*
+059452*        ROTINA DE ATUALIZACAO DE TAXAS AUTENTICACAO             *
+059454*----------------------------------------------------------------*
+059456*
+059458 165-E-TAXAS-ATU.
+059460*
+059462
+059464
+059466     BEGIN-TRANSACTION   NO-AUDIT    TAXASRDSDS
+059468         ON  EXCEPTION
+059470             DISPLAY "PC/GEV/T434/DB : BEGIN-TRANS ERROR-140"
+059472             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059474             CALL        SYSTEM      DMTERMINATE.
+059476
+059478     DELETE  TAXASDS
+059480         ON  EXCEPTION
+059482             DISPLAY "PC/GEV/T434/DB : DELETE TAXASDS ERROR"
+059484             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059486             CALL        SYSTEM      DMTERMINATE.
+059488
+059490
+059492     RECREATE    TAXASDS
+059494         ON      EXCEPTION
+059496             DISPLAY "PC/GEV/T434/DB : RECREATE TAXASDS ERROR"
+059498             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059500             CALL        SYSTEM      DMTERMINATE.
+059502
+059504
+059506     MOVE    SPACES                  TO      TAX-PLACA-MERC
+059508                                             TAX-TRANSACAO
+059510                                             TAX-USUARIO.
+059512
+059514     MOVE    ZEROS                   TO      TAX-SITUACAO
+059516                                             TAX-DT-VALID
+059518                                             TAX-HR-VALID
+059520                                             TAX-DESP-SSP.
+059522
+059524     STORE   TAXASDS
+059526       ON    EXCEPTION
+059528             DISPLAY "PC/GEV/T434/DB : STORE TAXASDS ERROR"
+059530             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059532             CALL    SYSTEM          DMTERMINATE.
+059534
+059536
+059538     END-TRANSACTION     NO-AUDIT    TAXASRDSDS
+059540         ON  EXCEPTION
+059542             DISPLAY "PC/GEV/T434/DB : END-TRANSAC ERROR-140"
+059544             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059546             CALL        SYSTEM      DMTERMINATE.
+059548
+059550*
+059552 165-S-TAXAS-ATU.
+059554     EXIT.
+059556*
+059558
+059560/
+059562******************************************************************
+059564*      DELETAR E RECRIAR REGISTRO EM ECRVAUTENTICADS             *
+059566******************************************************************
+059568*
+059570 170-E-ATU-EAU.
+059572*
+059574
+059576     DELETE  ECRVAUTENTICADS
+059578         ON  EXCEPTION
+059580             DISPLAY "PC/GEV/T434/DB : DEL ERROR ECRVAUTENTICADS"
+059582             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059584             CALL    SYSTEM          DMTERMINATE.
+059586
+059588
+059590      RECREATE ECRVAUTENTICADS
+059592         ON  EXCEPTION
+059594             DISPLAY "PC/GEV/T434/DB : REC. ERROR ECRVAUTENTICADS"
+059596             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059598             CALL    SYSTEM          DMTERMINATE.
+059600
+059602
+059604     MOVE    ZEROS                   TO   EAU-SITUACAO.
+059606     MOVE    SPACES                  TO   EAU-LETRA
+059608                                          EAU-PLACA-MERC.
+059610     MOVE    ZEROS                   TO   EAU-NUMERO1
+059612                                          EAU-NUMERO2.
+059614
+059616     STORE   ECRVAUTENTICADS
+059618          ON EXCEPTION
+059620             DISPLAY "PC/GEV/T434/DB : STORE ERR ECRVAUTENTICADS"
+059622             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+059624             CALL    SYSTEM          DMTERMINATE.
+059626
+059628
+059630*
+059632 170-S-ATU-EAU.
+059634     EXIT.
+059636*
+059638/
+059640*----------------------------------------------------------------*
+059642*              ROTINA  DE  ENVIO COM OCORRENCIA DE ERRO          *
+059644*----------------------------------------------------------------*
+059700*
+059800 200-E-ENV-ERRO.
+059900*
+060000     MOVE     IN-FIXA                TO      OUT-FIXA.
+060100     MOVE     IN-CHASSI              TO      OUT-CHASSI
+060200     MOVE     IN-CPFCNPJ             TO      OUT-CPFCNPJ
+060300     MOVE     IA1                    TO      OUT-RETORNO.
+060400*     MOVE     IN-USUARIO             TO      OUT-ERRO-USUAR.
+060500
+060600     MOVE    100                     TO      COMS-OUT-TEXT-LENGTH.
+060700     MOVE    0                       TO      COMS-OUT-STATUS.
+060800     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+060900     MOVE    1                       TO      COMS-OUT-COUNT.
+061000     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+061100
+061200****     SEND    COMS-OUT                FROM    AREA-OUT.
+061300
+061400     IF      COMS-OUT-STATUS         NOT =   0  AND  92 AND
+061500                                            89  AND  96 AND
+061600                                            97
+061700             DISPLAY "GEV/T434/DB - ERRO NO ENVIO COMS-OUT".
+061800
+061900
+062000*
+062100 200-S-ENV-ERRO.
+062200     EXIT.
+062300*
+062400/----------------------------------------------------------------*
+062500*       ROTINA DE ERRO DE LEITURA                                *
+062600*----------------------------------------------------------------*
+062700*
+062800 250-E-ERRO-COMS.
+062900*
+063000     DISPLAY "PC/GEV/7T434DB - PROBLEMAS NO COMS-IN".
+063100     DISPLAY "FUNCTIONINDEX = " COMS-IN-FUNCTION-INDEX.
+063200
+063300     IF       COMS-IN-STATUS         =       20 OR 100 OR 101 OR
+063400                                             102
+063500              DISPLAY "PROBLEMAS COM A ESTACAO"
+063600     ELSE
+063700       IF     COMS-IN-STATUS         =       94 OR 95 OR 97
+063800              DISPLAY "DESTINO INVALIDO"
+063900       ELSE
+064000       IF     COMS-IN-STATUS         =       89
+064100              DISPLAY "O TAMANHO DE STRING MAIOR QUE INFORMADO"
+064200              DISPLAY "TEXTLENGTH = "  COMS-IN-TEXT-LENGTH
+064300               DISPLAY "STATION = "  COMS-IN-STATION
+064400              DISPLAY "PROGRAMDESG = "  COMS-IN-PROGRAM
+064500              DISPLAY "AGENDA = "  COMS-IN-AGENDA
+064600              DISPLAY "TIMESTAMP = "  COMS-IN-TIMESTAMP
+064700       ELSE
+064800              DISPLAY " STATUSVALUE = " COMS-IN-STATUS.
+064900
+065000     MOVE     1                  TO      COMS-OUT-COUNT.
+065100     MOVE     0                  TO      COMS-OUT-DESTINATION.
+065200     MOVE     0                  TO      COMS-OUT-STATUS.
+065300     MOVE     100                TO      COMS-OUT-TEXT-LENGTH.
+065400     MOVE     IN-FIXA            TO      OUT-FIXA
+065500     MOVE     IN-CHASSI          TO      OUT-CHASSI
+065600     MOVE     IN-CPFCNPJ         TO      OUT-CPFCNPJ
+065700     MOVE     IA1                TO      OUT-RETORNO
+065800     MOVE     "100"              TO      AREA-OUT.
+065900
+066000
+066100****     SEND     COMS-OUT           FROM    AREA-OUT.
+066200
+066300     IF       COMS-OUT-STATUS    NOT =   0 AND 92
+066400              DISPLAY "ERRO NO ENVIO DA MENSAGEM".
+066500
+066600     MOVE     99                 TO  COMS-IN-STATUS.
+066700
+066800*
+066900 250-S-ERRO-COMS.
+067000     EXIT.
+067100*
+067200/
+067300******************************************************************
+067400*            VERIFICA    ERRO    D.M.S.  II                      *
+067500******************************************************************
+067600*
+067700 260-E-ERRODB.
+067800*
+067900     DISPLAY "PROGRAMA   :   PC/GEV/T434/DB".
+068000     DISPLAY "***    ERRO    DE    DMS II    ***".
+068100
+068200     IF      DMSTATUS(NOTFOUND)      DISPLAY "NOTFOUND"      ELSE
+068300     IF      DMSTATUS(OPENERROR)     DISPLAY "OPENERROR"     ELSE
+068400     IF      DMSTATUS(ABORT)         DISPLAY "ABORT"         ELSE
+068500     IF      DMSTATUS(CLOSEERROR)    DISPLAY "CLOSEERROR"    ELSE
+068600     IF      DMSTATUS(SECURITYERROR) DISPLAY "SECURITYERROR" ELSE
+068700     IF      DMSTATUS(SYSTEMERROR)   DISPLAY "SYSTEMERROR"   ELSE
+068800     IF      DMSTATUS(IOERROR)       DISPLAY "IOERROR"       ELSE
+068900     IF      DMSTATUS(DATAERROR)     DISPLAY "DATAERROR"     ELSE
+069000     IF      DMSTATUS(DEADLOCK)      DISPLAY "DEADLOCK"      ELSE
+069100     IF      DMSTATUS(AUDITERROR)    DISPLAY "AUDITERROR"    ELSE
+069200     IF      DMSTATUS(DUPLICATES)    DISPLAY "DUPLICATES"    ELSE
+069300     DISPLAY "ERRO  NAO  IDENTIFICADO  NAS  CONDICOES  D.M.S. ".
+069400
+069500
+069600     MOVE    999                     TO      IA1.
+069700     PERFORM 200-E-ENV-ERRO          THRU    200-S-ENV-ERRO.
+069800
+069900*
+070000 260-S-ERRODB.
+070100     EXIT.
+070200*
+070300/----------------------------------------------------------------*
+070400*            ROTINA  DE  FINALIZACAO  DO  PROGRAMA               *
+070500*----------------------------------------------------------------*
+070600*
+070700 900-E-FINAL.
+070800*
+070900
+071000     CLOSE   DB01
+071100       ON    EXCEPTION
+071200             DISPLAY "PC/GEV/T434/DB - CLOSE DBDETRAN ERROR"
+071250            PERFORM 260-E-ERRODB     THRU    260-S-ERRODB
+071300             CALL    SYSTEM          DMTERMINATE.
+071400
+071500
+071600*
+071700 900-S-FINAL.
+071800     EXIT.
+071900*
+072000******************************************************************
+072100*      PESQUISA O ULTIMO REGISTRO EM ESCOLHAS   POR CHASSI       *
+072200******************************************************************
+072300*
+072400 910-E-LASTPLAC.
+072500
+072600
+072700
+072800     MOVE    "N"                     TO      CH-NOTFOUND.
+072900
+073000     FIND    LAST   ESCPLACSE1       AT
+073100             EPC-CHASSI              =       IN-CHASSI
+073200       ON    EXCEPTION
+073300        IF   DMSTATUS (NOTFOUND)
+073400             MOVE    "S"             TO      CH-NOTFOUND
+073500             GO                      TO      910-S-LASTPLAC
+073600        ELSE
+073700             DISPLAY "PC/GEV/T434/DB: FIND ERROR LAST GRACHASSISE"
+073800             PERFORM 260-E-ERRODB    THRU    260-S-ERRODB
+073900             CALL    SYSTEM          DMTERMINATE.
+074000
+074100
+074200
+074300
+074400
+074500
+074600
+074700
+074800 910-S-LASTPLAC.
+074900     EXIT.

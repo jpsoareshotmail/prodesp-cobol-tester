@@ -1,0 +1,1062 @@
+000000* VERSION 17.1   ; SAVED 20250722 07:36:15                    |17.
+000100 ID          DIVISION.
+000200*--------------------*
+000300
+000400 PROGRAM-ID.     PC-GAA-T920-DB.
+000500 AUTHOR.         JAIRCHININ.
+000600 DATE-WRITTEN.   JUNHO/2000.
+000700 SECURITY.
+000800
+000900*----------------------------------------------------------------*
+001000*    OBJETIVO - CARREGAR REGISTRO DA ASSINATURA DIGITAL          *
+001100*                                                                *
+001200*    WINDOW = WDGAA35     -  TRANSACAO  = "RAUT"                 *
+001300*                                                                *
+001400*----------------------------------------------------------------*
+001500*    ALTERACOES EFETUADAS:                                       *
+001600*                                                                *
+001700*    SEQ     DATA     O.S.  PATCH  PROGRAMADOR   ANALISTA        *
+001800*                                                                *
+001900*    001  06/10/2000  ....   001   JAIR          JAIR            *
+001910*    002  24/05/2001  ....   002   JAIR          CIDA            *
+001915*    003  17/05/2002         003   LEE MAN TAT   LEE             *
+002000*    005  18/03/2003         005   CIDA FAZZI    CIDA FAZZI      *
+002100*    005  24/12/2004         005   CIDA FAZZI    CIDA FAZZI      *
+002110*    006  24/07/2006         006   JAC           JAC             *
+002120*    007  23/08/2006         007   JAC/LORIA (COD SERV. 27 E 28) *
+002200*    008  27/04/2011         008   ZENSO         LORIA           *
+002205*         18/04/2012              JWD JAC (ARMAZ AUTENTICACOES)  *
+002300*    009  08/03/2013  291         JFS/JAC (ALT.TAM.RENAVAM 9->11)*
+002350*    010  24/04/2013  0558/2013   Inibir acesso CNH E codretor=01*
+002400*    011  24/04/2013  0559/2013   Inibir acesso ao Bco DBCNH 0558*
+002450*    012  25/04/2013  0560/2013   Desinibir DBCNH REF.0558/0559  *
+002460*    013  17/03/2014  0263/2014   Incluir 17 Pratico - TAXAS     *
+002462*    014  15/05/2014  0497/2014   ATUALIZ DTA ESTRUT.AUTENTICACAO*
+002480*    015  10/12/2015              JAC/JAC COD.SERV. 091 PATIO    *
+002490*    016  31/03/2016              JAC/JAC INCLUIR COD 92         *
+002492*         24/08/2018              ALF/SSA POPULAR PLACA-MERC     *
+002494*         09/11/2018              JWD/SSA ALT MOV ACESS PLACA MER*
+002499*         21/01/2018  SSA/SSA     ACERTO MOV NRO                 *
+002549*         13/03/2018  VLG/VLG     NAO DEIXAR DUPLICIDADE TAXA 92 *
+002550*         18/03/2020  SMS/JWD     INCL DATA SET LICAENVIARDS     *
+002551*         27/07/2020  SSA/JWD     INCL DATA SET TAXASDS          *
+002552*         30/09/2020  SSA/JWD     RET ROT GRAVACAO EXPURGOS      *
+002560*         02/10/223   VLG/VLG     VERIFICAR EXISTENCIA DE TAXA   *
+002562*         11/10/2023  SSA/SSA     INCLUSAO DAS CHAVES PIX        *
+002564*         30/01/2024  CIDA FAZZI  VERIF. DUPLIC. DE TAXA CNH     *
+002566*         15/01/2025  VLG/VLG     INDEMP REENV TAXA E VERIF HIST *
+002568* RD245079  27/05/25  SSA/SSA COD SERV NOVO 93 PRECO PUBL ESTAMP *
+002570* ........  ../../..  .../... ...................................*
+002572* ........  ../../..  .../... ...................................*
+002574*                                                                *
+002599*----------------------------------------------------------------*
+002600/
+002700 ENVIRONMENT DIVISION.
+002800*--------------------*
+002900
+003000 CONFIGURATION   SECTION.
+003100
+003200 SPECIAL-NAMES.
+003300     DECIMAL-POINT   IS  COMMA.
+003400
+003500 INPUT-OUTPUT    SECTION.
+003600 FILE-CONTROL.
+003700
+003800
+003900
+004000
+004100/
+004200 DATA        DIVISION.
+004300*--------------------*
+004400
+004500 FILE            SECTION.
+004600
+004700
+004800/
+004900 DATA-BASE       SECTION.
+005000*-----------------------*
+005100
+005200 DB          DB01   =    TDBDETRAN.
+005300
+005600 01          PRODRDSDS.
+005700
+005709 01          LICAENVIARDS.
+005800
+005802
+005900 DB          DB02    =        TDBCNH.
+006000
+006100 01          AUTENTICACAODS.
+006105
+006110 01          TAXADS.
+006200
+006300 01          RDSDS.
+006305
+006307
+006310 DB          DB03    =            TDBTAXAS.
+006315
+006320 01          TAXASDS.
+006325
+006330 01          EXPURGODS.
+006335
+006340 01          TAXASRDSDS.
+006345
+006350 01          VALIDADOSDS.
+006400/
+006500
+006600 WORKING-STORAGE SECTION.
+006700
+006800
+006900 77          LINKTOCOMS      PIC X(256).
+007000 77          AX-CALL-ERROR   PIC S9(011) BINARY.
+007100 77          AX-AGENDA-DESG              REAL.
+007200 01          AX-AGENDA-OUT   PIC X(017)  VALUE "AGGAAT920".
+007300
+007400 01          CH-NOTF         PIC 9(001).
+007450 01          CH-EXISTE-TAXA  PIC X(001).
+007500 01          CH-ERRO         PIC 9(001).
+007600 01          CH-ABR-BCO      PIC 9(001)  VALUE 0.
+007650 01          CH-EXISTE-VALID PIC X(001).
+007700
+007800
+007900 01          AX-DATA-H       PIC X(010)  TYPE IS NUMERIC-DATE.
+008000 01          AX-DATA-H-R     REDEFINES   AX-DATA-H.
+008100     05      AX-MES-H        PIC 9(002).
+008200     05      FILLER          PIC X(001).
+008300     05      AX-DIA-H        PIC 9(002).
+008400     05      FILLER          PIC X(001).
+008500     05      AX-ANO-H        PIC 9(004).
+008600
+008700
+008800 01          AX-DATE         PIC 9(008).
+008900 01          AX-DATE-R       REDEFINES       AX-DATE.
+009000     05      AX-DATE-ANO     PIC 9(004).
+009100     05      AX-DATE-MES     PIC 9(002).
+009200     05      AX-DATE-DIA     PIC 9(002).
+009300
+009302 01          AX-DATEATU      PIC 9(008).
+009304 01          AX-DTATU-R       REDEFINES       AX-DATEATU.
+009306     05      AX-DTATU-ANO     PIC 9(004).
+009308     05      AX-DTATU-MES     PIC 9(002).
+009310     05      AX-DTATU-DIA     PIC 9(002).
+009312
+009314
+009400 01          AX-NUMERO.
+009500     05      AX-NUM-123      PIC 9(003)     COMP.
+009600     05      AX-NUM-4        PIC 9(001)     COMP.
+009700
+009710 01          WS-CPF          PIC 9(011).
+009715
+009720 01          AX-PLACA             PIC X(007).
+009725 01          AX-PLACA-R   REDEFINES   AX-PLACA.
+009730     05      AX-PLA-LETRA         PIC X(003).
+009735     05      AX-PLA-NUMEROS.
+009740        10   AX-PLA-NUM12         PIC 9(002).
+009745        10   AX-PLA-NUM34         PIC 9(002).
+009750
+009755****************** AREA DE COMPLEMENTO DE DATAS ******************
+009760
+009765 01          AX-SEC-ANO              PIC 9(008).
+009770 01          AX-SEC-ANO-RE    REDEFINES  AX-SEC-ANO.
+009775     05      AX-CENTURY              PIC 9(002).
+009780     05      AX-CENT-AAMMDD          PIC 9(006).
+009785
+009790
+009800
+012400
+012500/----------------------------------------------------------------*
+012600*               AREA DE PASSAGEM DE STRING DE DADOS              *
+012700*----------------------------------------------------------------*
+012703
+012800 01          AREA-IN.
+012900     05      IN-CODE          PIC X(004).
+013000     05      IN-TIP-REG       PIC 9(002).
+013100     05      IN-CPFCGC        PIC 9(014).
+013200     05      IN-CPFCGC-R      REDEFINES      IN-CPFCGC.
+013300       10    FILLER           PIC X(003).
+013400       10    IN-CPF           PIC 9(011).
+013500     05      IN-CPFCGC-RR     REDEFINES      IN-CPFCGC.
+013600       10    FILLER           PIC 9(003).
+013700       10    IN-RENAVAM       PIC 9(011).
+013800     05      IN-MUNICIPIO     PIC 9(004).
+013900     05      IN-PLACA         PIC X(007).
+013905     05      IN-PLACA-R       REDEFINES      IN-PLACA.
+014000       10    IN-LETRA         PIC X(003).
+014100       10    IN-NUMERO.
+014200        15   IN-NUM-1         PIC 9(001).
+014205        15   IN-ALFA          PIC X(001).
+014300        15   IN-NUM-34        PIC 9(002).
+014700     05      IN-SENHA         PIC X(064).
+014762     05      IN-SENHA-R       REDEFINES      IN-SENHA.
+014764       10    IN-SENHA-04          PIC X(004).
+014766       10    FILLER               PIC X(060).
+014768     05      IN-NV-CONTEUDO   REDEFINES      IN-SENHA.
+014770       10    IN-CPFCNPJ           PIC 9(014).
+014772       10    IN-CPFCNPJ-R     REDEFINES      IN-CPFCNPJ.
+014774        15   FILLER               PIC 9(003).
+014776        15   IN-CPF-NV            PIC 9(011).
+014778       10    IN-CPFCNPJ-RR    REDEFINES      IN-CPFCNPJ.
+014780        15   FILLER               PIC 9(003).
+014782        15   IN-RENAVAM-NV        PIC 9(011).
+014784       10    IN-COD-BCO           PIC 9(003).
+014786       10    IN-DTA-PGTO          PIC 9(006).
+014788       10    IN-NSU-PRODESP       PIC 9(009).
+014790** Cod Serv -01 A 99
+014792       10    IN-COD-SERV          PIC 9(002).
+014794       10    IN-NSU-BCO           PIC 9(012).
+014796       10    IN-VLR-PAGO          PIC 9(008)V99.
+014798       10    IN-DTA-CONTAB        PIC 9(006).
+014800       10    IN-ANO-LIC           PIC 9(002).
+014803     05      IN-PIX-IDTRANS       PIC X(035).
+014806     05      IN-PIX-IDFIM         PIC X(035).
+014809     05      IN-COD-SERVICO       PIC 9(002).
+014900
+015000 01          AREA-IN-R       REDEFINES       AREA-IN.
+015100     05      IN-CHAVE        PIC X(031).
+015200     05      FILLER          PIC X(064).
+015203     05      FILLER          PIC X(070).
+015300     05      FILLER          PIC 9(002).
+015400
+015500 01          AREA-OUT        PIC X(1920).
+015600
+015700 01          OUT-ERRO        REDEFINES       AREA-OUT.
+015800     10      OUT-COD-ERRO    PIC X(002).
+015900     10      OUT-CHAVE       PIC X(031).
+016000     10      FILLER          PIC X(1887).
+016100/
+016200 COMMUNICATION SECTION.
+016300 INPUT HEADER COMS-IN;
+016400     PROGRAMDESG           IS COMS-IN-PROGRAM;
+016500     FUNCTIONSTATUS        IS COMS-IN-FUNCTION-STATUS;
+016600     FUNCTIONINDEX         IS COMS-IN-FUNCTION-INDEX;
+016700     USERCODE              IS COMS-IN-USERCODE;
+016800     SECURITYDESG          IS COMS-IN-SECURITY-DESG;
+016900     TRANSPARENT           IS COMS-IN-TRANSPARENT;
+017000     VTFLAG                IS COMS-IN-VT-FLAG;
+017100     TIMESTAMP             IS COMS-IN-TIMESTAMP;
+017200     STATION               IS COMS-IN-STATION;
+017300     TEXTLENGTH            IS COMS-IN-TEXT-LENGTH;
+017400     STATUSVALUE           IS COMS-IN-STATUS;
+017500     MESSAGECOUNT          IS COMS-IN-MSG-COUNT;
+017600     RESTART               IS COMS-IN-RST-LOC;
+017700     AGENDA                IS COMS-IN-AGENDA;
+017800     SDFINFO               IS COMS-IN-INFO.
+017900
+018000
+018100
+018200 OUTPUT HEADER COMS-OUT;
+018300     DESTCOUNT             IS COMS-OUT-COUNT;
+018400     TEXTLENGTH            IS COMS-OUT-TEXT-LENGTH;
+018500     STATUSVALUE           IS COMS-OUT-STATUS;
+018600     TRANSPARENT           IS COMS-OUT-TRANPARENT;
+018700     VTFLAG                IS COMS-OUT-VT-FLAG;
+018800     CONFIRMFLAG           IS COMS-OUT-CONFIRM-FLAG;
+018900     CONFIRMKEY            IS COMS-OUT-CONFIRMKEY;
+019000     DESTINATIONDESG       IS COMS-OUT-DESTINATION;
+019100     NEXTINPUTAGENDA       IS COMS-OUT-NEXT-INPUT-AG;
+019200     CASUALOUTPUT          IS COMS-OUT-CASUAL-OUTPUT;
+019300     SETNEXTINPUTAGENDA    IS COMS-OUT-SET-NEXT-AG;
+019400     RETAINTRANSACTIONMODE IS COMS-OUT-RETAIN-TRANMODE;
+019500     AGENDA                IS COMS-OUT-AGENDA;
+019600     SDFINFO               IS COMS-OUT-INFO.
+019700 PROCEDURE DIVISION.
+019800*------------------*
+019900
+020000*----------------------------------------------------------------*
+020100*            M O N I T O R A                                     *
+020200*----------------------------------------------------------------*
+020300*
+020400
+020500 000-E-MONITORA.
+020600
+020700     PERFORM 010-E-INICIO    THRU    010-S-INICIO.
+020800
+020900     PERFORM 020-E-PROCESSO  THRU    020-S-PROCESSO
+021000             UNTIL  COMS-IN-STATUS   =    99.
+021100
+021200     PERFORM 100-E-FINAL     THRU    100-S-FINAL.
+021300
+021400 000-S-MONITORA.
+021500     STOP RUN.
+021600/
+021700*----------------------------------------------------------------*
+021800*            I N I C I A L I Z A C A O                           *
+021900*----------------------------------------------------------------*
+022000*
+022100
+022200 010-E-INICIO.
+022300
+022400
+022500     MOVE    ATTRIBUTE NAME OF ATTRIBUTE EXCEPTIONTASK
+022600                            OF ATTRIBUTE EXCEPTIONTASK OF MYSELF
+022700                            TO LINKTOCOMS.
+022800
+022900     CHANGE  ATTRIBUTE TITLE OF "DCILIBRARY" TO LINKTOCOMS.
+023000
+023100     ENABLE  INPUT  COMS-IN          KEY     "ONLINE"
+023200
+023300     CALL    "GET_DESIGNATOR_USING_NAME IN DCILIBRARY"
+023400                                    USING    AX-AGENDA-OUT,
+023500                                    VALUE    AGENDA,
+023600                                             AX-AGENDA-DESG
+023700                                    GIVING   AX-CALL-ERROR.
+023800
+023900     MOVE    0                       TO      CH-ABR-BCO.
+024000
+024100
+024200     OPEN    UPDATE  DB01
+024300       ON    EXCEPTION
+024400             MOVE    1               TO      CH-ABR-BCO
+024500             GO                      TO      010-S-INICIO.
+024600
+024610     OPEN    UPDATE  DB02
+024620       ON    EXCEPTION
+024630             MOVE    1               TO      CH-ABR-BCO
+024640             GO                      TO      010-S-INICIO.
+024645
+024650     OPEN    UPDATE  DB03
+024655       ON    EXCEPTION
+024660             MOVE    1               TO      CH-ABR-BCO
+024665             GO                      TO      010-S-INICIO.
+024670
+024700
+024800
+024900
+025000     ACCEPT  AX-DATA-H               FROM    DATE.
+025100
+025200     MOVE    AX-ANO-H                TO      AX-DATE-ANO.
+025300     MOVE    AX-MES-H                TO      AX-DATE-MES.
+025400     MOVE    AX-DIA-H                TO      AX-DATE-DIA.
+025500
+025600
+025700
+025800 010-S-INICIO.
+025900     EXIT.
+026000/
+026100*----------------------------------------------------------------*
+026200*    P R O C E S S A M E N T O    P R I N C I P A L              *
+026300*----------------------------------------------------------------*
+026400*
+026500
+026600 020-E-PROCESSO.
+026700
+026800
+026900     MOVE    SPACES                  TO      AREA-IN
+027000                                             AREA-OUT.
+027100
+027200     RECEIVE COMS-IN MESSAGE         INTO    AREA-IN.
+027300
+027400     IF      COMS-IN-STATUS          =       0 OR 92 OR 93
+027500             NEXT    SENTENCE
+027600     ELSE
+027700     IF      COMS-IN-STATUS          =       99
+027800             GO                      TO      020-S-PROCESSO
+027900     ELSE
+028000             PERFORM 180-E-ERRO-IN   THRU    180-S-ERRO-IN
+028100             GO                      TO      020-S-PROCESSO.
+028200
+028300
+028305     ACCEPT  AX-DATE                 FROM    DATE    YYYYMMDD.
+028310
+028400     IF      IN-CODE                 =       "RAUT"
+028410       IF    IN-COD-SERVICO          =       17 OR 18 OR 19 OR
+028411                                             20 OR 21 OR 22 OR
+028412                                             25 OR 26 OR 27 OR
+028414                                             28
+028416         IF  IN-SENHA-04             NOT     NUMERIC
+028418             MOVE    "01"            TO      OUT-COD-ERRO
+028420         ELSE
+028421             PERFORM 300-E-TAXAS-NV     THRU  300-S-TAXAS-NV
+028422       ELSE
+028424         IF  IN-SENHA-04             NOT     NUMERIC
+028427             MOVE    "01"            TO      OUT-COD-ERRO
+028505         ELSE
+028510             PERFORM 400-E-INC-DBTAXA THRU   400-S-INC-DBTAXA
+028600     ELSE
+028700             MOVE    "02"            TO      OUT-COD-ERRO.
+028800
+028900     MOVE    IN-CHAVE                TO      OUT-CHAVE.
+029000     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+029100     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+029200     MOVE    1                       TO      COMS-OUT-COUNT.
+029300     MOVE    0                       TO      COMS-OUT-STATUS.
+029400     MOVE    33                      TO      COMS-OUT-TEXT-LENGTH.
+029500
+029600     SEND    COMS-OUT                FROM    AREA-OUT.
+029700
+029800
+029900
+030000 020-S-PROCESSO.
+030100     EXIT.
+030200
+038500
+038600/----------------------------------------------------------------*
+038700*       ROTINA DE ERRO DE LEITURA                                *
+038800*----------------------------------------------------------------*
+038900
+039000 180-E-ERRO-IN.
+039100
+039200     DISPLAY "PC/GAA/T920/DB - PROBLEMAS NO COMS-IN".
+039300     DISPLAY "FUNCTIONINDEX = " COMS-IN-FUNCTION-INDEX.
+039400
+039500     IF       COMS-IN-STATUS         =       20 OR 100 OR 101 OR
+039600                                             102
+039700              DISPLAY "PROBLEMAS COM A ESTACAO"
+039800     ELSE
+039900       IF     COMS-IN-STATUS         =       94 OR 95 OR 97
+040000              DISPLAY "DESTINO INVALIDO"
+040100       ELSE
+040200              DISPLAY " STATUSVALUE = " COMS-IN-STATUS.
+040300
+040400     MOVE     1                  TO      COMS-OUT-COUNT.
+040500     MOVE     COMS-IN-STATION    TO      COMS-OUT-DESTINATION.
+040600     MOVE     0                  TO      COMS-OUT-STATUS.
+040700     MOVE     02                 TO      COMS-OUT-TEXT-LENGTH.
+040800
+040900
+041000     MOVE     "02"               TO      OUT-COD-ERRO.
+041100
+041200
+041300     SEND     COMS-OUT           FROM    AREA-OUT.
+041400
+041500     IF       COMS-OUT-STATUS    NOT =   0 AND 92
+041600              DISPLAY "ERRO NO ENVIO DA MENSAGEM".
+041700
+041800     MOVE     99                 TO  COMS-IN-STATUS.
+041900
+042000  180-S-ERRO-IN.
+042100      EXIT.
+042200
+042300/
+042400*----------------------------------------------------------------*
+042500*            F I N A L I Z A C A O                               *
+042600*----------------------------------------------------------------*
+042700*
+042800
+042900 100-E-FINAL.
+043000
+043100
+043200
+043300     IF      CH-ABR-BCO              NOT =       0
+043400             MOVE    SPACES          TO      AREA-OUT
+043500             RECEIVE COMS-IN MESSAGE INTO    AREA-IN
+043600             MOVE    "02"            TO      AREA-OUT
+043700             MOVE    2               TO      COMS-OUT-TEXT-LENGTH
+043800             MOVE    COMS-IN-STATION TO      COMS-OUT-DESTINATION
+043900             MOVE    AX-AGENDA-DESG  TO      COMS-OUT-AGENDA
+044000             MOVE    1               TO      COMS-OUT-COUNT
+044100             MOVE    0               TO      COMS-OUT-STATUS
+044200             SEND    COMS-OUT        FROM    AREA-OUT
+044300             GO                      TO      100-S-FINAL.
+044400
+044500
+044600
+044700
+044800
+044900     CLOSE   DB01
+045000         ON  EXCEPTION
+045100             CALL    SYSTEM          DMTERMINATE.
+045105
+045110     CLOSE   DB02
+045115         ON  EXCEPTION
+045120             CALL    SYSTEM          DMTERMINATE.
+045125
+045130
+045135     CLOSE   DB03
+045140         ON  EXCEPTION
+045145             CALL    SYSTEM          DMTERMINATE.
+045150
+045200
+045300 100-S-FINAL.
+045400     EXIT.
+045500/
+045600
+045700/*****************************************************************
+045800*    TRATAMENTO DO REGISTRO DO SERVICO DE CNH ( DBCNH )          *
+045900******************************************************************
+046000
+046100 200-E-TDBCNH.
+046200
+046300     IF      IN-CPFCGC-R             =           ZEROS         OR
+046400                                                 SPACES        OR
+046500                                                 LOW-VALUES
+046600             MOVE    "01"            TO          OUT-COD-ERRO
+046700             GO                      TO          200-S-TDBCNH.
+046800
+046900
+046905     IF      IN-COD-SERVICO          =           17  OR  18  OR
+047000                                                 19  OR  20  OR
+047100                                                 21  OR  22  OR
+047200                                                 25  OR  26  OR
+047201                                                 27  OR  28
+047300             NEXT    SENTENCE
+047400     ELSE
+047500             MOVE    "01"            TO          OUT-COD-ERRO
+047600             GO                      TO          200-S-TDBCNH.
+047700
+047800
+047900     MOVE    0                       TO          CH-NOTF
+048000                                                 CH-ERRO.
+048100     MOVE    IN-CPF                  TO          WS-CPF.
+048200     SET     AUTENTICACAOSE OF DB02       TO     BEGINNING.
+048300     PERFORM 260-E-FIND              THRU        260-S-FIND.
+048400     PERFORM 220-E-VERIF             THRU        220-S-VERIF
+048500             UNTIL   CH-NOTF         EQUAL       1             OR
+048600                     CH-ERRO         EQUAL       1.
+048700     IF      CH-ERRO                 EQUAL       1
+048800             MOVE    "01"            TO          OUT-COD-ERRO
+048900     ELSE
+049000             PERFORM 240-E-INCLUI    THRU        240-S-INCLUI.
+049100
+049200
+049300 200-S-TDBCNH.        EXIT.
+049400
+049500/*****************************************************************
+049600*    VERIFICA SE A SENHA JA ESTA CADASTRADA                      *
+049700******************************************************************
+049800
+049900 220-E-VERIF.
+050000
+050100     IF      AUT-SENHA OF DB02       EQUAL       IN-SENHA
+050200             MOVE    1               TO          CH-ERRO
+050300     ELSE
+050400             PERFORM 260-E-FIND      THRU        260-S-FIND.
+050500
+050600
+050700 220-S-VERIF.        EXIT.
+050800
+050900/*****************************************************************
+051000*        INCLUSAO DO REGISTRO DE AUTENTICACAO                    *
+051100******************************************************************
+051200
+051300 240-E-INCLUI.
+051400
+051500
+051600
+051700     CREATE  AUTENTICACAODS  OF      DB02
+051800         ON  EXCEPTION
+051900             DISPLAY "GAA/T920 - ERRO CREATE AUTENTICACAO CNH"
+052000             CALL    SYSTEM  DMTERMINATE.
+052100
+052200
+052300     MOVE    IN-CPF                  TO          AUT-CPF.
+052400     MOVE    1                       TO          AUT-ORIGEM.
+052500     MOVE    IN-SENHA                TO          AUT-SENHA
+052510                                     OF          DB02.
+052512     ACCEPT  AX-DATA-H               FROM        DATE.
+052514
+052516     MOVE    AX-ANO-H                TO          AX-DTATU-ANO.
+052518     MOVE    AX-MES-H                TO          AX-DTATU-MES.
+052520     MOVE    AX-DIA-H                TO          AX-DTATU-DIA.
+052522
+052600     MOVE    AX-DATEATU              TO          AUT-DATA-INCL.
+052700     ACCEPT  AUT-HORA-INCL           FROM        TIME.
+052800     MOVE    IN-COD-SERVICO          TO          AUT-TIPO.
+052900     MOVE    0                       TO          AUT-SITUACAO
+052910                                                 OF  DB02
+053000                                                 AUT-QTDE-UTIL
+053100                                                 AUT-DATA-ATUAL
+053200                                                 AUT-DATA-PAGTO
+053300                                                 AUT-BANCO
+053400                                                 AUT-VALOR.
+053500     MOVE    SPACES                  TO          AUT-OBSERV.
+053600
+053700
+053800     BEGIN-TRANSACTION               NO-AUDIT    RDSDS
+053900         ON  EXCEPTION
+054000             DISPLAY "GAA/T920 - ERRO BEGIN-TRANS AUTENT - CNH  "
+054100             CALL    SYSTEM  DMTERMINATE.
+054200
+054205
+054210 240-10-INCLUI.
+054215
+054400     STORE   AUTENTICACAODS  OF      DB02
+054500         ON  EXCEPTION
+054510          IF DMSTATUS(DUPLICATES)
+054520             ADD     1               TO      AUT-HORA-INCL
+054530             GO                      TO      240-10-INCLUI
+054540          ELSE
+054600             DISPLAY "GAA/T920 - ERRO STORE AUTENTICACAODS CNH"
+054700             CALL    SYSTEM  DMTERMINATE.
+054800
+054900
+055000     END-TRANSACTION                 NO-AUDIT    RDSDS
+055100         ON  EXCEPTION
+055200             DISPLAY "GAA/T920 - ERRO END-TRANS AUTENTIC - CNH"
+055300             CALL    SYSTEM  DMTERMINATE.
+055400
+055500
+055600     MOVE    "00"                    TO          OUT-COD-ERRO.
+055700
+055800
+055900 240-S-INCLUI.       EXIT.
+056000
+056100/*****************************************************************
+056200*    ACESSA AUTENTICACAODS PARA VERIFICAR SE EXISTE CPF / SENHA  *
+056300*    CADASTRADOS ANTERIORMENTE       ( DBCNH )                   *
+056400******************************************************************
+056500
+056600 260-E-FIND.
+056700
+056800     FIND    NEXT     AUTENTICACAOSE OF DB02     AT
+056900             AUT-CPF                 EQUAL       WS-CPF
+057000         ON  EXCEPTION
+057100         IF  DMSTATUS(NOTFOUND)
+057200             MOVE    1               TO          CH-NOTF
+057300         ELSE
+057400             DISPLAY "GAA/T920 - ERRO FIND AUTENTICACAODS CNH"
+057500             CALL    SYSTEM  DMTERMINATE.
+057600
+057700
+057800 260-S-FIND.         EXIT.
+057900
+058000/
+065700******************************************************************
+065800*                    CRIA LICAENVIARDS                           *
+065900******************************************************************
+066000
+066100 290-E-LICAENVIARDS.
+066200
+066300     CREATE  LICAENVIARDS
+066400       ON    EXCEPTION
+066500             DISPLAY "PC/GAA/T920/DB -ERRO CREATE LICAENVIARDS"
+066600             CALL    SYSTEM  DMTERMINATE.
+066700
+066800*
+066900*
+067000     MOVE    IN-RENAVAM              TO     LIV-RENAVAM.
+067100     MOVE    IN-PLACA                TO     LIV-PLACA.
+067200     MOVE    IN-MUNICIPIO            TO     LIV-MUNICIPIO.
+067300     MOVE    IN-SENHA                TO     LIV-SENHA.
+067400     MOVE    IN-COD-SERVICO          TO     LIV-COD-SERVICO.
+067500
+067710     MOVE    TAX-DT-INCLUSAO         TO     LIV-DT-INCLUSAO
+067715     MOVE    TAX-HR-INCLUSAO         TO     LIV-HR-INCLUSAO.
+067800
+067900
+068000
+068100     STORE   LICAENVIARDS
+068200        ON   EXCEPTION
+068300             DISPLAY "PC/GAA/T920/DB - ERRO STORE LICAENVIARDS"
+068400             CALL    SYSTEM  DMTERMINATE.
+068500
+068600
+068700 290-S-LICAENVIARDS.
+068800     EXIT.
+068900
+069000******************************************************************
+069100*                                                                *
+069200*                NOVA ROTINA P GRAVACAO TAXASDS                  *
+069300*                                                                *
+069400******************************************************************
+069500 300-E-TAXAS-NV.
+069600
+069700
+069800     IF      IN-CPFCGC-R             =           ZEROS         OR
+069900                                                 SPACES        OR
+070000                                                 LOW-VALUES
+070100             MOVE    "01"            TO          OUT-COD-ERRO
+070200             GO                      300-S-TAXAS-NV.
+070300
+070400
+070500     IF      IN-COD-SERVICO          =           17  OR  18  OR
+070600                                                 19  OR  20  OR
+070700                                                 21  OR  22  OR
+070800                                                 25  OR  26  OR
+070900                                                 27  OR  28
+071000             NEXT    SENTENCE
+071100     ELSE
+071200             MOVE    "01"            TO          OUT-COD-ERRO
+071300             GO                      300-S-TAXAS-NV.
+071400
+071500
+071600     MOVE    0                       TO          CH-NOTF
+071700                                                 CH-ERRO.
+071800
+071810
+071820     PERFORM 310-E-VERTAXA           THRU        310-S-VERTAXA.
+071830
+071840     IF      CH-NOTF                 EQUAL       1
+071850             NEXT    SENTENCE
+071860     ELSE
+071870             MOVE    "00"            TO          OUT-COD-ERRO
+071880             GO                      TO          300-S-TAXAS-NV.
+071890
+071900
+072000     CREATE  TAXADS
+072100         ON  EXCEPTION
+072200             DISPLAY "GAA/T920 - ERRO CREATE TAXADS CNH"
+072300             CALL    SYSTEM  DMTERMINATE.
+072400
+072500     MOVE    20                      TO         AX-CENTURY.
+072600     MOVE    IN-CPF                  TO         TAX-CPF.
+072700
+072800     ACCEPT  TAX-DATAINCL            FROM       DATE    YYYYMMDD.
+072900     ACCEPT  TAX-HORAINCL            FROM       TIME.
+073000
+073100     MOVE    IN-COD-SERVICO          TO         TAX-TIPO.
+073200     MOVE    IN-COD-BCO              TO         TAX-BANCO OF DB02.
+073300     MOVE    IN-DTA-PGTO             TO         AX-CENT-AAMMDD
+073305     MOVE    AX-SEC-ANO              TO         TAX-DT-PAGTO
+073400     MOVE    IN-DTA-CONTAB           TO         AX-CENT-AAMMDD
+073405     MOVE    AX-SEC-ANO              TO         TAX-DT-CONTABIL.
+073500     MOVE    IN-NSU-PRODESP          TO         TAX-NSUPRODESP.
+073600     MOVE    IN-NSU-BCO              TO         TAX-NSUBANCO.
+073700     MOVE    IN-VLR-PAGO             TO         TAX-VALOR OF DB02.
+073800     MOVE    ZEROS                   TO      TAX-SITUACAO OF DB02
+073900                                     TAX-DT-UTILIZA OF DB02
+074000                                                TAX-DT-ATUAL
+074100                                                TAX-PGU
+074200                                                TAX-REGISTRO
+074300                                                TAX-RENACH.
+074400
+074500
+074600
+074700     BEGIN-TRANSACTION               NO-AUDIT    RDSDS
+074800         ON  EXCEPTION
+074900             DISPLAY "GAA/T920 - ERRO BEGIN-TRANS TAXENT - CNH  "
+075000             CALL    SYSTEM  DMTERMINATE.
+075100
+075200
+075300 300-10-STORE.
+075400
+075500     STORE   TAXADS
+075600         ON  EXCEPTION
+075700          IF DMSTATUS(DUPLICATES)
+075800             ADD     1               TO      TAX-HORAINCL
+075900             GO                      TO      300-10-STORE
+076000          ELSE
+076100             DISPLAY "GAA/T920 - ERRO STORE AUTENTICACAODS CNH"
+076200             CALL    SYSTEM  DMTERMINATE.
+076300
+076400
+076500     END-TRANSACTION                 NO-AUDIT    RDSDS
+076600         ON  EXCEPTION
+076700             DISPLAY "GAA/T920 - ERRO END-TRANS AUTENTIC - CNH"
+076800             CALL    SYSTEM  DMTERMINATE.
+076900
+077000
+077100     MOVE    "00"                    TO          OUT-COD-ERRO.
+077110
+077120
+077130 300-S-TAXAS-NV.     EXIT.
+077140
+077150/*****************************************************************
+077160*    VERIFICA SE A TAXA JA FOI IBNCLUIDA NO TAXADS DO DBCNH      *
+077170******************************************************************
+077180
+077190 310-E-VERTAXA.
+077200
+077210     FIND    LAST    TAXASE2         AT
+077220             TAX-TIPO                EQUAL       IN-COD-SERVICO
+077230         AND TAX-CPF                 EQUAL       IN-CPF
+077240         ON  EXCEPTION
+077250         IF  DMSTATUS(NOTFOUND)
+077260             MOVE    1               TO          CH-NOTF
+077270             GO                      TO          310-S-VERTAXA
+077280         ELSE
+077290             DISPLAY "GAA/T920 - ERRO FIND FIRST TAXADS"
+077300             CALL    SYSTEM  DMTERMINATE.
+077310
+077320
+077330 310-LOOP.
+077340
+077350     MOVE    IN-DTA-PGTO             TO          AX-CENT-AAMMDD
+077360     IF      TAX-DT-PAGTO            =           AX-SEC-ANO
+077370             MOVE    IN-DTA-CONTAB   TO          AX-CENT-AAMMDD
+077380       IF    TAX-DT-CONTABIL         =           AX-SEC-ANO    AND
+077390             TAX-NSUBANCO            =           IN-NSU-BCO    AND
+077400             TAX-VALOR OF DB02       =           IN-VLR-PAGO   AND
+077410             TAX-NSUPRODESP          =           IN-NSU-PRODESP
+077420             GO                      TO          310-S-VERTAXA
+077430       ELSE
+077440             NEXT    SENTENCE
+077450     ELSE
+077460             NEXT    SENTENCE.
+077470
+077480
+077490     FIND    PRIOR   TAXASE2         AT
+077500             TAX-TIPO                EQUAL       IN-COD-SERVICO
+077510         AND TAX-CPF                 EQUAL       IN-CPF
+077520         ON  EXCEPTION
+077530         IF  DMSTATUS(NOTFOUND)
+077540             MOVE    1               TO          CH-NOTF
+077550             GO                      TO          310-S-VERTAXA
+077560         ELSE
+077570             DISPLAY "GAA/T920 - ERRO FIND TAXADS"
+077580             CALL    SYSTEM  DMTERMINATE.
+077590
+077600
+077610     GO                              TO          310-LOOP.
+077620
+077630
+077640 310-S-VERTAXA.      EXIT.
+077650
+077700/----------------------------------------------------------------*
+077800*        INCLUSAO DO REGISTRO DE AUTENTICACAO DO DBTAXAS         *
+077900*----------------------------------------------------------------*
+078000
+078100 400-E-INC-DBTAXA.
+078200
+078300     IF      IN-CPFCGC-R             =       ZEROS OR SPACES OR
+078400                                             LOW-VALUES
+078500             MOVE   "01"             TO      OUT-COD-ERRO
+078600             GO                      TO      400-S-INC-DBTAXA.
+078700
+078800
+078900     IF      IN-COD-SERVICO          =       0
+079000             MOVE   "01"             TO      OUT-COD-ERRO
+079005             GO                      TO      400-S-INC-DBTAXA
+079100     ELSE
+079200             NEXT    SENTENCE.
+079300
+079400
+079500     PERFORM 410-E-TAXSENHASE        THRU    410-S-TAXSENHASE.
+079600
+079700** Se existe senha(CH-EXISTE-TAXA = S) grava EXPURGODS
+079800
+079900     IF      CH-EXISTE-TAXA          =       "S"
+080000             PERFORM 420-E-EXPURGO   THRU    420-S-EXPURGO
+080100             MOVE    "00"            TO      OUT-COD-ERRO
+080200             GO                      TO      400-S-INC-DBTAXA
+080210     ELSE
+080220             PERFORM 430-E-VALIDADOS THRU    430-S-VALIDADOS
+080230       IF    CH-EXISTE-VALID         =       "S"
+080240             PERFORM 420-E-EXPURGO   THRU    420-S-EXPURGO
+080250             MOVE    "00"            TO      OUT-COD-ERRO
+080260             GO                      TO      400-S-INC-DBTAXA
+080300       ELSE
+080400             NEXT    SENTENCE.
+080500
+080600     BEGIN-TRANSACTION               NO-AUDIT      TAXASRDSDS
+080700       ON    EXCEPTION
+080800             DISPLAY "PC/GAA/T920/DB - ERRO BEGIN-TRANS TDBTAXA"
+080900             CALL    SYSTEM  DMTERMINATE.
+081000
+081100
+081200     CREATE  TAXASDS  OF      DB03
+081300       ON    EXCEPTION
+081400             DISPLAY "PC/GAA/T920/DB - ERRO CREATE TAXASDS"
+081500             CALL    SYSTEM  DMTERMINATE.
+081600
+081700
+081800     IF      IN-COD-SERVICO          =       06 OR 92 OR 93 OR
+081900                                             35 OR 36 OR 37 OR
+082000                                             39 OR 40 OR 44 OR
+082100                                             45 OR 73 OR 49 OR
+082105                                             50 OR 51 OR 52 OR
+082110                                             53 OR 54 OR 55
+082200** move o cpf (do campo R4)
+082300             MOVE  IN-CPFCGC         TO     TAX-CPF-CGC
+082400     ELSE
+082500             MOVE  IN-RENAVAM        TO     TAX-RENAVAM.
+082600
+082700
+082800     MOVE    IN-COD-SERVICO          TO     TAX-COD-SERVICO.
+082900
+083000     MOVE    IN-PLACA                TO     TAX-PLACA-MERC.
+083100
+083200     MOVE    IN-MUNICIPIO            TO     TAX-MUNICIPIO.
+083300
+083400     MOVE    ZEROS                   TO     TAX-DESP-SSP.
+083500
+083600     MOVE    IN-COD-BCO              TO     TAX-COD-BANCO.
+083700     MOVE    IN-SENHA            TO     TAX-SENHA-SEFAZ OF DB03.
+083800**   Campo TAX-IDENTIF  pode ser CNPJ. CPF ou RENAVAM.
+083900     MOVE    IN-CPFCNPJ              TO     TAX-IDENTIF.
+084000     MOVE    IN-COD-BCO              TO     TAX-COD-BANCO.
+084100     MOVE    IN-DTA-PGTO             TO     TAX-DT-PAGMT.
+084200     MOVE    IN-NSU-PRODESP          TO     TAX-NSU-PROD.
+084300** Cod Serv -01 A 99
+084400     MOVE    IN-COD-SERV             TO     TAX-COD-PAG.
+084500     MOVE    IN-NSU-BCO              TO     TAX-NSU-BANCO.
+084600     MOVE    IN-VLR-PAGO             TO     TAX-VALOR OF DB03.
+084700     MOVE    IN-DTA-CONTAB           TO     TAX-DT-CONTB.
+084800     MOVE    IN-ANO-LIC              TO     TAX-ANO-LIC.
+084803
+084806     MOVE    IN-PIX-IDTRANS          TO     TAX-ID-PIX.
+084809     MOVE    IN-PIX-IDFIM            TO     TAX-ID-FIM.
+084900
+085000     MOVE    ZEROS                   TO     TAX-SITUACAO OF DB03.
+085100
+085200     ACCEPT  TAX-DT-INCLUSAO         FROM   DATE YYYYMMDD.
+085300
+085400     ACCEPT  TAX-HR-INCLUSAO         FROM   TIME.
+085500
+085600
+085700
+085800     STORE   TAXASDS   OF      DB03
+085900        ON   EXCEPTION
+086000             DISPLAY "PC/GAA/T920/DB - ERRO STORE TAXASDS"
+086100             CALL    SYSTEM  DMTERMINATE.
+086200
+086300
+086400
+086500*
+086600 400-ENDTRANS.
+086700
+086800
+086900     END-TRANSACTION                 NO-AUDIT    TAXASRDSDS
+087000       ON    EXCEPTION
+087100             DISPLAY "PC/GAA/T920/DB - ERR END-TRANS TAXASDS"
+087200             CALL    SYSTEM  DMTERMINATE.
+087300
+087400*** Qdo n¥o © Licenciamento nao faz LICAENVIARDS
+087500
+087600     IF      IN-COD-SERVICO          NOT =      02
+087700             GO                      400-90-INCLUI.
+087800
+087900     BEGIN-TRANSACTION               NO-AUDIT      PRODRDSDS
+088000       ON    EXCEPTION
+088100             DISPLAY "PC/GAA/T920/DB - ERRO BEGIN-TRANS LICAENV"
+088200             CALL    SYSTEM  DMTERMINATE.
+088300
+088400
+088500**  Cria Licenciamento a Enviar p/  GAA/T930
+088600
+088700             PERFORM  290-E-LICAENVIARDS     THRU
+088800                                             290-S-LICAENVIARDS.
+088900
+089000     END-TRANSACTION                 NO-AUDIT    PRODRDSDS
+089100       ON    EXCEPTION
+089200             DISPLAY "PC/GAA/T920/DB - ERR END-TRANS LICAENVIARDS"
+089300             CALL    SYSTEM  DMTERMINATE.
+089400
+089500
+089600
+089700 400-90-INCLUI.
+089800
+089900     MOVE    "00"                    TO      OUT-COD-ERRO.
+090000
+090100
+090200
+090300 400-S-INC-DBTAXA.
+090400     EXIT.
+090500
+090600******************************************************************
+090700*           VERIFICA EXISTENCIA DE TAXA                          *
+090800******************************************************************
+090900*
+091000 410-E-TAXSENHASE.
+091100
+091200     MOVE    "N"                     TO     CH-EXISTE-TAXA.
+091300
+091400** P/ todos os cod de servico
+091500
+091600     FIND    LAST TAXSENHASE1 OF DB03        AT
+091700             TAX-SENHA-SEFAZ         =       IN-SENHA
+091800       ON    EXCEPTION
+091900       IF    DMSTATUS(NOTFOUND)
+092000             GO                      TO      410-S-TAXSENHASE
+092100       ELSE
+092200             DISPLAY "PC/GAA/T920/DB - ERRO FIND TAXSENHASE"
+092300             CALL    SYSTEM DMTERMINATE.
+092465
+092500     MOVE    "S"                     TO      CH-EXISTE-TAXA.
+092600
+092700 410-S-TAXSENHASE.
+092800     EXIT.
+092900
+093000
+093100******************************************************************
+093200*   CRIA EXPURGODS - qdo ja existe no TAXASDS regist.desprezado  *
+093300******************************************************************
+093400
+093500 420-E-EXPURGO.
+093600
+093700     BEGIN-TRANSACTION               NO-AUDIT      TAXASRDSDS
+093800       ON    EXCEPTION
+093900             DISPLAY "PC/GAA/T920/DB - ERRO BEGIN-TRANS TDBTAXA"
+094000             CALL    SYSTEM  DMTERMINATE.
+094100
+094200
+094300     CREATE  EXPURGODS  OF      DB03
+094400       ON    EXCEPTION
+094500             DISPLAY "PC/GAA/T920/DB - ERRO CREATE EXPURGODSS"
+094600             CALL    SYSTEM  DMTERMINATE.
+094700
+094800
+094900     IF      IN-COD-SERVICO          =       06 OR 31 OR 32 OR
+095000                                             64 OR 65 OR 75 OR
+095100                                             76 OR 77 OR 78 OR
+095200                                             92 OR 93
+095300** move o cpf (do campo R4)
+095400             MOVE  IN-CPFCGC         TO     TEX-CPF-CGC
+095500     ELSE
+095600             MOVE  IN-RENAVAM        TO     TEX-RENAVAM.
+095700
+095800
+095900     MOVE    IN-COD-SERVICO          TO     TEX-COD-SERVICO.
+096000
+096100     MOVE    IN-PLACA                TO     TEX-PLACA-MERC.
+096200
+096300     MOVE    IN-MUNICIPIO            TO     TEX-MUNICIPIO.
+096400
+096500     MOVE    ZEROS                   TO     TEX-DESP-SSP.
+096600
+096700     MOVE    IN-COD-BCO              TO     TEX-COD-BANCO.
+096800     MOVE    IN-SENHA            TO     TEX-SENHA-SEFAZ OF DB03.
+096900**   Campo TEX-IDENTIF  pode ser CNPJ. CPF ou RENAVAM.
+097000     MOVE    IN-CPFCNPJ              TO     TEX-IDENTIF.
+097100     MOVE    IN-COD-BCO              TO     TEX-COD-BANCO.
+097200     MOVE    IN-DTA-PGTO             TO     TEX-DT-PAGMT.
+097300     MOVE    IN-NSU-PRODESP          TO     TEX-NSU-PROD.
+097400** Cod Serv -01 A 99
+097500     MOVE    IN-COD-SERV             TO     TEX-COD-PAG.
+097600     MOVE    IN-NSU-BCO              TO     TEX-NSU-BANCO.
+097700     MOVE    IN-VLR-PAGO             TO     TEX-VALOR OF DB03.
+097800     MOVE    IN-DTA-CONTAB           TO     TEX-DT-CONTB.
+097900     MOVE    IN-ANO-LIC              TO     TEX-ANO-LIC.
+097903
+097906     MOVE    IN-PIX-IDTRANS          TO     TEX-ID-PIX.
+097909     MOVE    IN-PIX-IDFIM            TO     TEX-ID-FIM.
+098000
+098100     MOVE    ZEROS                   TO     TEX-SITUACAO OF DB03.
+098200
+098300     ACCEPT  TEX-DT-INCLUSAO         FROM   DATE YYYYMMDD.
+098400
+098500     ACCEPT  TEX-HR-INCLUSAO         FROM   TIME.
+098600
+098700
+098800
+098900     STORE   EXPURGODS   OF      DB03
+099000        ON   EXCEPTION
+099100             DISPLAY "PC/GAA/T920/DB - ERRO STORE EXPURGODS"
+099200             DISPLAY "IN-PLACA = "IN-PLACA
+099300             DISPLAY "IN-SENHA = "IN-SENHA
+099400             DISPLAY "AVISAR ANALISE - VEICULOS"
+099500             CALL    SYSTEM  DMTERMINATE.
+099600
+099700
+099800
+099900
+100000     END-TRANSACTION                 NO-AUDIT    TAXASRDSDS
+100100       ON    EXCEPTION
+100200             DISPLAY "PC/GAA/T920/DB - ERR END-TRANS EXPURGOSDS"
+100300             CALL    SYSTEM  DMTERMINATE.
+100400
+100500
+100600 420-S-EXPURGO.
+100700     EXIT.
+100800
+100900******************************************************************
+101000*           VERIFICA EXISTENCIA DE VALIDADOSDS                   *
+101100******************************************************************
+101200*
+101300 430-E-VALIDADOS.
+101400
+101500     MOVE    "S"                     TO     CH-EXISTE-VALID.
+101600
+101700     FIND    LAST  TAVSENHASE1       AT
+101800             TAV-SENHA-SEFAZ         =      IN-SENHA
+101900       ON    EXCEPTION
+102000       IF    DMSTATUS(NOTFOUND)
+102100             MOVE    "N"             TO     CH-EXISTE-VALID
+102200             GO                      TO     430-S-VALIDADOS
+102300       ELSE
+102400             DISPLAY "PC/GAA/T920/DB - ERRO FIND VALIDADOSDS"
+102500             CALL    SYSTEM DMTERMINATE.
+102600
+102700
+102800 430-S-VALIDADOS.
+102900     EXIT.
+103000

@@ -1,0 +1,105 @@
+╔════════════════════════════════════════════════════════════════╗
+║          GITHUB - GUIA RÁPIDO (5 MINUTOS)                       ║
+╚════════════════════════════════════════════════════════════════╝
+
+PASSO 1: Criar Conta GitHub
+═══════════════════════════════════════════════════════════════════
+- Acesse: https://github.com
+- Clique Sign up
+- Complete: Email, Senha, Username
+- Confirme email
+
+PASSO 2: Criar Repositório
+═══════════════════════════════════════════════════════════════════
+- Clique + (canto superior direito)
+- New repository
+- Nome: prodesp-cobol-tester
+- Descrição: Sistema de Testes COBOL - Prodesp
+- Public (ou Private)
+- Clique Create repository
+
+PASSO 3: Abrir PowerShell na Pasta do Projeto
+═══════════════════════════════════════════════════════════════════
+cd c:\Projetos\outros\prodescp\codigo
+
+PASSO 4: Executar Script de Setup
+═══════════════════════════════════════════════════════════════════
+.\setup_github.ps1
+
+(Se não funcionar, tente:)
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+Depois execute novamente:
+.\setup_github.ps1
+
+PASSO 5: Copiar Comandos do GitHub
+═══════════════════════════════════════════════════════════════════
+Após criar repositório, GitHub mostra:
+  git remote add origin https://github.com/seu-usuario/prodesp-cobol-tester.git
+  git branch -M main
+  git push -u origin main
+
+Cole esses comandos no PowerShell
+
+PASSO 6: Autenticar
+═══════════════════════════════════════════════════════════════════
+Quando pedir autenticação:
+
+Username: seu-usuario-github
+
+Password: IMPORTANTE!
+  Não é sua senha do GitHub
+  É um Personal Access Token
+  Gerar em: https://github.com/settings/tokens
+
+  Passos:
+  1. Clique Settings
+  2. Developer settings
+  3. Personal access tokens
+  4. Generate new token
+  5. Marque "repo"
+  6. Copie o token
+  7. Cole no PowerShell
+
+PRONTO!
+═══════════════════════════════════════════════════════════════════
+Seu código está no GitHub!
+
+Ver em:
+  https://github.com/seu-usuario/prodesp-cobol-tester
+
+FUTUROS COMMITS
+═══════════════════════════════════════════════════════════════════
+Fez alterações?
+
+git add .
+git commit -m "Descrição da mudança"
+git push
+
+Pronto! Alterações estão no GitHub.
+
+CLONAR (Para usar de novo lugar ou compartilhar)
+═══════════════════════════════════════════════════════════════════
+git clone https://github.com/seu-usuario/prodesp-cobol-tester.git
+cd prodesp-cobol-tester
+pip install -r requirements.txt
+python web_app.py
+
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════
+Erro "Authentication failed"?
+  → Use Personal Access Token, não senha
+
+Erro "Permission denied"?
+  → Verifique se copied do GitHub corretamente
+
+Erro "not a git repository"?
+  → Execute na pasta correta: c:\Projetos\outros\prodescp\codigo
+
+ARQUIVO COM GUIA COMPLETO
+═══════════════════════════════════════════════════════════════════
+GITHUB_SETUP.md
+
+═══════════════════════════════════════════════════════════════════
+Data: 2026-07-02
+Status: ✅ Pronto para usar

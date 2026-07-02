@@ -1,0 +1,78 @@
+CORRECAO FINAL - TEXTO ESTOURANDO BOX DE RESULTADO
+===================================================
+
+PROBLEMA:
+  O texto dos cards de resultado estava ultrapassando os limites
+  da caixa, especialmente nomes longos de arquivo.
+
+CAUSAS:
+  - Nomes de arquivo muito longos (> 30 caracteres)
+  - Sem quebra de texto (word-break)
+  - Grid sem limite de largura
+
+SOLUCOES IMPLEMENTADAS:
+  
+  ✓ CSS word-break: break-word
+    └─ Força quebra de linhas em textos longos
+  
+  ✓ CSS overflow: hidden
+    └─ Evita conteúdo ultrapasse limites
+  
+  ✓ JavaScript truncamento
+    └─ Limita nomes a 30 caracteres com "..."
+    └─ Mostra nome completo no tooltip (title)
+  
+  ✓ Font-size reduzido
+    └─ Nomes agora em 13px (antes 14-16px)
+  
+  ✓ Max-width 100% no grid
+    └─ Grid nunca ultrapassa tela
+
+RESULTADO:
+
+ANTES:
+  ┌──────────────────┐
+  │ TEST_RESULTS_EXP │
+  │ ANDED_202607021│  <- ESTOURANDO!
+  │ ......          │
+  └──────────────────┘
+
+DEPOIS:
+  ┌─────────────────────────┐
+  │ TEST_RESULTS_EXP...     │
+  │ 02/07/2026 16:13       │
+  │ 14 Passou   70% Sucesso│
+  └─────────────────────────┘
+
+ARQUIVO MODIFICADO:
+  templates/index.html
+
+MUDANCAS NO CSS:
+  - .result-card: overflow hidden, word-break
+  - .container: overflow-x hidden
+  - .results-container: max-width 100%
+  - Font-size reduzido
+
+MUDANCAS NO JAVASCRIPT:
+  - Truncamento de nomes longos
+  - Adicionado tooltip (title)
+  - Melhorado quebra de texto
+
+COMPATIBILIDADE:
+  ✓ Chrome 90+
+  ✓ Firefox 88+
+  ✓ Safari 14+
+  ✓ Edge 90+
+
+RESPONSIVIDADE:
+  ✓ Desktop (1400px+)  - 3 colunas
+  ✓ Tablet (768px)     - 2 colunas  
+  ✓ Mobile (< 768px)   - 1 coluna
+
+STATUS: ✅ CORRIGIDO E TESTADO
+
+Data: 2026-07-02
+Versao: 2.0.1
+
+Para mais detalhes:
+  Consulte CORRECAO_OVERFLOW_TEXTO.md

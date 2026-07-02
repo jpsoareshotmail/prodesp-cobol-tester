@@ -1,0 +1,102 @@
+╔════════════════════════════════════════════════════════════════╗
+║       INTERFACE WEB DE TESTES - SISTEMA COBOL PRODESP           ║
+║                     GUIA DE INICIALIZAÇÃO                       ║
+╚════════════════════════════════════════════════════════════════╝
+
+✅ DEPENDÊNCIAS INSTALADAS COM SUCESSO!
+
+O servidor Flask está pronto para uso.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🚀 PASSO 1: INICIAR O SERVIDOR
+
+No Windows, abra o Prompt de Comando e digite:
+
+  cd c:\Projetos\outros\prodescp\codigo
+  python3 web_app.py
+
+Ou execute diretamente:
+
+  run_web.bat
+
+Você verá uma mensagem como:
+
+  * Running on http://127.0.0.1:5000
+  * Running on http://10.250.14.207:5000
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🌐 PASSO 2: ABRIR A INTERFACE
+
+Abra seu navegador e acesse:
+
+  http://localhost:5000
+
+Ou:
+
+  http://127.0.0.1:5000
+
+A interface será carregada automaticamente.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📊 PASSO 3: USAR A INTERFACE
+
+1. EXECUTAR TESTES
+   - Clique em "▶ Executar Testes Completos"
+   - Acompanhe a barra de progresso
+   - Visualize resultados em tempo real
+
+2. VALIDAR PLACAS
+   - Digite uma placa no campo (ex: AAA0A00)
+   - Clique em "Validar" ou pressione Enter
+   - Veja o resultado instantaneamente
+
+3. CONSULTAR HISTÓRICO
+   - Aba "Resultados Recentes" mostra cards com resumos
+   - Aba "Detalhado" mostra tabela com todos os testes
+   - Clique em um resultado para ver detalhes completos
+
+4. ANALISAR ESTATÍSTICAS
+   - Dashboard mostra execuções, taxa de sucesso e total de testes
+   - Atualiza automaticamente a cada 5 segundos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⏹️  PARAR O SERVIDOR
+
+Pressione Ctrl+C no Prompt de Comando para parar o servidor.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔧 TROUBLESHOOTING
+
+ERRO: "Address already in use"
+→ Outra aplicação está usando a porta 5000
+→ Solução: Abra outro terminal ou altere a porta em web_app.py
+
+ERRO: "ModuleNotFoundError: No module named 'flask'"
+→ Dependências não instaladas
+→ Solução: pip install -r requirements.txt
+
+NAVEGADOR NÃO ABRIU
+→ Abra manualmente: http://localhost:5000
+
+TESTES NÃO EXECUTAM
+→ Verifique se test_suite.py e executor_cobol.py existem
+→ Verifique o console do servidor para erros
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📚 DOCUMENTAÇÃO
+
+Para mais detalhes, consulte:
+  - WEB_INTERFACE_README.md (documentação completa)
+  - INTERFACE_WEB_FEATURES.md (resumo de funcionalidades)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✨ A INTERFACE ESTÁ PRONTA PARA USO!
+
+Divirta-se testando! 🎉

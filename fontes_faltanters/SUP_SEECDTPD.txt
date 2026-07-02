@@ -1,0 +1,59 @@
+*                                                                 
+* SEEC COPYBOOK SEECDTPD                                          
+*                                                                 
+* COPYRIGHT (C) 1997, SEEC, INC. ALL RIGHTS RESERVED.             
+*                                                                 
+* VERSION: 2.0.03                                                 
+                                                                  
+ SEEC-FALL-THRU-PARA.                                             
+     GO TO SEEC-EXIT-PARA.                                        
+ SEEC-FILL-CENTURY.                                               
+     IF SC0N-YY NUMERIC                                           
+     IF SC0N-YY < SC0N-CUT-OFF-YEAR                               
+        MOVE 20 TO SC0N-CC                                        
+     ELSE                                                         
+        MOVE 19 TO SC0N-CC.                                       
+ SEEC-YYMMDD-TO-CCYYMMDD.                                         
+     IF SC0X-YYMMDD = "999999"                                    
+        MOVE "99" TO SC0X-CC                                      
+     ELSE IF SC0X-YYMMDD = "000000"                               
+        MOVE "00" TO SC0X-CC                                      
+     ELSE                                                         
+        PERFORM SEEC-FILL-CENTURY.                                
+ SEEC-YYDDD-TO-CCYYDDD.                                           
+     IF SC0X-YYDDD = "99999"                                      
+        MOVE "99" TO SC0X-CC                                      
+     ELSE IF SC0X-YYDDD = "00000"                                 
+        MOVE "00" TO SC0X-CC                                      
+     ELSE                                                         
+        PERFORM SEEC-FILL-CENTURY.                                
+ SEEC-YYMM-TO-CCYYMM.                                             
+     IF SC0X-YYMM = "9999"                                        
+        MOVE "99" TO SC0X-CC                                      
+     ELSE IF SC0X-YYMM = "0000"                                   
+        MOVE "00" TO SC0X-CC                                      
+     ELSE                                                         
+        PERFORM SEEC-FILL-CENTURY.                                
+ SEEC-YY-TO-CCYY.                                                 
+     PERFORM SEEC-FILL-CENTURY.                                   
+*                                                                 
+* SEEC - END OF YYMMDD PART OF SEECDTPD                           
+*                                                                 
+ SEEC-FILLMM-CENTURY.                                             
+     IF SC0N-MMDDYY-YY NUMERIC                                    
+     IF SC0N-MMDDYY-YY < SC0N-CUT-OFF-YEAR                        
+        MOVE 20 TO SC0N-MMDDCCYY-CC                               
+     ELSE                                                         
+        MOVE 19 TO SC0N-MMDDCCYY-CC.                              
+ SEEC-MMDDYY-TO-MMDDCCYY.                                         
+     MOVE SC0X-MMDDYY-DD TO SC0X-MMDDCCYY-DD                      
+     MOVE SC0X-MMDDYY-MM TO SC0X-MMDDCCYY-MM                      
+     MOVE SC0X-MMDDYY-YY TO SC0X-MMDDCCYY-YY                      
+     IF SC0X-MMDDYY = "999999"                                    
+        MOVE "99" TO SC0X-MMDDCCYY-CC                             
+     ELSE IF SC0X-MMDDYY = "000000"                               
+        MOVE "00" TO SC0X-MMDDCCYY-CC                             
+     ELSE                                                         
+        PERFORM SEEC-FILLMM-CENTURY.                              
+ SEEC-EXIT-PARA.                                                  
+     EXIT.                                                        

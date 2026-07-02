@@ -1,0 +1,175 @@
+╔════════════════════════════════════════════════════════════════╗
+║     COMO USAR A INTERFACE WEB DE TESTES - PASSO A PASSO        ║
+╚════════════════════════════════════════════════════════════════╝
+
+OPÇÃO 1: TESTE SIMPLES (SEM SERVIDOR RODAR)
+═════════════════════════════════════════════════════════════════
+
+1. Abra o arquivo de teste simples no navegador:
+
+   C:\Projetos\outros\prodescp\codigo\test_page.html
+
+2. Clique nos botões para testar a API
+3. Veja as respostas em tempo real
+
+═════════════════════════════════════════════════════════════════
+
+OPÇÃO 2: INTERFACE COMPLETA (COM SERVIDOR)
+═════════════════════════════════════════════════════════════════
+
+PASSO 1: ABRIR PROMPT DE COMANDO
+┌─────────────────────────────────────────────────────────────────┐
+│ Windows: Win + R → cmd → Enter                                  │
+│ Ou: Abra Terminal/PowerShell                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+PASSO 2: NAVEGAR PARA A PASTA DO PROJETO
+┌─────────────────────────────────────────────────────────────────┐
+│ cd c:\Projetos\outros\prodescp\codigo                           │
+└─────────────────────────────────────────────────────────────────┘
+
+PASSO 3: INICIAR O SERVIDOR FLASK
+┌─────────────────────────────────────────────────────────────────┐
+│ python3 web_app.py                                              │
+│                                                                 │
+│ Você verá:                                                      │
+│   * Running on http://127.0.0.1:5000                            │
+│   * Running on http://10.250.14.207:5000                        │
+│                                                                 │
+│ NÃO FECHE ESTE TERMINAL! Deixe rodando                         │
+└─────────────────────────────────────────────────────────────────┘
+
+PASSO 4: ABRIR A INTERFACE NO NAVEGADOR
+┌─────────────────────────────────────────────────────────────────┐
+│ Abra seu navegador (Chrome, Firefox, Edge, Safari)              │
+│                                                                 │
+│ Acesse:                                                         │
+│   http://localhost:5000                                         │
+│                                                                 │
+│ Ou:                                                             │
+│   http://127.0.0.1:5000                                         │
+└─────────────────────────────────────────────────────────────────┘
+
+PASSO 5: USAR A INTERFACE
+┌─────────────────────────────────────────────────────────────────┐
+
+A. DASHBOARD (Topo)
+   └─ Mostra 3 estatísticas:
+      • Execuções de Testes (quantos testes rodaram)
+      • Taxa de Sucesso (% dos testes que passaram)
+      • Testes Passando (número total de sucessos)
+
+B. SEÇÃO "EXECUTAR TESTES"
+   └─ Botão grande "▶ Executar Testes Completos"
+      • Clique para rodar toda a suite de testes
+      • Acompanhe a barra de progresso
+      • Veja qual teste está rodando
+      • Resultados aparecem automaticamente
+
+C. SEÇÃO "VALIDAR PLACA"
+   └─ Caixa de texto para digitar placa
+      • Digite uma placa (ex: AAA0A00)
+      • Clique "Validar" ou pressione Enter
+      • Veja se é válida, o código e tipo
+
+D. SEÇÃO "HISTÓRICO DE TESTES"
+   └─ Duas abas:
+
+      1. "Resultados Recentes"
+         - Cards coloridos (verde=sucesso, vermelho=falha)
+         - Mostra últimos 5 testes
+         - Clique em um para ver detalhes
+
+      2. "Detalhado"
+         - Tabela com TODOS os testes
+         - Colunas: ID, Nome, Categoria, Status, etc
+         - Scroll horizontal se necessário
+
+═════════════════════════════════════════════════════════════════
+
+EXEMPLOS DE PLACAS PARA TESTAR
+═════════════════════════════════════════════════════════════════
+
+Válidas:
+  • AAA0A00  (Mercosul - São Paulo)
+  • AB12C34  (2 letras - Carros)
+  • SP1234   (Antiga - São Paulo)
+  • ABC1234  (Outra válida)
+
+Inválidas:
+  • ABC@1234  (com caracteres especiais)
+  • ABC-1234  (com hífen)
+  •          (vazia)
+  • 123456    (apenas números)
+
+═════════════════════════════════════════════════════════════════
+
+SE ALGO NÃO APARECER
+═════════════════════════════════════════════════════════════════
+
+1. Abra o Navegador → F12 → Aba "Console"
+2. Procure por mensagens de erro
+3. Se disser "Failed to fetch":
+   → Certifique-se que o servidor está rodando
+   → Verifique se é http://localhost:5000 (não https)
+
+4. Se disser "ModuleNotFoundError: No module named 'flask'":
+   → Abra novo terminal
+   → Digite: pip install -r requirements.txt
+   → Tente novamente
+
+═════════════════════════════════════════════════════════════════
+
+ARQUIVOS CRIADOS
+═════════════════════════════════════════════════════════════════
+
+✓ web_app.py                - Servidor Flask (backend)
+✓ templates/index.html      - Interface web (frontend)
+✓ test_page.html            - Página de teste simplificada
+✓ simple_test.py            - Script para gerar testes
+✓ requirements.txt          - Dependências Python
+✓ WEB_INTERFACE_README.md   - Documentação completa
+✓ INTERFACE_WEB_FEATURES.md - Resumo de funcionalidades
+✓ CORRECOES_REALIZADAS.md   - Correções implementadas
+
+═════════════════════════════════════════════════════════════════
+
+PROBLEMAS RESOLVIDOS
+═════════════════════════════════════════════════════════════════
+
+✓ Status ficar "Em execução" → FIXADO
+  → Agora reseta corretamente quando termina
+
+✓ Modal estourando a tela → FIXADO
+  → Tabelas agora têm scroll horizontal
+
+✓ Console poluído de prints → FIXADO
+  → Saída redirecionada durante execução
+
+✓ Elementos não aparecerem → FIXADO
+  → Melhorado o carregamento de dados
+
+═════════════════════════════════════════════════════════════════
+
+PRÓXIMAS ETAPAS
+═════════════════════════════════════════════════════════════════
+
+1. Testar a interface
+2. Executar alguns testes
+3. Validar placas
+4. Explorar o histórico
+5. Se precisar, use test_page.html para debug
+
+═════════════════════════════════════════════════════════════════
+
+DÚVIDAS?
+═════════════════════════════════════════════════════════════════
+
+Consulte:
+  • WEB_INTERFACE_README.md - Documentação completa
+  • test_page.html - Versão simplificada para teste
+  • Console do navegador (F12) - Para ver erros
+
+═════════════════════════════════════════════════════════════════
+
+Aproveite! 🎉

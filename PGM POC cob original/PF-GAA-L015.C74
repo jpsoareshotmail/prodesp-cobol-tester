@@ -1,0 +1,258 @@
+000000* VERSION  3.1   ; SAVED 20251128 11:21:08                    |3.0
+000100$$SET SHARING=SHAREDBYALL
+000200$$SET TEMPORARY
+000300 IDENTIFICATION  DIVISION.
+000400**************************
+000500*
+000600*PROGRAM-ID.     PC-GAA-L015.
+000700 AUTHOR.         SIDNEY.
+000800 DATE-WRITTEN.   22/09/92.
+000900 SECURITY.
+001000*
+001100******************************************************************
+001200*    OBJETIVO:                                                   *
+001300*            CONSISTE CHASSIS                                    *
+001400*                                                                *
+001500******************************************************************
+001600/
+001700******************************************************************
+001800*                A   L   T   E   R   A   C   A   O               *
+001900******************************************************************
+002000*                                                                *
+002100*  SEQ      DATA     O.S.     PATCH       ANALISTA/PROGRAMADOR   *
+002200*  ===      ====     ===      =====       ====================   *
+002300*  001    16/12/92   0643      001        SIDNEY   SIDNEY        *
+002400******************************************************************
+002500*  ESTE PROGRAMA FOI AUTOMATICAMENTE "MERGEADO" EM FEV/1994      *
+002600******************************************************************
+002700*  001    28/05/96   0243      001        SILVIA  /ANA PAULA     *
+002702******************************************************************
+002704*  GERADO NEWFONTE 1999                                          *
+002706******************************************************************
+002708*                                                                *
+002710*  001    29/04/99     -       001        SILVIA  / SILVIA       *
+002712*  002    03/09/99     -       002        SILVIA  / SILVIA       *
+002714*  003    17/04/00     -       003        SILVIA  / SILVIA       *
+002716*  004    28/04/00     -       004        JAIR    / JAIR         *
+002718*  005    26/04/01     -       005        SSA     / SSA          *
+002720*  006    27/04/01     -       006        SSA     / SSA          *
+002722*----------------------------------------------------------------*
+002724*  001    16/01/09    006    SSA/SSA      INCLUSAO 2010-2014 TAB *
+002730*  002    28/08/09    ---    JAC/JAC      PERMITE CHASSI 19 "DJ" *
+002732*         24/01/13  92/2013  PEL / LEE    INCL. ANOS 2014 A 2017 *
+002736*         24/01/17           SSA/SSA      INCL. ANOS 2017 A 2025 *
+002738*         02/05/25 RD.153108 SSA/SFC      INCL. ANOS 2026 A 2030 *
+002800*  ---    --/--/--   ----      ---        --------/------        *
+002900******************************************************************
+003000/
+003100 ENVIRONMENT DIVISION.
+003200**********************
+003300*
+003400 CONFIGURATION   SECTION.
+003500*************************
+003600*
+003700 OBJECT-COMPUTER.    A15.
+003800 SPECIAL-NAMES.
+003900*
+004000     DECIMAL-POINT                   IS      COMMA.
+004100/
+004200 DATA        DIVISION.
+004300
+004400 WORKING-STORAGE SECTION.
+004401* SEEC ADDITION IN WORKING STORAGE
+004402     COPY SEECDT00.
+004403* SEEC END ADDITION
+004500*************************
+004600*
+004700*
+004800*====> AX-TIPO =  P : CHASSIS PADRAO
+004900*                 N : CHASSIS NORMAL
+005000
+005100 01          AX-LIB-CHASSIS.
+005200     05      AX-LIB-TIPO     PIC X(001).
+005300     05      AX-LIB-CHAS     PIC X(022).
+005400     05      AX-LIB-CHAS-R   REDEFINES   AX-LIB-CHAS.
+005500       10    AX-LIB-1ST      PIC X(001).
+005600       10    FILLER          PIC X(008).
+005700       10    AX-LIB-10       PIC X(001).
+005800       10    FILLER          PIC X(007).
+005900       10    AX-LIB-P        PIC X(002).
+006000       10    FILLER          PIC X(003).
+006100
+006200 01          AX-LIB-RETORNO.
+006300     05      AX-LIB-RET      PIC X(001).
+006301     05      AX-LIB-ANO      PIC 9(004).
+006400
+006401
+006402
+006500
+006600 77          AX-CHASSIS     PIC X(022).
+006800 77          AX-CHAS-1      PIC X(022).
+006900
+007000 77          AX-COUNT       PIC 9(011)   BINARY.
+007100
+007200 77          AX-CHAS-2      PIC X(022).
+007300/
+007400******************************************************************
+007500*    TABELA DE CORRESPONDENCIA ENTRE LETRA E ANO DE FABRICACAO   *
+007600******************************************************************
+007700
+007701*
+007800*
+007900*
+008000*
+008100*
+008101 01          TABELA.
+008102     05      FILLER    PIC X(024)  VA  "L1990 M1991 N1992 P1993 ".
+008103     05      FILLER    PIC X(024)  VA  "R1994 S1995 T1996 V1997 ".
+008104     05      FILLER    PIC X(024)  VA  "W1998 X1999 Y2000 12001 ".
+008105     05      FILLER    PIC X(024)  VA  "22002 32003 42004 52005 ".
+008106     05      FILLER    PIC X(024)  VA  "62006 72007 82008 92009 ".
+008108     05      FILLER    PIC X(024)  VA  "A2010 B2011 C2012 D2013 ".
+008110     05      FILLER    PIC X(024)  VA  "E2014 F2015 G2016 H2017 ".
+008112     05      FILLER    PIC X(024)  VA  "J2018 K2019 L2020 M2021 ".
+008114     05      FILLER    PIC X(024)  VA  "N2022 P2023 R2024 S2025 ".
+008116     05      FILLER    PIC X(024)  VA  "T2026 V2027 W2028 X2029 ".
+008118     05      FILLER    PIC X(024)  VA  "Y2030 ".
+008120
+008200
+008300  01         TABELA-R        REDEFINES   TABELA.
+008400***     05      TAB-LET-ANO     OCCURS      36
+008402     05      TAB-LET-ANO     OCCURS      41
+008500                             ASCENDING   KEY TAB-LET
+008600                             INDEXED     BY  IL1.
+008700       10    TAB-LET         PIC X(001).
+008701       10    TAB-ANO         PIC 9(004).
+008800       10    FILLER          PIC X(001).
+008801
+008802
+008900
+009000
+009100/
+009200 PROCEDURE   DIVISION                USING   AX-LIB-CHASSIS
+009300                                             AX-LIB-RETORNO.
+009400*
+009500 010-E-PROCEDURE.
+009600*
+009700*
+009800     IF      AX-LIB-TIPO             NOT =   "P"  AND  "N"
+009900             MOVE    0               TO      AX-LIB-RET
+010000             GO                      TO      010-S-PROCEDURE.
+010100
+010200     IF      AX-LIB-1ST              =       SPACES  OR
+010300                                             LOW-VALUES
+010400             MOVE    0               TO      AX-LIB-RET
+010500             GO                      TO      010-S-PROCEDURE.
+010600
+010700     IF      AX-LIB-TIPO             NOT =   "P"
+010800             GO                      TO      010-1-PROCEDURE.
+010900
+011000     MOVE    AX-LIB-CHAS             TO      AX-CHASSIS.
+011100
+011200     INSPECT AX-CHASSIS              REPLACING   ALL
+011300             "1"                     BY      " "
+011400             "2"                     BY      " "
+011500             "3"                     BY      " "
+011600             "4"                     BY      " "
+011700             "5"                     BY      " "
+011800             "6"                     BY      " "
+011900             "7"                     BY      " "
+012000             "8"                     BY      " "
+012100             "9"                     BY      " "
+012200             "0"                     BY      " "
+012300             "O"                     BY      "1".
+012400
+012500     IF      AX-CHASSIS              NOT     ALPHABETIC
+012600             MOVE    0               TO      AX-LIB-RET
+012700             GO                      TO      010-S-PROCEDURE.
+012800
+012900     MOVE    AX-LIB-CHAS             TO      AX-CHASSIS.
+013000     MOVE    SPACES                  TO      AX-CHAS-1
+013100                                             AX-CHAS-2.
+013200
+013300     UNSTRING AX-CHASSIS                     DELIMITED
+013400                                     BY ALL  SPACES  OR
+013500                                             LOW-VALUES
+013600                                     INTO    AX-CHAS-1
+013700                                     COUNT IN            AX-COUNT,
+013800                                             AX-CHAS-2.
+013900
+013902
+014000     IF      AX-CHAS-2               NOT =   SPACES
+014100             MOVE    0               TO      AX-LIB-RET
+014200             GO                      TO      010-S-PROCEDURE.
+014300
+014302
+014400     IF      AX-COUNT                =       13 OR 17 OR 19
+014500             NEXT    SENTENCE
+014600     ELSE
+014700             MOVE    0               TO      AX-LIB-RET
+014800             GO                      TO      010-S-PROCEDURE.
+014900
+014902
+015000     IF      AX-COUNT                =       19
+015100       IF    AX-LIB-P            NOT =       "DB"  AND  "DJ"
+015200             MOVE    0               TO      AX-LIB-RET
+015300             GO                      TO      010-S-PROCEDURE.
+015400
+015402
+015500     SEARCH  ALL TAB-LET-ANO
+015600       AT    END
+015700             MOVE    0               TO      AX-LIB-RET
+015800             GO                      TO      010-S-PROCEDURE
+015900      WHEN   TAB-LET (IL1)           =       AX-LIB-10
+015901             MOVE    TAB-ANO (IL1)   TO      AX-LIB-ANO.
+016000
+016001*
+016100
+016200
+016300
+016400     MOVE    1                       TO      AX-LIB-RET.
+016500
+016600
+016700 010-1-PROCEDURE.
+016800
+016900     IF      AX-LIB-TIPO             NOT =   "N"
+017000             GO                      TO      010-S-PROCEDURE.
+017100
+017200     MOVE    AX-LIB-CHAS             TO      AX-CHASSIS.
+017300
+017400     INSPECT AX-CHASSIS              REPLACING   ALL
+017500             "1"                     BY      " "
+017600             "2"                     BY      " "
+017700             "3"                     BY      " "
+017800             "4"                     BY      " "
+017900             "5"                     BY      " "
+018000             "6"                     BY      " "
+018100             "7"                     BY      " "
+018200             "8"                     BY      " "
+018300             "9"                     BY      " "
+018400             "0"                     BY      " ".
+018500
+018600     IF      AX-CHASSIS              NOT     ALPHABETIC
+018700             MOVE    0               TO      AX-LIB-RET
+018800             GO                      TO      010-S-PROCEDURE.
+018900
+019000     MOVE    AX-LIB-CHAS             TO      AX-CHASSIS.
+019100     MOVE    SPACES                  TO      AX-CHAS-1
+019200                                             AX-CHAS-2.
+019300
+019400     UNSTRING AX-CHASSIS                     DELIMITED
+019500                                     BY ALL  SPACES  OR
+019600                                             LOW-VALUES
+019700                                     INTO    AX-CHAS-1
+019800                                             AX-CHAS-2.
+019900
+020000     IF      AX-CHAS-2               NOT =   SPACES
+020100             MOVE    0               TO      AX-LIB-RET
+020200             GO                      TO      010-S-PROCEDURE.
+020300
+020400     MOVE    1                       TO      AX-LIB-RET.
+020500
+020600
+020700 010-S-PROCEDURE.
+020800
+020900*
+021000*
+021100     EXIT PROGRAM.
+021200*****************************************************************

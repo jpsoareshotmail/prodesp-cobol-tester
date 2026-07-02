@@ -1,0 +1,141 @@
+*                                                                 
+* SEEC - SMART CHANGE COPY BOOK SEECDT00.CPY                      
+*                                                                 
+* COPYRIGHT (C) 1997, SEEC, INC. ALL RIGHTS RESERVED.             
+*                                                                 
+* VERSION: 2.0.03                                                 
+*                                                                 
+ 01  SC0G-FIELDS.                                                 
+     05 SC0N-CUT-OFF-YEAR                           PIC 99        
+                                                    VALUE 86.     
+     05 SC0X-CUT-OFF-YEAR REDEFINES                               
+                         SC0N-CUT-OFF-YEAR          PIC XX.       
+     05 SC0X-CCYYMMDD.                                            
+        10 SC0X-CC                                  PIC XX.       
+        10 SC0N-CC REDEFINES SC0X-CC                PIC 99.       
+        10 SC0X-YYMMDD.                                           
+           15 SC0X-YY                               PIC XX.       
+           15 SC0N-YY REDEFINES SC0X-YY             PIC 99.       
+           15 SC0X-MMDD                             PIC X(4).     
+           15 SC0N-MMDD REDEFINES SC0X-MMDD         PIC 9(4).     
+        10 SC0N-YYMMDD REDEFINES SC0X-YYMMDD        PIC 9(6).     
+        10 SC0G-YYDDD REDEFINES SC0X-YYMMDD.                      
+           15 SC0X-YYDDD.                                         
+              20 FILLER                             PIC XX.       
+              20 SC0X-DDD                           PIC XXX.      
+              20 SC0N-DDD REDEFINES SC0X-DDD        PIC 999.      
+           15 SC0N-YYDDD REDEFINES SC0X-YYDDD       PIC 9(5).     
+           15 FILLER                                PIC X.        
+        10 SC0G-YYMM REDEFINES SC0X-YYMMDD.                       
+           15 SC0X-YYMM.                                          
+              20 FILLER                             PIC XX.       
+              20 SC0X-MM                            PIC XX.       
+              20 SC0N-MM REDEFINES SC0X-MM          PIC 99.       
+           15 SC0N-YYMM REDEFINES SC0X-YYMM         PIC 9(4).     
+           15 SC0X-DD                               PIC XX.       
+           15 SC0N-DD REDEFINES SC0X-DD             PIC 99.       
+     05 SC0N-CCYYMMDD REDEFINES SC0X-CCYYMMDD       PIC 9(8).     
+     05 SC0G-CCYYDDD REDEFINES SC0X-CCYYMMDD.                     
+        10 SC0X-CCYYDDD                             PIC X(7).     
+        10 SC0N-CCYYDDD REDEFINES SC0X-CCYYDDD      PIC 9(7).     
+        10 FILLER                                   PIC X.        
+     05 SC0G-CCYYMM REDEFINES SC0X-CCYYMMDD.                      
+        10 SC0X-CCYYMM                              PIC X(6).     
+        10 SC0N-CCYYMM REDEFINES SC0X-CCYYMM        PIC 9(6).     
+        10 FILLER                                   PIC XX.       
+     05 SC0G-CCYY REDEFINES SC0X-CCYYMMDD.                        
+        10 SC0X-CCYY                                PIC X(4).     
+        10 SC0N-CCYY REDEFINES SC0X-CCYY            PIC 9(4).     
+        10 FILLER                                   PIC X(4).     
+     05 SC0X-MMDDYY.                                              
+        10 SC0N-MMDDYY-MM                           PIC 99.       
+        10 SC0X-MMDDYY-MM REDEFINES SC0N-MMDDYY-MM  PIC XX.       
+        10 SC0N-MMDDYY-DD                           PIC 99.       
+        10 SC0X-MMDDYY-DD REDEFINES SC0N-MMDDYY-DD  PIC XX.       
+        10 SC0N-MMDDYY-YY                           PIC 99.       
+        10 SC0X-MMDDYY-YY REDEFINES SC0N-MMDDYY-YY  PIC XX.       
+     05 SC0N-MMDDYY REDEFINES SC0X-MMDDYY           PIC 9(6).     
+     05 SC0X-MMDDCCYY.                                            
+        10 SC0N-MMDDCCYY-MM                         PIC 99.       
+        10 SC0X-MMDDCCYY-MM REDEFINES SC0N-MMDDCCYY-MM            
+                                                    PIC XX.       
+        10 SC0N-MMDDCCYY-DD                         PIC 99.       
+        10 SC0X-MMDDCCYY-DD REDEFINES SC0N-MMDDCCYY-DD            
+                                                    PIC XX.       
+        10 SC0N-MMDDCCYY-CC                         PIC 99.       
+        10 SC0X-MMDDCCYY-CC REDEFINES SC0N-MMDDCCYY-CC            
+                                                    PIC XX.       
+        10 SC0N-MMDDCCYY-YY                         PIC 99.       
+        10 SC0X-MMDDCCYY-YY REDEFINES SC0N-MMDDCCYY-YY            
+                                                    PIC XX.       
+     05 SC0N-MMDDCCYY REDEFINES SC0X-MMDDCCYY       PIC 9(8).     
+     05 SC0X-DDMMYY.                                              
+        10 SC0N-DDMMYY-DD                           PIC 99.       
+        10 SC0X-DDMMYY-DD REDEFINES SC0N-DDMMYY-DD  PIC XX.       
+        10 SC0N-DDMMYY-MM                           PIC 99.       
+        10 SC0X-DDMMYY-MM REDEFINES SC0N-DDMMYY-MM  PIC XX.       
+        10 SC0N-DDMMYY-YY                           PIC 99.       
+        10 SC0X-DDMMYY-YY REDEFINES SC0N-DDMMYY-YY  PIC XX.       
+     05 SC0N-DDMMYY REDEFINES SC0X-DDMMYY           PIC 9(6).     
+     05 SC0X-DDMMCCYY.                                            
+        10 SC0N-DDMMCCYY-DD                         PIC 99.       
+        10 SC0X-DDMMCCYY-DD REDEFINES SC0N-DDMMCCYY-DD            
+                                                    PIC XX.       
+        10 SC0N-DDMMCCYY-MM                         PIC 99.       
+        10 SC0X-DDMMCCYY-MM REDEFINES SC0N-DDMMCCYY-MM            
+                                                    PIC XX.       
+        10 SC0N-DDMMCCYY-CC                         PIC 99.       
+        10 SC0X-DDMMCCYY-CC REDEFINES SC0N-DDMMCCYY-CC            
+                                                    PIC XX.       
+        10 SC0N-DDMMCCYY-YY                         PIC 99.       
+        10 SC0X-DDMMCCYY-YY REDEFINES SC0N-DDMMCCYY-YY            
+                                                    PIC XX.       
+     05 SC0N-DDMMCCYY REDEFINES SC0X-DDMMCCYY       PIC 9(8).     
+     05 SC0X-MMSDDSYY.                                            
+        10 SC0N-MMSDDSYY-MM                         PIC 99.       
+        10 SC0X-MMSDDSYY-MM REDEFINES SC0N-MMSDDSYY-MM  PIC XX.   
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-MMSDDSYY-DD                         PIC 99.       
+        10 SC0X-MMSDDSYY-DD REDEFINES SC0N-MMSDDSYY-DD  PIC XX.   
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-MMSDDSYY-YY                           PIC 99.     
+        10 SC0X-MMSDDSYY-YY REDEFINES SC0N-MMSDDSYY-YY  PIC XX.   
+     05 SC0N-MMSDDSYY REDEFINES SC0X-MMSDDSYY  PIC 99/99/99.      
+     05 SC0X-MMSDDSCCYY.                                          
+        10 SC0N-MMSDDSCCYY-MM                         PIC 99.     
+        10 SC0X-MMSDDSCCYY-MM REDEFINES SC0N-MMSDDSCCYY-MM        
+                                                    PIC XX.       
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-MMSDDSCCYY-DD                         PIC 99.     
+        10 SC0X-MMSDDSCCYY-DD REDEFINES SC0N-MMSDDSCCYY-DD        
+                                                    PIC XX.       
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-MMSDDSCCYY-CC                         PIC 99.     
+        10 SC0X-MMSDDSCCYY-CC REDEFINES SC0N-MMSDDSCCYY-CC        
+                                                    PIC XX.       
+        10 SC0N-MMSDDSCCYY-YY                         PIC 99.     
+        10 SC0X-MMSDDSCCYY-YY REDEFINES SC0N-MMSDDSCCYY-YY        
+                                                    PIC XX.       
+     05 SC0N-MMSDDSCCYY REDEFINES SC0X-MMSDDSCCYY                 
+                                    PIC 99/99/9999.               
+     05 SC0X-DDSMMSCCYY.                                          
+       07 SC0X-DDSMMSYY.                                          
+        10 SC0N-DDSMMSCCYY-DD                         PIC 99.     
+        10 SC0X-DDSMMSCCYY-DD REDEFINES SC0N-DDSMMSCCYY-DD        
+                                                    PIC XX.       
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-DDSMMSCCYY-MM                         PIC 99.     
+        10 SC0X-DDSMMSCCYY-MM REDEFINES SC0N-DDSMMSCCYY-MM        
+                                                    PIC XX.       
+        10 FILLER     PIC X VALUE "/".                            
+        10 SC0N-DDSMMSCCYY-CC                         PIC 99.     
+        10 SC0X-DDSMMSCCYY-CC REDEFINES SC0N-DDSMMSCCYY-CC        
+                                                    PIC XX.       
+       07 SC0N-DDSMMSCCYY-YY                         PIC 99.      
+       07 SC0X-DDSMMSCCYY-YY REDEFINES SC0N-DDSMMSCCYY-YY         
+                                                   PIC XX.        
+     05 SC0N-DDSMMSCCYY REDEFINES SC0X-DDSMMSCCYY                 
+                                    PIC 99/99/9999.               
+*                                                                 
+* SEEC - END OF COPY BOOK SEECDT00.CPY                            
+*                                                                 

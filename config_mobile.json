@@ -1,0 +1,210 @@
+{
+  "appium": {
+    "host": "127.0.0.1",
+    "port": 4723,
+    "startServer": true,
+    "serverLogs": true
+  },
+
+  "android": {
+    "capabilities": {
+      "platformName": "Android",
+      "automationName": "UiAutomator2",
+      "deviceName": "emulator-5554",
+      "appPackage": "com.example.myapp",
+      "appActivity": "com.example.myapp.LoginActivity",
+      "appPath": "app/build/outputs/apk/debug/app-debug.apk",
+      "noReset": false,
+      "autoGrantPermissions": true,
+      "newCommandTimeout": 300,
+      "autoWebview": false,
+      "fullReset": false,
+      "waitForAppScript": "var retry = 0; while (true) { try { return java.lang.Runtime.getRuntime().exec('pidof com.example.myapp').waitFor() == 0; } catch { retry++; if (retry > 5) return false; java.lang.Thread.sleep(1000); } }"
+    },
+    "devices": [
+      {
+        "name": "Emulator-Local",
+        "deviceName": "emulator-5554"
+      },
+      {
+        "name": "Pixel-4",
+        "deviceName": "192.168.1.100:5555"
+      },
+      {
+        "name": "Samsung-S21",
+        "deviceName": "RF8MA0J1P4K"
+      }
+    ]
+  },
+
+  "ios": {
+    "capabilities": {
+      "platformName": "iOS",
+      "automationName": "XCUITest",
+      "deviceName": "iPhone 14",
+      "platformVersion": "16.0",
+      "bundleId": "com.example.myapp",
+      "appPath": "build/Release-iphonesimulator/MyApp.app",
+      "noReset": false,
+      "autoGrantPermissions": true,
+      "newCommandTimeout": 300,
+      "useNewWDA": true,
+      "useXctestrunFile": false,
+      "derivedDataPath": "/tmp/appium-ios-build"
+    },
+    "devices": [
+      {
+        "name": "Simulator-Local",
+        "deviceName": "iPhone 14",
+        "platformVersion": "16.0"
+      },
+      {
+        "name": "iPhone-12",
+        "deviceName": "iPhone 12",
+        "platformVersion": "15.7",
+        "udid": "DEVICE_UDID"
+      }
+    ]
+  },
+
+  "testConfig": {
+    "timeout": {
+      "implicit": 10,
+      "explicit": 30,
+      "pageLoad": 60
+    },
+    "retry": {
+      "count": 3,
+      "delay": 1000
+    },
+    "screenshot": {
+      "onFailure": true,
+      "onSuccess": false,
+      "path": "screenshots/"
+    },
+    "logs": {
+      "enabled": true,
+      "level": "INFO",
+      "path": "logs/"
+    },
+    "reporting": {
+      "format": "html",
+      "path": "reports/",
+      "openAfter": true
+    }
+  },
+
+  "testData": {
+    "validCredentials": [
+      {
+        "email": "test@example.com",
+        "password": "password123",
+        "name": "Test User"
+      },
+      {
+        "email": "user@example.com",
+        "password": "userpass456",
+        "name": "Another User"
+      }
+    ],
+    "invalidCredentials": [
+      {
+        "email": "invalid@",
+        "password": "pass",
+        "error": "Invalid email"
+      },
+      {
+        "email": "test@example.com",
+        "password": "wrongpass",
+        "error": "Invalid credentials"
+      }
+    ],
+    "edgeCases": [
+      {
+        "email": "",
+        "password": "pass",
+        "error": "Email required"
+      },
+      {
+        "email": "test@example.com",
+        "password": "",
+        "error": "Password required"
+      },
+      {
+        "email": " ",
+        "password": " ",
+        "error": "Fields required"
+      },
+      {
+        "email": "test@example.com",
+        "password": "a".repeat(500),
+        "error": "Password too long"
+      }
+    ]
+  },
+
+  "environments": {
+    "development": {
+      "baseUrl": "http://dev.example.com",
+      "apiUrl": "http://api-dev.example.com",
+      "credentials": {
+        "email": "dev@example.com",
+        "password": "devpass"
+      }
+    },
+    "staging": {
+      "baseUrl": "http://staging.example.com",
+      "apiUrl": "http://api-staging.example.com",
+      "credentials": {
+        "email": "qa@example.com",
+        "password": "qapass"
+      }
+    },
+    "production": {
+      "baseUrl": "http://app.example.com",
+      "apiUrl": "http://api.example.com",
+      "credentials": {
+        "email": "prod@example.com",
+        "password": "prodpass"
+      }
+    }
+  },
+
+  "cloudServices": {
+    "browserStack": {
+      "enabled": false,
+      "username": "your_username",
+      "accessKey": "your_access_key",
+      "devices": [
+        {
+          "device": "iPhone 14",
+          "os_version": "16.0"
+        },
+        {
+          "device": "Samsung Galaxy S21",
+          "os_version": "11"
+        }
+      ]
+    },
+    "sauceLabs": {
+      "enabled": false,
+      "username": "your_username",
+      "accessKey": "your_access_key",
+      "region": "us-west-1"
+    }
+  },
+
+  "ci": {
+    "github": {
+      "enabled": true,
+      "runsOn": [
+        "ubuntu-latest",
+        "macos-latest"
+      ]
+    },
+    "jenkins": {
+      "enabled": false,
+      "agent": "mobile-test-agent"
+    }
+  }
+}

@@ -1,0 +1,658 @@
+000000* VERSION   4.1  ; SAVED 20210421 00:01:02                    |000
+000100$$SET SHARING=SHAREDBYALL
+000200$$SET TEMPORARY
+000300 ID  DIVISION.
+000400*PROGRAM.        PC/GAA/L050/DB.
+000500 AUTHOR.         SILVIA.
+000600 DATE-WRITTEN.   08/02/95.
+000700 DATE-COMPILED.
+000800*
+000900*================================================================*
+001000*    OBJETIVO:   VERIFICA SE CIRETRAN E POLO E SE O MUNICIPIO    *
+001100*                PERTENCE AQUELA POLO E MUNICIPIOS PERTENCENTES  *
+001200*                AOS POUPA-TEMPO                                 *
+001300*================================================================*
+001400*    ALTERACOES EFETUADAS :
+001500*                                                                *
+001600*  01/03/00    -    001   SILVIA              SILVIA             *
+001700*  27/06/00    -    002   SILVIA              SILVIA             *
+001702*  15/09/00    -    003   SILVIA              SILVIA             *
+001704*  05/02/01    -    004   SILVIA              SILVIA             *
+001706*  20/04/01    -    005   SILVIA              SILVIA             *
+001708*  23/08/01    -    006   SILVIA              SILVIA             *
+001710*  28/02/02    -    007   SILVIA              SILVIA             *
+001720*  30/08/11    -    008   JAC/JAC  ACESSO P/ MUNIC 101 POUPATEMPO*
+001722*  22/03/21         JAC JWD PERM. USU. MESMO POLO ATUEM ENTRE SI *
+001724*  23/03/21         JAC/JWD AJUSTES NA ROTINA 000-20             *
+001726*  20/04/21         JAC/LEE  TODO USU APTO A SERVICO DE QQ LUGAR *
+001800*  ../../..   ....  ...   .................   .................. *
+001900*  ../../..   ....  ...   .................   .................. *
+002000*                                                                *
+002100*================================================================*
+002200/
+002300 ENVIRONMENT     DIVISION.
+002400 CONFIGURATION   SECTION.
+002500
+002600 SPECIAL-NAMES.
+002700     DECIMAL-POINT   IS  COMMA.
+002800
+002900 INPUT-OUTPUT    SECTION.
+003000 FILE-CONTROL.
+003100 DATA        DIVISION.
+003200 FILE        SECTION.
+003300
+003400 DATA-BASE   SECTION.
+003500
+003600 DB          DB01         =     TTABELAS.
+003700 01          DETTABDS.
+003800 01          TABCIRPOLODS.
+003900
+004000 WORKING-STORAGE SECTION.
+004100/
+004200 77          CH-BCO          PIC X(001)  VA  "N".
+004300
+004400 01          AX-CHAVE.
+004500     05      AX-USERMUN      PIC 9(003).
+004600     05      FILLER          PIC X(004).
+004700
+004800/
+004900******************************************************************
+005000*   PARAMETROS PARA CHAMADA DA LIBRARY                           *
+005100*                                                                *
+005200*   SIT => 0 = OK (MUNICIPIO INDEPENDENTE OU PERTENCENTE A POLO) *
+005300*          1 = MUNICIPIO INVALIDO (NAO PERTENCE AO TABELAS)      *
+005400*          2 = USUARIO NAO PERMITIDO (MUNICIPIO NAO E DA POLO)   *
+005500*          3 = PREENCHIMENTO DE TELA - SOMENTE PARA GABT015      *
+005600*                                                                *
+005700******************************************************************
+005800*
+005900
+006000 01          AX-LIB-GAAL050.
+006100     05      AX-L050-COD     PIC X(002).
+006200     05      AX-L050-USERMUN PIC 9(003).
+006300     05      AX-L050-MUN     PIC 9(005).
+006400
+006500
+006600 01          AX-RET-GAAL050.
+006700     05      AX-L050-SIT     PIC 9(001).
+006800     05      AX-L050-MUNIC   PIC X(005).
+006805
+006810 01          AX-POLO-OPER    PIC 9(003).
+006815 01          AX-POLO-MUNIC   PIC 9(003).
+006820 01          AX-MUNIC-SERPRO PIC 9(005).
+006825
+006900/
+007000*****************************************************************
+007100*      TABELA   DE   MUNICIPIOS  DOS  POUPA-TEMPOS              *
+007200*****************************************************************
+007300*
+007400
+007500 01          TABELA-POUPA-TEMPO.
+007600
+007700*
+007800* 645 - SAO JOSE DOS CAMPOS ***
+007900*
+008000     05      FILLER          PIC X(040)     VA
+008100             "645 02991 ARAPEI                        ".
+008200     05      FILLER          PIC X(040)     VA
+008300             "645 06197 BANANAL                       ".
+008400     05      FILLER          PIC X(040)     VA
+008500             "645 06633 LAVRINHAS                     ".
+008600     05      FILLER          PIC X(040)     VA
+008700             "645 07093 SAO JOSE DO BARREIRO          ".
+008800     05      FILLER          PIC X(040)     VA
+008900             "645 06169 AREIAS                        ".
+009000     05      FILLER          PIC X(040)     VA
+009100             "645 06369 CRUZEIRO                      ".
+009200     05      FILLER          PIC X(040)     VA
+009300             "645 06939 QUELUZ                        ".
+009400     05      FILLER          PIC X(040)     VA
+009500             "645 07141 SILVEIRAS                     ".
+009600     05      FILLER          PIC X(040)     VA
+009700             "645 06149 APARECIDA                     ".
+009800     05      FILLER          PIC X(040)     VA
+009900             "645 00794 CANAS                         ".
+010000     05      FILLER          PIC X(040)     VA
+010100             "645 06469 GUARATINGUETA                 ".
+010200     05      FILLER          PIC X(040)     VA
+010300             "645 06871 PIQUETE                       ".
+010400     05      FILLER          PIC X(040)     VA
+010500             "645 06987 ROSEIRA                       ".
+010600     05      FILLER          PIC X(040)     VA
+010700             "645 06273 CACHOEIRA PAULISTA            ".
+010800     05      FILLER          PIC X(040)     VA
+010900             "645 06645 LORENA                        ".
+011000     05      FILLER          PIC X(040)     VA
+011100             "645 02993 POTIM                         ".
+011200     05      FILLER          PIC X(040)     VA
+011300             "645 06373 CUNHA                         ".
+011400     05      FILLER          PIC X(040)     VA
+011500             "645 06505 IGARATA                       ".
+011600     05      FILLER          PIC X(040)     VA
+011700             "645 06599 JAMBEIRO                      ".
+011800     05      FILLER          PIC X(040)     VA
+011900             "645 07001 SALESOPOLIS                   ".
+012000     05      FILLER          PIC X(040)     VA
+012100             "645 06589 JACAREI                       ".
+012200     05      FILLER          PIC X(040)     VA
+012300             "645 06813 PARAIBUNA                     ".
+012400     05      FILLER          PIC X(040)     VA
+012500             "645 07021 SANTA BRANCA                  ".
+012600     05      FILLER          PIC X(040)     VA
+012700             "645 06271 CACAPAVA                      ".
+012800     05      FILLER          PIC X(040)     VA
+012900             "645 06735 MONTEIRO LOBATO               ".
+013000     05      FILLER          PIC X(040)     VA
+013100             "645 07099 SAO JOSE DOS CAMPOS           ".
+013200     05      FILLER          PIC X(040)     VA
+013300             "645 06295 CAMPOS DO JORDAO              ".
+013400     05      FILLER          PIC X(040)     VA
+013500             "645 06747 NATIVIDADE DA SERRA           ".
+013600     05      FILLER          PIC X(040)     VA
+013700             "645 06947 REDENCAO DA SERRA             ".
+013800     05      FILLER          PIC X(040)     VA
+013900             "645 07073 SAO BENTO DO SAPUCAI          ".
+014000     05      FILLER          PIC X(040)     VA
+014100             "645 07183 TAUBATE                       ".
+014200     05      FILLER          PIC X(040)     VA
+014300             "645 06627 LAGOINHA                      ".
+014400     05      FILLER          PIC X(040)     VA
+014500             "645 06861 PINDAMONHANGABA               ".
+014600     05      FILLER          PIC X(040)     VA
+014700             "645 07065 SANTO ANTONIO DO PINHAL       ".
+014800     05      FILLER          PIC X(040)     VA
+014900             "645 07101 SAO LUIZ DO PARAITINGA        ".
+015000     05      FILLER          PIC X(040)     VA
+015100             "645 07197 TREMEMBE                      ".
+015200     05      FILLER          PIC X(040)     VA
+015300             "645 07209 UBATUBA                       ".
+015400     05      FILLER          PIC X(040)     VA
+015500             "645 07115 SAO SEBASTIAO                 ".
+015600     05      FILLER          PIC X(040)     VA
+015700             "645 06509 ILHABELA                      ".
+015800     05      FILLER          PIC X(040)     VA
+015900             "645 06311 CARAGUATATUBA                 ".
+016000
+016100
+016200
+016300
+016400
+016500
+016600
+016700
+016800
+016900
+017000
+017100
+017200
+017300*
+017400* 244 - CAMPINAS ***
+017500*
+017600     05      FILLER          PIC X(040)     VA
+017700             "244 02951 HORTOLANDIA                   ".
+017800     05      FILLER          PIC X(040)     VA
+017900             "244 06357 COSMOPOLIS                    ".
+018000     05      FILLER          PIC X(040)     VA
+018100             "244 06737 MONTE MOR                     ".
+018200     05      FILLER          PIC X(040)     VA
+018300             "244 06595 JAGUARIUNA                    ".
+018400     05      FILLER          PIC X(040)     VA
+018500             "244 06291 CAMPINAS                      ".
+018600     05      FILLER          PIC X(040)     VA
+018700             "244 02949 ENGENHEIRO COELHO             ".
+018800     05      FILLER          PIC X(040)     VA
+018900             "244 06843 PEDREIRA                      ".
+019000     05      FILLER          PIC X(040)     VA
+019100             "244 06131 AMERICANA                     ".
+019200     05      FILLER          PIC X(040)     VA
+019300             "244 06769 NOVA ODESSA                   ".
+019400     05      FILLER          PIC X(040)     VA
+019500             "244 07149 SUMARE                        ".
+019600     05      FILLER          PIC X(040)     VA
+019602             "244 06831 PAULINIA                      ".
+019604     05      FILLER          PIC X(040)     VA
+019606             "244 07237 VINHEDO                       ".
+019608     05      FILLER          PIC X(040)     VA
+019610             "244 06165 ARARAS                        ".
+019612     05      FILLER          PIC X(040)     VA
+019614             "244 06349 CORDEIROPOLIS                 ".
+019616     05      FILLER          PIC X(040)     VA
+019618             "244 06635 LEME                          ".
+019620     05      FILLER          PIC X(040)     VA
+019622             "244 06887 PIRASSUNUNGA                  ".
+019624     05      FILLER          PIC X(040)     VA
+019626             "244 02959 ESTIVA GERBI                  ".
+019628     05      FILLER          PIC X(040)     VA
+019630             "244 06553 ITAPIRA                       ".
+019632     05      FILLER          PIC X(040)     VA
+019634             "244 06715 MOJI GUACU                    ".
+019636     05      FILLER          PIC X(040)     VA
+019638             "244 06111 AGUAS DE SAO PEDRO            ".
+019640     05      FILLER          PIC X(040)     VA
+019642             "244 06335 CHARQUEADA                    ".
+019644     05      FILLER          PIC X(040)     VA
+019646             "244 06719 MOMBUCA                       ".
+019648     05      FILLER          PIC X(040)     VA
+019650             "244 06943 RAFARD                        ".
+019652     05      FILLER          PIC X(040)     VA
+019654             "244 05445 SALTINHO                      ".
+019656     05      FILLER          PIC X(040)     VA
+019658             "244 07109 SAO PEDRO                     ".
+019660     05      FILLER          PIC X(040)     VA
+019662             "244 06175 ARTUR NOGUEIRA                ".
+019664     05      FILLER          PIC X(040)     VA
+019666             "244 07017 SANTA BARBARA D OESTE         ".
+019668     05      FILLER          PIC X(040)     VA
+019670             "244 06511 INDAIATUBA                    ".
+019672     05      FILLER          PIC X(040)     VA
+019674             "244 07225 VALINHOS                      ".
+019676     05      FILLER          PIC X(040)     VA
+019678             "244 06345 CONCHAL                       ".
+019680     05      FILLER          PIC X(040)     VA
+019682             "244 06529 IRACEMAPOLIS                  ".
+019700     05      FILLER          PIC X(040)     VA
+019702             "244 06639 LIMEIRA                       ".
+019704     05      FILLER          PIC X(040)     VA
+019706             "244 07025 SANTA CRUZ DA CONCEICAO       ".
+019708     05      FILLER          PIC X(040)     VA
+019710             "244 02953 HOLAMBRA                      ".
+019712     05      FILLER          PIC X(040)     VA
+019714             "244 06717 MOJI MIRIM                    ".
+019716     05      FILLER          PIC X(040)     VA
+019718             "244 07061 SANTO ANTONIO DE POSSE        ".
+019720     05      FILLER          PIC X(040)     VA
+019722             "244 06309 CAPIVARI                      ".
+019724     05      FILLER          PIC X(040)     VA
+019726             "244 06399 ELIAS FAUSTO                  ".
+019728     05      FILLER          PIC X(040)     VA
+019730             "244 06875 PIRACICABA                    ".
+019732     05      FILLER          PIC X(040)     VA
+019734             "244 06981 RIO DAS PEDRAS                ".
+019736     05      FILLER          PIC X(040)     VA
+019738             "244 07041 SANTA MARIA DA SERRA          ".
+019800     05      FILLER          PIC X(040)     VA
+019802             "244 06109 AGUAS DE LINDOIA              ".
+019804     05      FILLER          PIC X(040)     VA
+019806             "244 06137 AMPARO                        ".
+019808     05      FILLER          PIC X(040)     VA
+019810             "244 06181 ATIBAIA                       ".
+019812     05      FILLER          PIC X(040)     VA
+019814             "244 06241 BOM JESUS DOS PERDOES         ".
+019816     05      FILLER          PIC X(040)     VA
+019818             "244 06251 BRAGANCA PAULISTA             ".
+019820     05      FILLER          PIC X(040)     VA
+019822             "244 06611 JOANOPOLIS                    ".
+019824     05      FILLER          PIC X(040)     VA
+019826             "244 06641 LINDOIA                       ".
+019828     05      FILLER          PIC X(040)     VA
+019830             "244 06725 MONTE ALEGRE DO SUL           ".
+019832     05      FILLER          PIC X(040)     VA
+019834             "244 06749 NAZARE PAULISTA               ".
+019836     05      FILLER          PIC X(040)     VA
+019838             "244 06837 PEDRA BELA                    ".
+019840     05      FILLER          PIC X(040)     VA
+019842             "244 06867 PINHALZINHO                   ".
+019844     05      FILLER          PIC X(040)     VA
+019846             "244 06873 PIRACAIA                      ".
+019848     05      FILLER          PIC X(040)     VA
+019850             "244 07133 SERRA NEGRA                   ".
+019852     05      FILLER          PIC X(040)     VA
+019854             "244 07143 SOCORRO                       ".
+019856     05      FILLER          PIC X(040)     VA
+019858             "244 02955 TUIUTI                        ".
+019860     05      FILLER          PIC X(040)     VA
+019862             "244 02957 VARGEM                        ".
+019900     05      FILLER          PIC X(040)     VA
+019902             "244 06275 CACONDE                       ".
+019904     05      FILLER          PIC X(040)     VA
+019906             "244 06317 CASA BRANCA                   ".
+019908     05      FILLER          PIC X(040)     VA
+019910             "244 06577 ITOBI                         ".
+019912     05      FILLER          PIC X(040)     VA
+019914             "244 06711 MOCOCA                        ".
+019916     05      FILLER          PIC X(040)     VA
+019918             "244 07027 SANTA CRUZ DAS PALMEIRAS      ".
+019920     05      FILLER          PIC X(040)     VA
+019922             "244 07095 SAO JOSE DO RIO PARDO         ".
+019924     05      FILLER          PIC X(040)     VA
+019926             "244 07167 TAMBAU                        ".
+019928     05      FILLER          PIC X(040)     VA
+019930             "244 07173 TAPIRATIBA                    ".
+019932     05      FILLER          PIC X(040)     VA
+019934             "244 06269 CABREUVA                      ".
+019936     05      FILLER          PIC X(040)     VA
+019938             "244 06293 CAMPO LIMPO PAULISTA          ".
+019940     05      FILLER          PIC X(040)     VA
+019942             "244 06569 ITATIBA                       ".
+019950     05      FILLER          PIC X(040)     VA
+019952             "244 06581 ITUPEVA                       ".
+019954     05      FILLER          PIC X(040)     VA
+019956             "244 06605 JARINU                        ".
+019958     05      FILLER          PIC X(040)     VA
+019960             "244 06619 JUNDIAI                       ".
+019962     05      FILLER          PIC X(040)     VA
+019964             "244 06647 LOUVEIRA                      ".
+019966     05      FILLER          PIC X(040)     VA
+019968             "244 06741 MORUNGABA                     ".
+019970     05      FILLER          PIC X(040)     VA
+019972             "244 07233 VARZEA PAULISTA               ".
+020000     05      FILLER          PIC X(040)     VA
+020038             "244 06139 ANALANDIA                     ".
+020040     05      FILLER          PIC X(040)     VA
+020042             "244 06259 BROTAS                        ".
+020050     05      FILLER          PIC X(040)     VA
+020052             "244 06355 CORUMBATAI                    ".
+020054     05      FILLER          PIC X(040)     VA
+020056             "244 06523 IPEUNA                        ".
+020058     05      FILLER          PIC X(040)     VA
+020060             "244 06573 ITIRAPINA                     ".
+020062     05      FILLER          PIC X(040)     VA
+020064             "244 06979 RIO CLARO                     ".
+020066     05      FILLER          PIC X(040)     VA
+020068             "244 07035 SANTA GERTRUDES               ".
+020070     05      FILLER          PIC X(040)     VA
+020072             "244 07195 TORRINHA                      ".
+020100     05      FILLER          PIC X(040)     VA
+020138             "244 06105 AGUAI                         ".
+020140     05      FILLER          PIC X(040)     VA
+020142             "244 06107 AGUAS DA PRATA                ".
+020150     05      FILLER          PIC X(040)     VA
+020152             "244 06379 DIVINOLANDIA                  ".
+020154     05      FILLER          PIC X(040)     VA
+020156             "244 06865 ESPIRITO SANTO DO PINHAL      ".
+020158     05      FILLER          PIC X(040)     VA
+020160             "244 07063 SANTO ANTONIO DO JARDIM       ".
+020162     05      FILLER          PIC X(040)     VA
+020164             "244 07083 SAO JOAO DA BOA VISTA         ".
+020166     05      FILLER          PIC X(040)     VA
+020168             "244 07117 SAO SEBASTIAO DA GRAMA        ".
+020170     05      FILLER          PIC X(040)     VA
+020172             "244 07231 VARGEM GRANDE DO SUL          ".
+020200
+020202
+020204
+020206
+020208
+020210
+020212
+020214
+020216
+020218*
+020220* 100 - SAO PAULO (ITAQUERA) ***
+020222*
+020300     05      FILLER          PIC X(040)     VA
+020302             "100 07107 SAO PAULO                     ".
+020304     05      FILLER          PIC X(040)     VA
+020306             "100 06713 MOGI DAS CRUZES               ".
+020308     05      FILLER          PIC X(040)     VA
+020310             "100 06415 FERRAZ DE VASCONCELOS         ".
+020312     05      FILLER          PIC X(040)     VA
+020314             "100 06563 ITAQUAQUECETUBA               ".
+020316     05      FILLER          PIC X(040)     VA
+020318             "100 06897 POA                           ".
+020320     05      FILLER          PIC X(040)     VA
+020322             "100 07151 SUZANO                        ".
+020324     05      FILLER          PIC X(040)     VA
+020326             "100 06231 BIRITIBA MIRIM                ".
+020328     05      FILLER          PIC X(040)     VA
+020330             "100 06467 GUARAREMA                     ".
+020332     05      FILLER          PIC X(040)     VA
+020334             "100 07001 SALESOPOLIS                   ".
+020336     05      FILLER          PIC X(040)     VA
+020338             "100 06477 GUARULHOS                     ".
+020340     05      FILLER          PIC X(040)     VA
+020342             "100 06177 ARUJA                         ".
+020344     05      FILLER          PIC X(040)     VA
+020346             "100 07037 SANTA ISABEL                  ".
+020348     05      FILLER          PIC X(040)     VA
+020350             "100 06429 FRANCO DA ROCHA               ".
+020352     05      FILLER          PIC X(040)     VA
+020354             "100 06427 FRANCISCO MORATO              ".
+020356     05      FILLER          PIC X(040)     VA
+020358             "100 06281 CAIEIRAS                      ".
+020360     05      FILLER          PIC X(040)     VA
+020362             "100 06285 CAJAMAR                       ".
+020364     05      FILLER          PIC X(040)     VA
+020366             "100 06671 MAIRIPORA                     ".
+020368
+020370
+020374*
+020376* 100 - SAO PAULO (SANTO AMARO) ***
+020378*
+020380     05      FILLER          PIC X(040)     VA
+020382             "100 06789 OSASCO                        ".
+020384     05      FILLER          PIC X(040)     VA
+020386             "100 06401 EMBU                          ".
+020388     05      FILLER          PIC X(040)     VA
+020390             "100 06545 ITAPECERICA DA SERRA          ".
+020392     05      FILLER          PIC X(040)     VA
+020394             "100 06625 JUQUITIBA                     ".
+020396     05      FILLER          PIC X(040)     VA
+020398             "100 05447 SAO LOURENCO DA SERRA         ".
+020400     05      FILLER          PIC X(040)     VA
+020402             "100 07157 TABOAO DA SERRA               ".
+020404     05      FILLER          PIC X(040)     VA
+020406             "100 06213 BARUERI                       ".
+020408     05      FILLER          PIC X(040)     VA
+020410             "100 06313 CARAPICUIBA                   ".
+020412     05      FILLER          PIC X(040)     VA
+020414             "100 06361 COTIA                         ".
+020416     05      FILLER          PIC X(040)     VA
+020418             "100 06551 ITAPEVI                       ".
+020420     05      FILLER          PIC X(040)     VA
+020422             "100 06601 JANDIRA                       ".
+020424     05      FILLER          PIC X(040)     VA
+020426             "100 06883 PIRAPORA DO BOM JESUS         ".
+020428     05      FILLER          PIC X(040)     VA
+020430             "100 07047 SANTANA DE PARNAIBA           ".
+020432     05      FILLER          PIC X(040)     VA
+020434             "100 07273 VARGEM GRANDE PAULISTA        ".
+020436     05      FILLER          PIC X(040)     VA
+020438             "100 06403 EMBU-GUACU                    ".
+020440
+020500
+020600*
+020602* 635 - SAO BERNARDO DO CAMPO ***
+020604*
+020606     05      FILLER          PIC X(040)     VA
+020608             "635 07075 SAO BERNARDO DO CAMPO         ".
+020610     05      FILLER          PIC X(040)     VA
+020612             "635 07077 SAO CAETANO                   ".
+020614     05      FILLER          PIC X(040)     VA
+020616             "635 07057 SANTO ANDRE                   ".
+020618     05      FILLER          PIC X(040)     VA
+020620             "635 06689 MAUA                          ".
+020622     05      FILLER          PIC X(040)     VA
+020624             "635 06967 RIBEIRAO PIRES                ".
+020626     05      FILLER          PIC X(040)     VA
+020628             "635 06983 RIO GRANDE DA SERRA           ".
+020630     05      FILLER          PIC X(040)     VA
+020632             "635 06377 DIADEMA                       ".
+020682
+020700
+020800
+020900
+021000
+021100
+021200
+021300
+021400
+021500*
+021600
+021700 01          TBA-POUPA-R     REDEFINES   TABELA-POUPA-TEMPO.
+021800     05      TBA-OCORRE      OCCURS      169
+021900                             INDEXED     BY    IA1.
+022000
+022100        10   TBA-POLO        PIC X(003).
+022200        10   FILLER          PIC X(001).
+022300        10   TBA-MUNIC       PIC 9(005).
+022400        10   FILLER          PIC X(001).
+022500        10   TBA-NOME-MUNIC  PIC X(030).
+022600
+022700/
+022800 PROCEDURE   DIVISION   USING    AX-LIB-GAAL050 AX-RET-GAAL050.
+022900
+023000******************************************************************
+023100*    ROTINA PRINCIPAL DO PROGRAMA.                               *
+023200******************************************************************
+023300
+023400 000-E-PROGRAMA   SECTION.
+023500 000-E-PRINCIPAL.
+023600*
+023700
+023800**** IF      AX-L050-COD             =       "LI"
+023900************ PERFORM 010-E-POUPA     THRU    010-S-POUPA
+024000************ GO      000-S-EXIT.
+024100
+024200     IF      CH-BCO                  =       "S"
+024300             GO      000-10.
+024400
+024500     OPEN    INQUIRY DB01
+024600       ON    EXCEPTION
+024700             DISPLAY "PC/GAA/L050/DB - ERRO ABERTURA TTABELAS "
+024800             CALL    SYSTEM DMTERMINATE.
+024900
+025000     MOVE    "S"                     TO      CH-BCO.
+025100
+025200*
+025300 000-10.
+025400*
+025410     IF      AX-L050-USERMUN         =       101
+025420             MOVE    100             TO      AX-L050-USERMUN
+025430     ELSE
+025440             NEXT    SENTENCE.
+025500
+025600     MOVE    LOW-VALUES              TO      AX-RET-GAAL050.
+025700     MOVE    SPACES                  TO      AX-CHAVE.
+025800
+025900     MOVE    AX-L050-USERMUN         TO      AX-USERMUN.
+026000
+026100
+026200     FIND    DETTABSE                AT
+026300             TAB-TIPO                =       6       AND
+026400             TAB-CHAVE               =       AX-CHAVE
+026500       ON    EXCEPTION
+026600         IF  DMSTATUS (NOTFOUND)
+026620*USUARIOS DE QUALQUER LUGAR APTOS A FAZER SERVICOS DE QQ LUGAR
+026640             MOVE     0              TO      AX-L050-SIT
+026700**           MOVE     1              TO      AX-L050-SIT
+026800             MOVE     SPACES         TO      AX-L050-MUNIC
+026900             GO       000-S-EXIT
+027000         ELSE
+027100             DISPLAY "PC/GAA/L050/DB - FIND ERROR DETTABDS 6"
+027200             CALL    SYSTEM          DMTERMINATE.
+027300
+027400
+027500     MOVE    TAB-PRD-MUNSERPRO       TO      AX-L050-MUNIC
+027505                                             AX-MUNIC-SERPRO.
+027520
+027530*USUARIOS DE QUALQUER LUGAR APTOS A FAZER SERVICOS DE QQ LUGAR
+027540     MOVE    0                       TO      AX-L050-SIT.
+027550     GO                              TO      000-S-EXIT.
+027560**
+027600
+027700     IF      AX-L050-MUN             =       0
+027800             NEXT    SENTENCE
+027900     ELSE
+028000     IF      AX-L050-MUN             =       TAB-PRD-MUNSERPRO
+028100             MOVE    0               TO      AX-L050-SIT
+028200             GO      000-S-EXIT
+028300     ELSE
+028400             GO      000-20.
+028500
+028600     FIND    TABCIRPOLOSE            AT
+028700             TAB-POLO                =       AX-L050-USERMUN
+028800       ON    EXCEPTION
+028900         IF  DMSTATUS(NOTFOUND)
+029000             MOVE    0               TO      AX-L050-SIT
+029100             GO      000-S-EXIT
+029200         ELSE
+029300             DISPLAY "PC/GAA/L050/DB - FIND ERROR POLO"
+029400             CALL    SYSTEM  DMTERMINATE.
+029500
+029600     MOVE    3                       TO      AX-L050-SIT.
+029700     GO      000-S-EXIT.
+029800
+029900*
+030000 000-20.
+030100*
+030200
+030300     FIND    TABCIRPOLOSE            AT
+030400             TAB-POLO                =       AX-L050-USERMUN AND
+030500             TAB-MUNIC               =       AX-L050-MUN
+030600       ON    EXCEPTION
+030700         IF  DMSTATUS(NOTFOUND)
+030800             MOVE    2               TO      AX-L050-SIT
+030900***            GO      000-S-EXIT
+031000         ELSE
+031100             DISPLAY "PC/GAA/L050/DB - FIND ERROR POLO/MUN"
+031200             CALL    SYSTEM  DMTERMINATE.
+031300
+031305
+031310     IF      AX-L050-SIT             =       2
+031315             PERFORM 050-E-SUPERINTER  THRU    050-S-SUPERINTER
+031320     ELSE
+031400             MOVE    0               TO      AX-L050-SIT.
+031500
+031600
+031700 000-S-EXIT.
+031800     EXIT PROGRAM.
+031900/
+032000*----------------------------------------------------------------*
+032100*    ROTINA PARA TRATAMENTO DO POUPA TEMPO                       *
+032200*----------------------------------------------------------------*
+032300
+032400
+032500 010-E-POUPA.
+032600
+032700
+032800      SET     IA1                     TO      1.
+032900
+033000
+033100      SEARCH  TBA-OCORRE              AT END
+033200              MOVE    2               TO      AX-L050-SIT
+033300        WHEN  TBA-POLO (IA1)          =       AX-L050-USERMUN AND
+033400              TBA-MUNIC (IA1)         =       AX-L050-MUN
+033500              MOVE    0               TO      AX-L050-SIT.
+033600
+033700
+033800 010-S-POUPA.
+033900     EXIT.
+034000/---------------VERIFICA SE OS MUNIC¿PIOS PERTENCEM A MESMA POLO
+034100
+034200 050-E-SUPERINTER.
+034300
+034400
+034500     FIND    TABCIRPOLOSE1           AT
+034600             TAB-MUNIC               =       AX-L050-MUN
+034700       ON    EXCEPTION
+034800         IF  DMSTATUS(NOTFOUND)
+034900             MOVE    2               TO      AX-L050-SIT
+035000             GO                      TO      050-S-SUPERINTER
+035100         ELSE
+035200             DISPLAY "PC/GAA/L050/DB - FIND ERROR POLO/SUPER"
+035300             CALL    SYSTEM  DMTERMINATE.
+035400
+035500    MOVE     TAB-POLO                TO      AX-POLO-OPER.
+035600
+035700     FIND    TABCIRPOLOSE1           AT
+035800             TAB-MUNIC               =       AX-MUNIC-SERPRO
+035900       ON    EXCEPTION
+036000         IF  DMSTATUS(NOTFOUND)
+036100             MOVE    2               TO      AX-L050-SIT
+036200             GO                      TO      050-S-SUPERINTER
+036300         ELSE
+036400             DISPLAY "PC/GAA/L050/DB - FIND ERROR POLO/SUPER-2"
+036500             CALL    SYSTEM  DMTERMINATE.
+036600
+036700     MOVE    TAB-POLO                TO     AX-POLO-MUNIC.
+036800
+036900     IF      AX-POLO-OPER            =      AX-POLO-MUNIC
+037000             MOVE      0             TO     AX-L050-SIT
+037100     ELSE
+037200             MOVE      2             TO     AX-L050-SIT.
+037300
+037400
+037500 050-S-SUPERINTER.
+037600     EXIT.
+037700

@@ -1,0 +1,1460 @@
+000000* VERSION   4.2  ; SAVED 20230830 16:49:17                    |000
+000100
+000200 ID          DIVISION.
+000300***********************
+000400*
+000500*
+000600 PROGRAM-ID.     PC-GEV-T436-DB.
+000700
+000800 AUTHOR.
+000900* PROGRAMADOR:   JORGE CORTEZ.
+001000* ANALISTA   :   JORGE CORTEZ.
+001100
+001200 DATE-WRITTEN.   MAIO/2023.
+001300
+001400 DATE-COMPILED.
+001500
+001600
+001700*
+001800*
+001900******************************************************************
+002000*                O   B   J   E   T   I   V   O                   *
+002100******************************************************************
+002200*                                                                *
+002300*      VALIDAR STRING RECEBIDA DA BAIXA PLATAFORMA CONTENDO      *
+002400*      DADOS DA PLACA ESCOLHIDA PELO USUARIO, QUE APOS           *
+002500*      VERIFICACAO(INCLUSIVE NA BIN TR 902) FICARµ MARCADA       *
+002600*      COMO PLACA ESCOLHIDA                                      *
+002700*                                                                *
+002800*                                                                *
+002900******************************************************************
+003000*                                                                *
+003100*   TRANSACOES :                                                 *
+003200*                                                                *
+003300*    V436  -->  CONSISTE DADOS RECEBIDOS PLACA ESCOLHIDA         *
+003400*                                                                *
+003500*    WINDOW ->  WDGEV10 NA PORTA 2572                            *
+003600*                                                                *
+003700*    BANCO -->  DBDETRAN (ESCPLACDS, PRODPLACDS)                 *
+003800*               DBTAXAS (TAXASDS)                                *
+003900*                                                                *
+004000******************************************************************
+004100
+004200/
+004300******************************************************************
+004400*        A L T E R A C O E S    E F E T U A D A S                *
+004500*================================================================*
+004600*                                                                *
+004700*    OS       DATA      ANA / PROG OBSERVACOES                   *
+004800*   -----     ----      --------   -----------                   *
+004900*                                                                *
+005000*    ___    21/07/23    JWD / JWD RETIRAR DA GRAVACAO DO NOVAPLAC*
+005100*    ___    17/08/23    JWD / JWD AJUSTES NO RETORNO DA BIN      *
+005200*    ___    25/08/23    JWD / JWD  AJUSTES MSG RET  TRANSACAO BIN*
+005300*    ___    30/08/23    JWD / JWD  AJUSTES NO FIND PLAC PERSON   *
+005400*    ___    __/__/__    ____  ____ _____________________________ *
+005500*    ___    __/__/__    ____  ____ _____________________________ *
+005600*    ___    __/__/__    ____  ____ _____________________________ *
+005700*    ___    __/__/__    ____  ____ _____________________________ *
+005800*    ___    __/__/__    ____  ____ _____________________________ *
+005900*    ___    __/__/__    ____  ____ _____________________________ *
+006000*    ___    __/__/__    ____  ____ _____________________________ *
+006100*    ___    __/__/__    ____  ____ _____________________________ *
+006200*    ___    __/__/__    ____  ____ _____________________________ *
+006300*    ___    __/__/__    ____  ____ _____________________________ *
+006400*    ___    __/__/__    ____  ____ _____________________________ *
+006500*    ___    __/__/__    ____  ____ _____________________________ *
+006600*    ___    __/__/__    ____  ____ _____________________________ *
+006700*    ___    __/__/__    ____  ____ _____________________________ *
+006800*                                                                *
+006900******************************************************************
+007000/
+007100 ENVIRONMENT DIVISION.
+007200**********************
+007300*
+007400*
+007500 CONFIGURATION   SECTION.
+007600*************************
+007700*
+007800 SPECIAL-NAMES.
+007900*
+008000
+008100
+008200     DECIMAL-POINT           IS      COMMA.
+008300*
+008400*
+008500 INPUT-OUTPUT    SECTION.
+008600*************************
+008700*
+008800 FILE-CONTROL.
+008900*
+009000
+009100
+009200/
+009300 DATA        DIVISION.
+009400**********************
+009500*
+009600*
+009700 FILE        SECTION.
+009800*********************
+009900*
+010000*
+010100
+010200
+010300
+010400
+010500
+010600
+010700/
+010800 DATA-BASE       SECTION.
+010900*************************
+011000*
+011100*
+011200 DB          DB01    =       TDBDETRAN.
+011300
+011400
+011500 01          ESCPLACDS.
+011600
+011700 01          NOVAPLACDS.
+011800
+011900 01          PRODRDSDS.
+012000
+012100 01          PRODPLACDS.
+012200
+012300
+012400
+012500
+012600/
+012700 WORKING-STORAGE SECTION.
+012800*************************
+012900*
+013000
+013100
+013200
+013300******************************************************************
+013400*        AREAS  DE  CONTROLE  DE  PROGRAMA  ON  LINE             *
+013500******************************************************************
+013600*
+013700
+013800 77          LINKTOCOMS              PIC X(256).
+013900
+014000 77          USER-DESG               REAL.
+014100
+014200 77          USER-FLAG               PIC S9(011) BINARY.
+014300
+014400 77          STATION-DESG            REAL.
+014500
+014600 77          AX-AGENDA-DESG          REAL.
+014700
+014800 77          AX-CALL-ERROR           PIC S9(011) BINARY.
+014900
+015000 77          AX-CONTIME              PIC 9(011)  BINARY.
+015100
+015200 77          AX-AUXILIA              PIC 9(011)  BINARY.
+015300
+015400*
+015500*------------>>    AREAS    PARA   CONTROLES
+015600*
+015700*
+015800
+015900 77          AX-LENGTH               PIC 9(011)  BINARY.
+016000
+016100
+016200 77          IA1                     PIC 9(003)  BINARY.
+016300
+016400 77          AX-COUNT1               PIC 9(003).
+016500
+016600 77          AX-COUNT2               PIC 9(003).
+016700
+016800
+016900
+017000
+017100 01          AX-AGENDA-OUT           PIC X(017)  VA  "AGGEVT436".
+017200
+017300 01          USER-NAME               PIC X(010).
+017400
+017500
+017600
+017700
+017800******************************************************************
+017900*                  AREA DE ENVIO/RETORNO RENAVAM                 *
+018000******************************************************************
+018100
+018200 01   P-RENAVAM-TAMREG               PIC 9(4).
+018300 01   P-RENAVAM-STATUS               PIC X(01).
+018400 01   P-RENAVAM-TIMEOUT              PIC 9(02) VA 20.
+018500 01   C-RENAVAM                      PIC X(5000).
+018600*
+018700 01          HEADER-BIN REDEFINES C-RENAVAM.
+018800     05      HHMMSS-BIN              PIC 9(006)  COMP.
+018900     05      FILLER                  PIC X(007).
+019000     05      LSN-TERMINAL-BIN        PIC 9(006)  COMP.
+019100     05      TIPO-TERMINAL-BIN       PIC X(001).
+019200     05      MAPA-E-S-BIN            PIC X(006).
+019300     05      AID-WRITECODE-BIN       PIC X(001).
+019400     05      WCC-BIN                 PIC X(001).
+019500     05      ULTIMA-MENSAGEM-BIN     PIC X(001).
+019600     05      ENDERECO-BASE-BIN       PIC 9(004)  COMP.
+019700     05      FILLER                  PIC X(4975).
+019800/
+019900*----------------------------------------------------------------*
+020000*                  REGISTRO   902                                *
+020100*----------------------------------------------------------------*
+020200 01          MBIN01    REDEFINES     C-RENAVAM.
+020300     05      FILLER                  PIC X(025).
+020400     05      IN01FIXA.
+020500       10    IN01SEQT                PIC 9(006).
+020600       10    IN01CODE                PIC 9(003).
+020700       10    IN01MODA                PIC 9(001).
+020800       10    IN01CLIE                PIC 9(011).
+020900       10    IN01UFAO                PIC X(002).
+021000       10    IN01UFMO                PIC X(002).
+021100       10    IN01UFMD                PIC X(002).
+021200       10    IN01COND                PIC 9(001).
+021300       10    IN01TATR                PIC 9(004).
+021400       10    IN01RETO                PIC 9(002).
+021500       10    IN01DIAJ                PIC 9(003).
+021600*
+021700     05      MBIN01-VARIAVEL         PIC X(403).
+021800     05      FILLER                  PIC X(4575).
+021900
+022000******************************************************************
+022100*         Consulta  por Placa  trans DE ENVIO 902                *
+022200******************************************************************
+022300 01          MBIN01-EV1-902 REDEFINES C-RENAVAM.
+022400     05      FILLER                  PIC X(025).
+022500     05      FILLER                  PIC X(037).
+022600     05      MBIN01-EV902.
+022700       10    IN01-PLACA-EV902        PIC X(007).
+022800     05      FILLER                  PIC X(4931).
+022900
+023000
+023100******************************************************************
+023200*         Consulta  por Placa TR 902   RT01                      *
+023300******************************************************************
+023400 01          MBIN01-RT1-902 REDEFINES C-RENAVAM.
+023500     05      FILLER                  PIC X(062).
+023600     05      MBIN01-RT01.
+023700       10    IN01REEX                PIC 9(003).
+023800     05      FILLER                  PIC X(4935).
+023900
+024000
+024100******************************************************************
+024200*                RETORNO 902  RT02                               *
+024300******************************************************************
+024400 01          MBIN01-RT902-R2 REDEFINES C-RENAVAM.
+024500     05      FILLER                  PIC X(062).
+024600     05      IN01-RT02-REEX          PIC 9(003).
+024700     05      MBIN01-RT02.
+024800**
+024900       10    IN01-RT02-CHASSI        PIC X(021).
+025000       10    IN01-RT02-PLACA         PIC X(007).
+025100       10    IN01-RT02-RENAVAM       PIC 9(011).
+025200       10    IN01-RT02-NOMSIT        PIC X(010).
+025300       10    IN01-RT02-MUNIC-VEIC    PIC 9(004).
+025400       10    IN01-RT02-UF-VEIC       PIC X(002).
+025500       10    IN01-RT02-REM-CHASSI    PIC 9(001).
+025600       10    IN01-RT02-NOM-TPMONT    PIC X(013).
+025700       10    IN01-RT02-TIPO-VEIC     PIC 9(002).
+025800       10    IN01-RT02-MARCA         PIC 9(006).
+025900       10    IN01-RT02-ESPECIE       PIC 9(001).
+026000       10    IN01-RT02-CARROCERIA    PIC 9(003).
+026100       10    IN01-RT02-COR           PIC 9(002).
+026200       10    IN01-RT02-ANO-MOD       PIC 9(004).
+026300       10    IN01-RT02-ANO-FABR      PIC 9(004).
+026400       10    IN01-RT02-POTENCIA      PIC 9(003).
+026500       10    IN01-RT02-CILINDRADAS   PIC 9(004).
+026600       10    IN01-RT02-COMBUSTIVEL   PIC 9(002).
+026700       10    IN01-RT02-NRO-MOTOR     PIC X(021).
+026800       10    IN01-RT02-CMT           PIC 9(003)V99.
+026900       10    IN01-RT02-PBT           PIC 9(003)V99.
+027000       10    IN01-RT02-CAP-CARGA     PIC 9(003)V99.
+027100       10    IN01-RT02-PROCEDENCIA   PIC 9(011).
+027200       10    IN01-RT02-CXA-CAMBIO    PIC X(021).
+027300       10    IN01-RT02-DET-DOC-TP    PIC 9(001).
+027400       10    IN01-RT02-DET-DOC-NRO   PIC X(014).
+027500       10    IN01-RT02-NRO-CARROCER  PIC X(021).
+027600       10    IN01-RT02-CAP-PAS       PIC 9(003).
+027700       10    IN01-RT02-RESTRICAO.
+027800         15  IN01-RT02-RESTR-1       PIC 9(002).
+027900         15  IN01-RT02-RESTR-2       PIC 9(002).
+028000         15  IN01-RT02-RESTR-3       PIC 9(002).
+028100         15  IN01-RT02-RESTR-4       PIC 9(002).
+028200        10   IN01-RT02-RESTRICAO-R   REDEFINES
+028300                                     IN01-RT02-RESTRICAO.
+028400         15  IN01-RT02-RESTR         PIC 9(002)
+028500                                      OCCURS  04.
+028600       10    IN01-RT02-NRO-EIXOS     PIC 9(002).
+028700       10    IN01-RT02-EIXO-TRAS     PIC X(021).
+028800       10    IN01-RT02-EIXO-DIAN     PIC X(021).
+028900       10    IN01-RT02-TPDOC-IMP     PIC 9(001).
+029000       10    IN01-RT02-NRDOC-IMP     PIC X(014).
+029100       10    IN01-RT02-CDRFB         PIC 9(007).
+029200       10    IN01-RT02-NRREDA        PIC 9(005).
+029300       10    IN01-RT02-NRODI         PIC 9(010).
+029400       10    IN01-RT02-DTRGDI        PIC 9(008).
+029500       10    IN01-RT02-TPDOCFAT      PIC 9(001).
+029600       10    IN01-RT02-NRDOCFAT      PIC X(014).
+029700       10    IN01-RT02-UFDESFAT      PIC X(002).
+029800       10    IN01-RT02-DTRESTRT      PIC 9(008).
+029900       10    IN01-RT02-DTULTATU      PIC 9(008).
+030000       10    IN01-RT02-TPIMPVEIC     PIC 9(002).
+030100       10    IN01-RT02-NRPROCIMP     PIC 9(015).
+030200       10    IN01-RT02-DTTRFPAIS     PIC 9(008).
+030300       10    IN01-RT02-CDTRFPAIS     PIC X(005).
+030400       10    IN01-RT02-IDMULRENA     PIC 9(001).
+030500       10    IN01-RT02-IDCOMVEND     PIC 9(001).
+030600       10    IN01-RT02-IDPENDEMI     PIC 9(001).
+030700       10    IN01-RT02-IDRESTREN     PIC 9(001).
+030800       10    IN01-RT02-IDOCORRE1     PIC 9(002).
+030900       10    IN01-RT02-IDOCORRE2     PIC 9(002).
+031000       10    IN01-RT02-IDOCORRE3     PIC 9(002).
+031100       10    IN01-RT02-IDOCORRE4     PIC 9(002).
+031200       10    IN01-RT02-CDCATVMRE     PIC 9(002).
+031300       10    IN01-RT02-TPDOCPROP     PIC 9(001).
+031400       10    IN01-RT02-NRDOCPROP     PIC X(014).
+031500       10    IN01-RT02-DTULTMRE      PIC 9(008).
+031600       10    IN01-RT02-IDEMPLELE     PIC 9(001).
+031700       10    IN01-RT02-IDSIMRAVA     PIC 9(001).
+031800       10    IN01-RT02-IDORIPROP     PIC 9(001).
+031900       10    IN01-RT02-IDRESTRFB     PIC 9(001).
+032000       10    IN01-RT02-IDLEILAOV     PIC 9(001).
+032100       10    IN01-RT02-IDRESTR       PIC 9(002).
+032200       10    IN01-RT02-DTPRECAD      PIC 9(008).
+032300     05      FILLER                  PIC X(4516).
+032400*
+032500******************************************************************
+032600*         RETORNO DE EXECUCAO POSSIVEIS(BIN) - REEX              *
+032700******************************************************************
+032800*
+032900*    000 - TRANSACAO OU ATUALIZACAO EFETUADO
+033000*    001 - NENHUM REGISTRO ENCONTRADO
+033100*    017 - VEICULO NAO CADASTRADO E COM OCORRENCIA DE ROUBO/FURTO
+033200*    018 - VEICULO NAO CADASTRADO E COM SINALIZACAO DE ALARME
+033300*    019 - VEICULO CADASTRADO E COM SINALIZACAO DE ALARME
+033400*    041 - VEICULO NAO CADASTRADO
+033500*    042 - VEICULO BAIXADO
+033600*    048 - VEICULO CADASTRADO E COM OCORRENCIA DE ROUBO/FURTO
+033700*    056 - PLACA INVALIDA
+033800*    065 - CODIGO RENAVAM INVALIDO
+033900*
+034000*
+034100******************************************************************
+034200
+034300
+034400
+034500/
+034600**           AREA-IN       ======>   ENTRADA DOS PARAMETROS
+034700**          TOTAL DA AREA IN 097 POSICOES.
+034800 01          AREA-IN.
+034900
+035000     05      IN-FIXA.
+035100       10    IN-CODE                 PIC X(004).
+035200       10    IN-SEQ                  PIC 9(008).
+035300       10    IN-IDENT-PS             PIC 9(004).
+035400       10    IN-DATA-TRANS           PIC 9(008).
+035500       10    IN-HORA-TRANS           PIC 9(006).
+035600
+035700     05      IN-VARIAVEL             PIC X(067).
+035800
+035900
+036000
+036100 01          AREA-IN-R1      REDEFINES   AREA-IN.
+036200   05        IN-R1-FIXA              PIC X(030).
+036300   05        IN-VAR.
+036400     10      IN-CHASSI               PIC X(022).
+036500     10      IN-CNPJ-PROP-X.
+036600       15    IN-CNPJ-PROP            PIC 9(014).
+036700     10      IN-PLACA.
+036800       15    IN-LETRA                PIC X(003).
+036900       15    IN-NUMEROS              PIC X(004).
+037000       15    IN-NUM-R                REDEFINES     IN-NUMEROS.
+037100         20  FILLER                  PIC X(003).
+037200         20  IN-ULT-NUM-PL           PIC 9(001).
+037300     10      IN-TIPO-CLIE            PIC 9(001).
+037400
+037500** TIPO CLIENTE.
+037600*    0-eCRV
+037700*    1-PORTAL DETRAN
+037800*    2-PORTAL POUPATEMPO
+037900*    3-MOBILE
+038000*    4-TOTEM
+038100*    5-PORTAL DIGITAL
+038200
+038300/
+038400*        AREA-OUT    ====>   PARA ENVIAR RESPOSTAS E DADOS
+038500*
+038600
+038700
+038800 01          AREA-OUT                PIC X(033).
+038900
+039000
+039100
+039200*==>  RETORNO DE PESQUISA -
+039300*
+039400
+039500 01          OUT-RESP        REDEFINES   AREA-OUT.
+039600     05      OUT-FIXA                PIC X(030).
+039700     05      OUT-RETORNO             PIC 9(003).
+039800     05      OUT-VARIAVEL.
+039900       10    OUT-CHASSI              PIC X(022).
+040000       10    OUT-CPFCGC              PIC 9(014).
+040100       10    OUT-PLACA               PIC X(007).
+040200       10    OUT-TIPO-CLIE           PIC 9(001).
+040300
+040400
+040500*==>   Possiveis conteudo do campo OUT-RETORNO ------------------*
+040600*
+040700*
+040800*     000 - SEM DIVERGENCIA (TUDO OK)
+040900*     001 - INFORMAR PARAMETROS
+041000*     002 - PLACA INEXISTENTE PARA VEICULO NOVO
+041100*     003 - PLACA ATRIBUIDA A OUTRO VEICULO(base estadual)
+041200*     239 - TRANSACAO INVALIDA
+041300*     624 - PLACA JA CADASTRADA ANTERIORMENTE.ESCOLHA NOVA PLACA
+041400*
+041500*
+041600*----------------------------------------------------------------*
+041700/
+041800******************************************************************
+041900*            CHAVES                                              *
+042000******************************************************************
+042100*
+042200
+042300 01          CH-NOTFOUND             PIC X(001).
+042400 01          CH-NOTFOUND-TAX         PIC X(001).
+042500
+042600 01          CH-NOTPLAC              PIC X(001).
+042700 01          CH-NOTPLAC-ANT          PIC X(001).
+042800
+042900 01          CH-CHASSI               PIC X(022).
+043000
+043100 01          CH-PLACA.
+043200     05      CH-LETRA                PIC X(003).
+043300     05      CH-NUMEROS              PIC X(004).
+043400     05      CH-NUM-R                REDEFINES     CH-NUMEROS.
+043500        10   CH-NUM12                PIC X(002).
+043600        10   CH-NUM34                PIC X(002).
+043700     05      FILLER                  PIC X(003)    VALUE SPACE.
+043800
+043900 01          CH-PLACA-TAXA           PIC X(010).
+044000
+044100
+044200
+044300/
+044400******************************************************************
+044500*                                                                *
+044600*    AREAS AUXILIARES:                                           *
+044700*                                                                *
+044800******************************************************************
+044900*
+045000
+045100
+045200
+045300
+045400
+045500 01          AX-CONTROLE             PIC X(001).
+045600
+045700 01          AX-NRORDEM              PIC 9(002).
+045800
+045900
+046000
+046100 01          AX-TIME                 PIC 9(008).
+046200 01          AX-TIME-R       REDEFINES   AX-TIME.
+046300     05      AX-HHMMSS               PIC 9(006).
+046400     05      FILLER                  PIC 9(002).
+046500
+046600 01          AX-PLACA-CINZA.
+046700     05      AX-PLC-CINZA-PRE        PIC X(003).
+046800     05      AX-PLC-CINZA-SUF.
+046900       10    FILLER                  PIC 9(001).
+047000       10    AX-PLC-CINZA-P5         PIC X(001).
+047100       10    FILLER                  PIC 9(002).
+047200     05      FILLER                  PIC X(003).
+047300
+047400
+047500
+047600
+047700 01          AX-PLACA.
+047800     05      AX-LETRA                PIC X(003).
+047900     05      AX-NUMERO.
+048000        10   AX-NUMERO1              PIC X(001).
+048100        10   AX-NUMERO2X             PIC X(001).
+048200        10   AX-NUMERO34             PIC X(002).
+048300     05      FILLER                  PIC X(003)    VALUE SPACES.
+048400
+048500 01          AX-PLACA-ANT            PIC X(010).
+048600 01          AX-SITUACAO-ANT         PIC 9(002).
+048700
+048800*==> AREA AUXILIAR PARA CALCULO DO DIGITO CPF/CNPJ
+048900
+049000 01          AX-CPF-CNPJ             PIC 9(014).
+049100 01          AX-CPF-CNPJ-R1          REDEFINES     AX-CPF-CNPJ.
+049200     05      AX-CPF-FIL              PIC 9(003).
+049300     05      AX-CPF                  PIC 9(011).
+049400     05      AX-CPF-R                REDEFINES     AX-CPF.
+049500       10    AX-CPF-NUM              PIC 9(009).
+049600       10    AX-CPF-DIG              PIC 9(002).
+049700 01          AX-CPF-CNPJ-R2          REDEFINES     AX-CPF-CNPJ.
+049800     05      AX-CNPJ                 PIC 9(014).
+049900     05      AX-CNPJ-R               REDEFINES     AX-CNPJ.
+050000       10    AX-CNPJ-NUM             PIC 9(012).
+050100       10    AX-CNPJ-DIG             PIC 9(002).
+050200
+050300**  AREAS AUXILIARES DE DATA
+050400
+050500 01          AX-DATA-AMD             PIC 9(008).
+050600 01          AX-DATA-AMD-R           REDEFINES     AX-DATA-AMD.
+050700     05      AX-AA-AMD               PIC 9(004).
+050800     05      AX-MM-AMD               PIC 9(002).
+050900     05      AX-DD-AMD               PIC 9(002).
+051000
+051100 01          AX-DATA-DMA             PIC 9(008).
+051200 01          AX-DATA-DMA-R           REDEFINES     AX-DATA-DMA.
+051300     05      AX-DD-DMA               PIC 9(002).
+051400     05      AX-MM-DMA               PIC 9(002).
+051500     05      AX-AA-DMA               PIC 9(004).
+051600
+051700
+051800
+051900
+052000/
+052100******************************************************************
+052200*        AREA  PARA  LIBRARY  DIGITCHECK                         *
+052300******************************************************************
+052400*
+052500
+052600 01          AX-LIB-DC-CNPJ.
+052700     05      AX-LIB-CNPJ-NUM         PIC 9(012).
+052800     05      AX-LIB-CNPJ-DIG         PIC 9(002).
+052900
+053000
+053100 01          AX-LIB-DC-CPF.
+053200     05      AX-LIB-CPF-NUM          PIC 9(009).
+053300     05      AX-LIB-CPF-DIG          PIC 9(002).
+053400
+053500
+053600
+053700 01          AX-LIB-DC-PARM.
+053800     05      AX-LIB-DC-COD           PIC X(001)    VALUE   "V".
+053900     05      AX-LIB-DC-CONS          PIC X(001).
+054000     05      AX-LIB-DC-TAM           PIC 9(002).
+054100
+054200
+054300
+054400
+054500
+054600
+054700******************************************************************
+054800*        TABELA  DE  CONVERSAO  DE  NUMEROS  E  LETRAS           *
+054900*        (PLACA MERCOSUL - 5A.POSICAO DA PLACA)                  *
+055000******************************************************************
+055100*
+055200 01          TAB-LET-NUM.
+055300     05      FILLER                  PIC X(003)    VALUE   "0-A".
+055400     05      FILLER                  PIC X(003)    VALUE   "1-B".
+055500     05      FILLER                  PIC X(003)    VALUE   "2-C".
+055600     05      FILLER                  PIC X(003)    VALUE   "3-D".
+055700     05      FILLER                  PIC X(003)    VALUE   "4-E".
+055800     05      FILLER                  PIC X(003)    VALUE   "5-F".
+055900     05      FILLER                  PIC X(003)    VALUE   "6-G".
+056000     05      FILLER                  PIC X(003)    VALUE   "7-H".
+056100     05      FILLER                  PIC X(003)    VALUE   "8-I".
+056200     05      FILLER                  PIC X(003)    VALUE   "9-J".
+056300
+056400
+056500 01          TAB-LET-NUM-R           REDEFINES     TAB-LET-NUM.
+056600     05      TBA-LET-NUM             OCCURS        10      TIMES
+056700                                     INDEXED       BY      IN1.
+056800       10    TBA-NUM                 PIC X(001).
+056900       10    FILLER                  PIC X(001).
+057000       10    TBA-LET                 PIC X(001).
+057100
+057200 01          AX-ALFA-ALTER           PIC X(001).
+057300
+057400 01          AX-ALTEROU              PIC X(001).
+057500
+057600
+057700
+057800
+057900
+058000
+058100
+058200/
+058300
+058400 COMMUNICATION SECTION.
+058500 INPUT HEADER COMS-IN;
+058600     PROGRAMDESG             IS   COMS-IN-PROGRAM;
+058700     FUNCTIONSTATUS          IS   COMS-IN-FUNCTION-STATUS;
+058800     FUNCTIONINDEX           IS   COMS-IN-FUNCTION-INDEX;
+058900     USERCODE                IS   COMS-IN-USERCODE;
+059000     SECURITYDESG            IS   COMS-IN-SECURITY-DESG;
+059100     TRANSPARENT             IS   COMS-IN-TRANSPARENT;
+059200     VTFLAG                  IS   COMS-IN-VT-FLAG;
+059300     TIMESTAMP               IS   COMS-IN-TIMESTAMP;
+059400     STATION                 IS   COMS-IN-STATION;
+059500     TEXTLENGTH              IS   COMS-IN-TEXT-LENGTH;
+059600     STATUSVALUE             IS   COMS-IN-STATUS;
+059700     MESSAGECOUNT            IS   COMS-IN-MSG-COUNT;
+059800     RESTART                 IS   COMS-IN-RST-LOC;
+059900     AGENDA                  IS   COMS-IN-AGENDA;
+060000     SDFINFO                 IS   COMS-IN-INFO.
+060100
+060200
+060300
+060400 OUTPUT HEADER COMS-OUT;
+060500     DESTCOUNT               IS   COMS-OUT-COUNT;
+060600     TEXTLENGTH              IS   COMS-OUT-TEXT-LENGTH;
+060700     STATUSVALUE             IS   COMS-OUT-STATUS;
+060800     TRANSPARENT             IS   COMS-OUT-TRANPARENT;
+060900     VTFLAG                  IS   COMS-OUT-VT-FLAG;
+061000     CONFIRMFLAG             IS   COMS-OUT-CONFIRM-FLAG;
+061100     CONFIRMKEY              IS   COMS-OUT-CONFIRMKEY;
+061200     DESTINATIONDESG         IS   COMS-OUT-DESTINATION;
+061300     NEXTINPUTAGENDA         IS   COMS-OUT-NEXT-INPUT-AG;
+061400     CASUALOUTPUT            IS   COMS-OUT-CASUAL-OUTPUT;
+061500     SETNEXTINPUTAGENDA      IS   COMS-OUT-SET-NEXT-AG;
+061600     RETAINTRANSACTIONMODE   IS   COMS-OUT-RETAIN-TRANMODE;
+061700     AGENDA                  IS   COMS-OUT-AGENDA;
+061800     SDFINFO                 IS   COMS-OUT-INFO.
+061900
+062000
+062100
+062200
+062300/
+062400 PROCEDURE   DIVISION.
+062500**********************
+062600*
+062700******************************************************************
+062800*        ROTINA    MONITORA    DO    PROGRAMA                    *
+062900******************************************************************
+063000*
+063100 000-MONITORA    SECTION.
+063200
+063300 000-E-MONITORA.
+063400
+063500
+063600
+063700     PERFORM 010-E-INICIO            THRU   010-S-INICIO.
+063800
+063900
+064000     PERFORM 020-E-PROCESSA          THRU   020-S-PROCESSA
+064100             UNTIL   COMS-IN-STATUS  =      99.
+064200
+064300
+064400     PERFORM 150-E-FINAL             THRU   150-S-FINAL.
+064500
+064600
+064700
+064800 000-S-MONITORA.
+064900     STOP    RUN.
+065000
+065100/
+065200******************************************************************
+065300*                   INICIALIZACAO                                *
+065400******************************************************************
+065500*
+065600 010-E-INICIO.
+065700
+065800
+065900
+066000     MOVE    ATTRIBUTE NAME OF ATTRIBUTE EXCEPTIONTASK
+066100                            OF ATTRIBUTE EXCEPTIONTASK OF MYSELF
+066200                            TO LINKTOCOMS.
+066300
+066400
+066500     CHANGE  ATTRIBUTE TITLE OF "DCILIBRARY" TO LINKTOCOMS.
+066600
+066700
+066800     ENABLE  INPUT   COMS-IN         KEY     "ONLINE"
+066900
+067000     CALL    "GET_DESIGNATOR_USING_NAME  IN  DCILIBRARY"
+067100                                     USING   AX-AGENDA-OUT,
+067200                                     VALUE   AGENDA,
+067300                                             AX-AGENDA-DESG
+067400                                     GIVING  AX-CALL-ERROR.
+067500
+067600
+067700
+067800
+067900     OPEN    UPDATE     DB01
+068000       ON    EXCEPTION
+068100             DISPLAY "PC/GEV/T436/DB : OPEN ERROR TDBDETRAN"
+068200             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+068300             CALL    SYSTEM          DMTERMINATE.
+068400
+068500
+068600
+068700
+068800 010-S-INICIO.
+068900     EXIT.
+069000
+069100/
+069200******************************************************************
+069300*                P R O C E S S A M E N T O                       *
+069400******************************************************************
+069500*
+069600 020-E-PROCESSA.
+069700
+069800
+069900
+070000     MOVE    SPACES                  TO     AREA-IN
+070100                                            AREA-OUT
+070200                                            AX-PLACA-ANT.
+070300
+070400     MOVE    ZERO                    TO     AX-SITUACAO-ANT.
+070500
+070600     RECEIVE COMS-IN MESSAGE         INTO   AREA-IN.
+070700
+070800     IF      COMS-IN-STATUS          =      00 OR 89 OR 92 OR
+070900                                            93 OR 97
+071000             NEXT    SENTENCE
+071100     ELSE
+071200     IF      COMS-IN-STATUS          =      99
+071300             GO                      TO     020-S-PROCESSA
+071400     ELSE
+071500             PERFORM 130-E-ERROCOMS  THRU   130-S-ERROCOMS
+071600             GO                      TO     020-S-PROCESSA.
+071700
+071800
+071900     MOVE    COMS-IN-USERCODE        TO      USER-DESG.
+072000
+072100     CALL    "GET_NAME_USING_DESIGNATOR  OF  DCILIBRARY"
+072200                                     USING   USER-DESG
+072300                                             USER-NAME
+072400                                     GIVING  USER-FLAG.
+072500
+072600
+072700
+072800
+072900     ACCEPT  AX-DATA-AMD             FROM   DATE    YYYYMMDD.
+073000
+073100
+073200     IF      IN-CODE                 =      "V436"
+073300             PERFORM 030-E-V436      THRU   030-S-V436
+073400     ELSE
+073500             MOVE    239             TO     IA1.
+073600
+073700
+073800     MOVE    142                     TO     AX-LENGTH.
+073900
+074000     PERFORM 120-E-MSGOUT            THRU   120-S-MSGOUT.
+074100
+074200
+074300     FREE    ESCPLACDS.
+074400     FREE    NOVAPLACDS.
+074500     FREE    PRODPLACDS.
+074600
+074700 020-S-PROCESSA.
+074800     EXIT.
+074900
+075000/
+075100******************************************************************
+075200*        TRATA  TRANSACAO  DE  VALIDACAO DE AUTENTICACAO         *
+075300******************************************************************
+075400*
+075500 030-E-V436.
+075600
+075700
+075800
+075900     MOVE    0                       TO      IA1.
+076000     MOVE    SPACES                  TO      AX-CONTROLE.
+076100
+076200
+076300     PERFORM 040-E-VERIF-IN          THRU    040-S-VERIF-IN.
+076400
+076500     IF      IA1                     >       0
+076600             GO                      TO      030-S-V436.
+076700
+076800
+076900
+077000* ==> Pesquisa / atualiza Por PLACA - NOVA ESCOLHA DE PLACA
+077100
+077200     SET     NOVAPLACSS6             TO     BEGINNING.
+077300     PERFORM 060-E-FIND-PLACA       THRU     060-S-FIND-PLACA.
+077400** SE encontrou  eh placa personalizada ou bloqueada
+077500     IF      CH-NOTPLAC              =       "N"     AND
+077505            (NPL-PLACA               NOT =  IN-PLACA)
+077600             MOVE 003                TO      IA1
+077700             GO                      TO      030-S-V436.
+077800
+077900
+078000* ==> Pesquisa Por CHASSI -
+078100
+078200     SET     NOVAPLACSE1             TO     BEGINNING.
+078300     PERFORM 050-E-NOVAPLACDS        THRU    050-S-NOVAPLACDS.
+078400     IF      IA1                     >       0
+078500             GO                      030-S-V436.
+078600
+078700
+078800
+078900*     PERFORM 070-E-GRAVA-BCO         THRU   070-S-GRAVA-BCO
+079000*
+079100*     IF      IA1                     >      0
+079200*             GO                      030-S-V436.
+079300
+079400
+079500
+079600 030-S-V436.
+079700     EXIT.
+079800
+079900/
+080000******************************************************************
+080100*              VERIFICA  DADOS  DE  PARAMETRO                    *
+080200******************************************************************
+080300*
+080400 040-E-VERIF-IN.
+080500
+080600
+080700
+080800     MOVE    SPACES                  TO      CH-CHASSI
+080900                                             AX-PLACA.
+081000
+081100
+081200     MOVE    ZEROS                   TO      AX-CPF-CNPJ.
+081300
+081400*
+081500
+081600
+081700*
+081800*==>  VERIFICA SE CHASSI PREENCHIDO
+081900
+082000     IF      (IN-CHASSI              =       SPACES     OR
+082100                                             ZEROS      OR
+082200                                             LOW-VALUES )
+082300             MOVE    001             TO      IA1
+082400             GO                      TO      040-S-VERIF-IN.
+082500
+082600
+082700*==>  VERIFICAR DIGITO CHECK DE CPF/CNPJ  PROPRIETARIO
+082800
+082900     IF      IN-CNPJ-PROP-X          =       ZEROS      OR
+083000                                             SPACES     OR
+083100                                             LOW-VALUES
+083200             MOVE    001             TO      IA1
+083300             GO                      TO      040-S-VERIF-IN.
+083400
+083500
+083600
+083700     MOVE    IN-CNPJ-PROP            TO      AX-CPF-CNPJ.
+083800
+083900* Devido a existencia do CNPJ 00010564000105 consistir se Eh CPF
+084000**** Em caso de erro consistir se Eh CNPJ
+084100
+084200* Eh CPF
+084300     MOVE    AX-CPF-NUM              TO      AX-LIB-CPF-NUM.
+084400     MOVE    AX-CPF-DIG              TO      AX-LIB-CPF-DIG.
+084500     MOVE    SPACES                  TO      AX-LIB-DC-CONS.
+084600     MOVE    09                      TO      AX-LIB-DC-TAM.
+084700     CALL    "DIGITCPF       OF      PC/LIB/DIGITCHECK"
+084800                                     USING   AX-LIB-DC-CPF
+084900                                             AX-LIB-DC-PARM
+085000
+085100     IF      AX-LIB-DC-CONS          NOT =   1
+085200* Eh CGC
+085300             MOVE  AX-CNPJ-NUM       TO      AX-LIB-CNPJ-NUM
+085400             MOVE  AX-CNPJ-DIG       TO      AX-LIB-CNPJ-DIG
+085500             MOVE  SPACES            TO      AX-LIB-DC-CONS
+085600             MOVE  12                TO      AX-LIB-DC-TAM
+085700             CALL  "DIGITCGC         OF      PC/LIB/DIGITCHECK"
+085800                                     USING   AX-LIB-DC-CNPJ
+085900                                             AX-LIB-DC-PARM
+086000             IF    AX-LIB-DC-CONS    NOT =   1
+086100                   MOVE  001         TO      IA1
+086200                   GO                TO      040-S-VERIF-IN.
+086300
+086400
+086500
+086600
+086700*==> VERIFICA PLACA
+086800
+086900     IF      IN-PLACA                =       SPACES     OR
+087000                                             ZEROS      OR
+087100                                             LOW-VALUES
+087200             MOVE  001               TO      IA1
+087300             GO                      TO      040-S-VERIF-IN.
+087400
+087500     MOVE    IN-PLACA                TO      CH-PLACA
+087600                                             AX-PLACA.
+087700
+087800     IF      IN-TIPO-CLIE            >       5
+087900             MOVE  001               TO      IA1
+088000             GO                      TO      040-S-VERIF-IN.
+088100
+088200
+088300     PERFORM 080-E-BIN-902           THRU   080-S-BIN-902.
+088400     IF      IA1                     =      624
+088500             PERFORM    090-E-INCL-PLACDS  THRU 090-S-INCL-PLACDS.
+088600
+088700
+088800 040-S-VERIF-IN.
+088900     EXIT.
+089000
+089100
+089200
+089300
+089400
+089500******************************************************************
+089600*             LEITURA NOVAPLACDS POR CHASSI                      *
+089700******************************************************************
+089800
+089900 050-E-NOVAPLACDS.
+090000
+090100
+090200
+090300     MOVE    "N"                     TO      CH-NOTPLAC-ANT.
+090400
+090500     LOCK    NEXT  NOVAPLACSE1       AT
+090600             NPL-PLACA               =       IN-PLACA
+090700       ON    EXCEPTION
+090800        IF   DMSTATUS (NOTFOUND)
+090900             MOVE    "S"             TO      CH-NOTPLAC-ANT
+091000             GO                      TO      050-S-NOVAPLACDS
+091100        ELSE
+091200             DISPLAY "PC/GEV/T436/DB: FIND ERROR NOVAPLACSE1"
+091300             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+091400             CALL    SYSTEM          DMTERMINATE.
+091500
+091600
+091700     IF      NPL-SITUACAO            =  1   OR 2   OR 5 OR 6
+091705             NEXT SENTENCE
+091710     ELSE
+091800             MOVE 004                TO      IA1.
+092100
+092200
+092300 050-S-NOVAPLACDS.
+092400     EXIT.
+092500
+092600******************************************************************
+092700*        LEITURA NOVAPLACDS POR CHASSI SIT > 2                   *
+092800******************************************************************
+092900
+093000 060-E-FIND-PLACA.
+093100
+093200
+093300
+093400     MOVE    "N"                     TO      CH-NOTPLAC.
+093500
+093600     FIND    NEXT    NOVAPLACSS6     AT
+093700             NPL-CHASSI              =      IN-CHASSI
+093800       ON    EXCEPTION
+093900        IF   DMSTATUS (NOTFOUND)
+094000             MOVE  "S"       TO     CH-NOTPLAC
+094100             GO              TO     060-S-FIND-PLACA
+094200        ELSE
+094300             DISPLAY "PC/GEV/T436/DB: FIND ERROR NOVAPLACSS7"
+094400             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+094500             CALL    SYSTEM          DMTERMINATE.
+094600** Se situacao placa for 3 OU 4 OU 5 OU 6
+094700     IF      NPL-SITUACAO            =      7 OR 10
+094800             GO                      060-E-FIND-PLACA.
+094900
+095000
+095100
+095200
+095300
+095400 060-S-FIND-PLACA.
+095500     EXIT.
+095600
+095700
+095800/*****************************************************************
+095900*                       GRAVA NOVAPLACDS                         *
+096000******************************************************************
+096100*
+096200* 070-E-GRAVA-BCO.
+096300*
+096400*     MOVE    "N"                     TO      CH-NOTFOUND.
+096500*
+096600*     LOCK    LAST   NOVAPLACSE1      AT
+096700*             NPL-PLACA               =       IN-PLACA
+096800*       ON    EXCEPTION
+096900*        IF   DMSTATUS (NOTFOUND)
+097000*             MOVE    "S"             TO      CH-NOTFOUND
+097100*             GO      070-S-GRAVA-BCO
+097200*        ELSE
+097300*           DISPLAY "PC/GEV/T436/DB: FIND ERROR LAST NOVAPLACSE1"
+097400*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+097500*             CALL    SYSTEM          DMTERMINATE.
+097600*
+097700*
+097800*     IF      NPL-CHASSI           =         IN-CHASSI
+097900*       IF    NPL-CPF-CGC          =         IN-CNPJ-PROP
+098000*         IF  NPL-SITUACAO         =         1
+098100*             NEXT  SENTENCE
+098200*         ELSE
+098300*             MOVE 5               TO        IA1
+098400*             GO      070-S-GRAVA-BCO
+098500*       ELSE
+098600*             MOVE 6               TO        IA1
+098700*             GO      070-S-GRAVA-BCO
+098800*     ELSE
+098900*             MOVE 7               TO        IA1
+099000*             GO      070-S-GRAVA-BCO.
+099100*
+099200*
+099300*     BEGIN-TRANSACTION            NO-AUDIT   PRODRDSDS
+099400*         ON  EXCEPTION
+099500*             DISPLAY "PC/GEV/T436/DB - ERRO BEGIN-TRANS  "
+099600*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+099700*             CALL    SYSTEM  DMTERMINATE.
+099800*
+099900*
+100000*
+100100* 070-005-GRAVA-PLACAS.
+100200*
+100300***  ALTERA/GRAVA NOVAPLACDS - PLACA ESCOLHIDA
+100400*
+100500*     DELETE  NOVAPLACDS
+100600*         ON  EXCEPTION
+100700*             DISPLAY "PC/GEV/T436/DB - ERRO DELETE NOVAPLAC1"
+100800*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+100900*             CALL    SYSTEM  DMTERMINATE.
+101000*
+101100*     RECREATE   NOVAPLACDS
+101200*         ON  EXCEPTION
+101300*             DISPLAY "PC/GEV/T436/DB - ERRO RECREATE NOVAPLACDS"
+101400*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+101500*             CALL    SYSTEM  DMTERMINATE.
+101600*
+101700*
+101800*     MOVE    2                       TO      NPL-SITUACAO.
+101900*
+102000*
+102100*     STORE   NOVAPLACDS
+102200*         ON  EXCEPTION
+102300*             DISPLAY "PC/GEV/T436/DB - ERRO STORE NOVAPLAC1"
+102400*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+102500*             CALL    SYSTEM  DMTERMINATE.
+102600*
+102700*******************
+102800*
+102900*
+103000*     END-TRANSACTION                 NO-AUDIT  PRODRDSDS
+103100*         ON  EXCEPTION
+103200*             DISPLAY "PC/GEV/T436/DB - ERRO END-TRANS "
+103300*             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+103400*             CALL    SYSTEM  DMTERMINATE.
+103500*
+103600**
+103700*
+103800*
+103900* 070-S-GRAVA-BCO.
+104000*     EXIT.
+104100/
+104200/
+104300******************************************************************
+104400*                 CONSULTA BIN - 902                             *
+104500******************************************************************
+104600*
+104700 080-E-BIN-902.
+104800
+104900     MOVE    SPACES                  TO      IN01FIXA.
+105000     MOVE    IN-PLACA                TO      IN01-PLACA-EV902.
+105100     MOVE    902                     TO      IN01CODE.
+105200     MOVE    044                     TO      IN01TATR.
+105300     ACCEPT  AX-TIME                 FROM    TIME.
+105400     MOVE    AX-HHMMSS               TO      HHMMSS-BIN.
+105500     MOVE    0                       TO      IN01SEQT.
+105600     MOVE    4                       TO      IN01MODA.
+105700     MOVE    25010000000             TO      IN01CLIE.
+105800     MOVE    "SP"                    TO      IN01UFAO
+105900                                             IN01UFMO.
+106000     MOVE    "BR"                    TO      IN01UFMD.
+106100     MOVE    1                       TO      IN01COND.
+106200     MOVE    0                       TO      IN01RETO.
+106300     MOVE    0                       TO      IN01DIAJ.
+106400
+106500     MOVE    678                     TO      P-RENAVAM-TAMREG.
+106600
+106700     CALL "SEND OF PC/LIB/RENAVAM"   USING   C-RENAVAM,
+106800                                             P-RENAVAM-TAMREG,
+106900                                             P-RENAVAM-STATUS.
+107000
+107100     IF      P-RENAVAM-STATUS        =       "X"
+107200             DISPLAY "PC/GEV/T436/DB : MBIN01 - INVALID KEY"
+107300             DIVIDE  0               INTO    AX-CONTIME.
+107400
+107500      MOVE   SPACES                  TO      C-RENAVAM,
+107600                                             P-RENAVAM-STATUS.
+107700
+107800 080-10-RECEIVE.
+107900
+108000
+108100      CALL  "RECEIVE OF PC/LIB/RENAVAM"      USING C-RENAVAM,
+108200                                             P-RENAVAM-STATUS.
+108300
+108400      IF     P-RENAVAM-STATUS        =       "X"
+108500             DISPLAY "PC/GEV/T436/DB : READ BINSTATION - INV.KEY"
+108600             DIVIDE  0               INTO    AX-CONTIME.
+108700
+108800     IF      AX-AUXILIA              =       1
+108900             MOVE    0               TO      AX-AUXILIA
+109000             MOVE    064             TO      IA1
+109100             GO                      TO      080-S-BIN-902
+109200     ELSE
+109300             MOVE    0               TO      AX-CONTIME.
+109400
+109500     IF      ULTIMA-MENSAGEM-BIN     =       "T"
+109600             GO                      TO      080-10-RECEIVE.
+109700
+109800** RETORNOS
+109900
+110000
+110100     IF      IN01RETO                =       0
+110200             NEXT    SENTENCE
+110300     ELSE
+110400     IF      IN01RETO                =       99
+110500             MOVE    064             TO      IA1
+110600             GO                      TO      080-S-BIN-902
+110700     ELSE
+110800     IF      IN01RETO                =       25  OR  45  OR  55
+110900*            (BIN-BR / BIN-RJ / BASE ESTADUAL SOBRECARREGADA)
+111000             MOVE   065              TO      IA1
+111100             GO                      TO      080-S-BIN-902
+111200     ELSE
+111300     IF      IN01RETO                =       26  OR  50  OR  56
+111400*            (BIN-BR / BASE ESTADUAL INDISPONIVEL NO MOMENTO)
+111500             MOVE    064             TO      IA1
+111600             GO                      TO      080-S-BIN-902
+111700     ELSE
+111800     IF      IN01RETO                =       21  OR  41  OR  51
+111900*            (ESTADO NAO INTERLIGADO)
+112000             MOVE    064             TO      IA1
+112100             GO                      TO      080-S-BIN-902
+112200     ELSE
+112300     IF      IN01RETO                =       20  OR  40  OR  46
+112400*            (BIN-BR / DESTINO DA TRANSACAO INDISPONIVEL NO
+112500*             MOMENTO)
+112600             MOVE    064             TO      IA1
+112700             GO                      TO      080-S-BIN-902
+112800     ELSE
+112805     IF      IN01RETO                =       85
+112810*            (LIMITE DE EXECUCOES NA BIN ULTRAPASSADO)
+112815             MOVE    643             TO      IA1
+112820             GO                      TO      080-S-BIN-902
+112825     ELSE
+112900*            (ERRO NO APLICATIVO DA BIN-BR / DESTINO DA TRANSACAO
+113000*             / BASE ESTADUAL / SERPRO)
+113100             MOVE    065             TO      IA1
+113200             DISPLAY "PC/GEV/T436/DB : ERRO NO APLICATIVO DA BIN -
+113300-                    " COD.RETORNO = ("  IN01RETO ")"
+113400             GO                      TO      080-S-BIN-902.
+113500
+113600** Erro de Sincronismo Trs 902
+113700     IF      IN01CODE                =       902
+113800             NEXT SENTENCE
+113900     ELSE
+114000             MOVE    004             TO      IA1
+114100             DISPLAY "PC/GEV/T436/DB : ERRO DE SINCRONISMO"
+114200             DISPLAY "MBIN01-FIXA = "  IN01FIXA
+114300             DISPLAY "MBIN01-VAR  = "  MBIN01-VARIAVEL
+114400             GO                      TO      080-S-BIN-902.
+114500
+114600
+114700     IF      IN01REEX                =       001
+114800** 001 - Nenhum veiculo encontrado  - Placa ainda nao cadastrada
+114900             MOVE ZEROS              TO      IA1
+115000     ELSE
+115100     IF      IN01REEX        =   000 OR 017 OR 018 OR 019 OR 048
+115200** Para retornos 000 , 017 ,018,019,048
+115300             MOVE    624             TO      IA1.
+115500
+115600
+115700 080-S-BIN-902.
+115800     EXIT.
+115900
+116000*----------------------------------------------------------------*
+116100*            INCLUSAO DE PRODPLACDS                              *
+116200*----------------------------------------------------------------*
+116300*
+116400
+116500 090-E-INCL-PLACDS.
+116600
+116700
+116800
+116900     BEGIN-TRANSACTION       NO-AUDIT        PRODRDSDS
+117000         ON  EXCEPTION
+117100             DISPLAY "PC/GEV/T436/DB - ERRO BEGIN-TRANS"
+117200             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+117300             CALL    SYSTEM  DMTERMINATE.
+117400
+117500
+117600     CREATE  PRODPLACDS
+117700         ON  EXCEPTION
+117800             DISPLAY "PC/GEV/T436/DB - ERRO CREATE PRODPLACDS"
+117900             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+118000             CALL    SYSTEM  DMTERMINATE.
+118100
+118200*** dados movidos da recepcao da TR.902
+118300
+118400     MOVE    IN-PLACA                TO     PLA-PLACA-MERC.
+118500** este item nao existe na TR 902      PLA-CATEGORIA.
+118600     MOVE    IN01-RT02-MUNIC-VEIC   TO     PLA-MUN-SEDE
+118700                                            PLA-MUN-ULTLOC.
+118800     MOVE    IN01-RT02-DTULTATU     TO     PLA-DT-CADASTR.
+118900     MOVE    0                       TO     PLA-FILLER
+119000                                            PLA-SITUACAO.
+119100
+119200     STORE   PRODPLACDS
+119300         ON  EXCEPTION
+119400             DISPLAY "PC/GEV/T436/DB - ERRO STORE PRODPLACDS"
+119500             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+119600             CALL    SYSTEM  DMTERMINATE.
+119700
+119800     PERFORM 100-E-EXCLUI-NOVAPLAC   THRU   100-S-EXCLUI-NOVAPLAC.
+119900
+120000     END-TRANSACTION         NO-AUDIT        PRODRDSDS
+120100         ON  EXCEPTION
+120200             DISPLAY "PC/GEV/T436/DB - ERRO END-TRANS"
+120300             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+120400             CALL    SYSTEM  DMTERMINATE.
+120500
+120600
+120700
+120800
+120900
+121000
+121100 090-S-INCL-PLACDS.
+121200     EXIT.
+121300
+121400******************************************************************
+121500* AO CRIAR PRODPLACDS, EXCLUIR NOVAPLACDS                        *
+121600******************************************************************
+121700
+121800 100-E-EXCLUI-NOVAPLAC.
+121900
+122000    SET      NOVAPLACSE1             TO     BEGINNING.
+122005    MOVE     AX-PLACA                TO     AX-PLACA-CINZA.
+122010    PERFORM  160-E-ALTERA-PLACA      THRU   160-S-ALTERA-PLACA.
+122100
+122200 100-10-LOCK-MERC.
+122300     LOCK    NEXT  NOVAPLACSE1       AT
+122400             NPL-PLACA               =      AX-PLACA-CINZA
+122500       ON    EXCEPTION
+122600       IF    DMSTATUS(NOTFOUND)
+122700             SET NOVAPLACSE1         TO     BEGINNING
+122800             GO                      TO     100-20-LOCK-MERC
+122900       ELSE
+123000             DISPLAY "PC/GEV/T436/DB - LOCK NOVAPLACDS ERROR-1"
+123100             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+123200             CALL    SYSTEM          DMTERMINATE.
+123300
+123400     DELETE  NOVAPLACDS
+123500         ON EXCEPTION
+123600             DISPLAY "PC/GEV/T436/DB - DELETE NOVAPLACDS ERROR"
+123700             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+123800             CALL    SYSTEM          DMTERMINATE.
+123900
+124000
+124100
+124200     GO                              TO     100-10-LOCK-MERC.
+124300
+124400 100-20-LOCK-MERC.
+124500
+124600     LOCK    NEXT  NOVAPLACSE1       AT
+124700             NPL-PLACA               =      AX-PLACA
+124800       ON    EXCEPTION
+124900       IF    DMSTATUS(NOTFOUND)
+125000             GO                      TO     100-S-EXCLUI-NOVAPLAC
+125100       ELSE
+125200             DISPLAY "PC/GEV/T436/DB - LOCK NOVAPLACDS ERROR-2"
+125300             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+125400             CALL    SYSTEM          DMTERMINATE.
+125500
+125600
+125700     DELETE  NOVAPLACDS
+125800         ON  EXCEPTION
+125900             DISPLAY "PC/GEV/T436/DB - DELETE NOVAPLACDS ERROR"
+126000             PERFORM 140-E-ERRODB    THRU   140-S-ERRODB
+126100             CALL    SYSTEM          DMTERMINATE.
+126200
+126300
+126400
+126500     GO                              TO     100-20-LOCK-MERC.
+126600
+126700
+126800 100-S-EXCLUI-NOVAPLAC.
+126900     EXIT.
+127000
+127100
+127200
+127300
+127400******************************************************************
+127500*        ENVIA  MENSAGEM                                         *
+127600******************************************************************
+127700*
+127800 120-E-MSGOUT.
+127900
+128000
+128100
+128200     MOVE    IN-FIXA                 TO      OUT-FIXA.
+128300
+128400     MOVE    AX-LENGTH               TO      COMS-OUT-TEXT-LENGTH.
+128500
+128600     MOVE    IA1                     TO      OUT-RETORNO.
+128700
+128800     MOVE    IN-VAR                  TO      OUT-VARIAVEL.
+128900
+129000
+129100
+129200     MOVE    0                       TO      COMS-OUT-STATUS.
+129300     MOVE    COMS-IN-STATION         TO      COMS-OUT-DESTINATION.
+129400     MOVE    1                       TO      COMS-OUT-COUNT.
+129500     MOVE    AX-AGENDA-DESG          TO      COMS-OUT-AGENDA.
+129600
+129700
+129800
+129900     SEND    COMS-OUT                FROM    AREA-OUT.
+130000
+130100
+130200
+130300
+130400 120-S-MSGOUT.
+130500     EXIT.
+130600
+130700/
+130800******************************************************************
+130900*        ROTINA  DE  ERRO  DE  LEITURA                           *
+131000******************************************************************
+131100*
+131200 130-E-ERROCOMS.
+131300
+131400
+131500
+131600     DISPLAY "PC/GEV/T436/DB : PROBLEMAS NO COMS-IN".
+131700     DISPLAY "FUNCTIONINDEX = "  COMS-IN-FUNCTION-INDEX.
+131800
+131900     IF      COMS-IN-STATUS          =       20  OR  100  OR
+132000                                             101 OR  102
+132100             DISPLAY "PROBLEMAS COM A ESTACAO"
+132200     ELSE
+132300     IF      COMS-IN-STATUS          =       94  OR  95  OR  97
+132400             DISPLAY "DESTINO INVALIDO"
+132500     ELSE
+132600     IF      COMS-IN-STATUS          =       89
+132700             DISPLAY "O TAMANHO DE STRING MAIOR QUE INFORMADO"
+132800             DISPLAY "TEXTLENGTH = "  COMS-IN-TEXT-LENGTH
+132900             DISPLAY "IN-FIXA="  IN-FIXA
+133000             DISPLAY "IN-VAR=" IN-VAR
+133100             DISPLAY "STATION = "  COMS-IN-STATION
+133200             DISPLAY "PROGRAMDESG = "  COMS-IN-PROGRAM
+133300             DISPLAY "AGENDA = "  COMS-IN-AGENDA
+133400             DISPLAY "TIMESTAMP = "  COMS-IN-TIMESTAMP
+133500     ELSE
+133600             DISPLAY "STATUSVALUE = "  COMS-IN-STATUS.
+133700
+133800
+133900     MOVE    1                       TO      COMS-OUT-COUNT.
+134000     MOVE    0                       TO      COMS-OUT-DESTINATION.
+134100     MOVE    0                       TO      COMS-OUT-STATUS.
+134200     MOVE    059                     TO      COMS-OUT-TEXT-LENGTH.
+134300
+134400     MOVE    IN-FIXA                 TO      OUT-FIXA.
+134500     MOVE    998                     TO      OUT-RETORNO.
+134600
+134700
+134800
+134900
+135000
+135100     SEND    COMS-OUT                FROM    AREA-OUT.
+135200
+135300     IF      COMS-OUT-STATUS         NOT =   0  AND  92
+135400             DISPLAY "ERRO NO ENVIO DA MENSAGEM".
+135500
+135600     MOVE    99                      TO      COMS-IN-STATUS.
+135700
+135800
+135900
+136000 130-S-ERROCOMS.
+136100     EXIT.
+136200
+136300/
+136400******************************************************************
+136500*            VERIFICA    ERRO    D.M.S.  II                      *
+136600******************************************************************
+136700*
+136800 140-E-ERRODB.
+136900
+137000
+137100
+137200     DISPLAY "PROGRAMA   :   PC/GEV/T436/DB".
+137300     DISPLAY "***    ERRO    DE    DMS II    ***".
+137400
+137500     IF      DMSTATUS(NOTFOUND)      DISPLAY "NOTFOUND"      ELSE
+137600     IF      DMSTATUS(OPENERROR)     DISPLAY "OPENERROR"     ELSE
+137700     IF      DMSTATUS(ABORT)         DISPLAY "ABORT"         ELSE
+137800     IF      DMSTATUS(CLOSEERROR)    DISPLAY "CLOSEERROR"    ELSE
+137900     IF      DMSTATUS(SECURITYERROR) DISPLAY "SECURITYERROR" ELSE
+138000     IF      DMSTATUS(SYSTEMERROR)   DISPLAY "SYSTEMERROR"   ELSE
+138100     IF      DMSTATUS(IOERROR)       DISPLAY "IOERROR"       ELSE
+138200     IF      DMSTATUS(DATAERROR)     DISPLAY "DATAERROR"     ELSE
+138300     IF      DMSTATUS(DEADLOCK)      DISPLAY "DEADLOCK"      ELSE
+138400     IF      DMSTATUS(AUDITERROR)    DISPLAY "AUDITERROR"    ELSE
+138500     IF      DMSTATUS(DUPLICATES)    DISPLAY "DUPLICATES"    ELSE
+138600     DISPLAY "ERRO  NAO  IDENTIFICADO  NAS  CONDICOES  D.M.S. ".
+138700
+138800
+138900     MOVE    968                     TO      IA1.
+139000     MOVE    0176                    TO      AX-LENGTH.
+139100     PERFORM 120-E-MSGOUT            THRU    120-S-MSGOUT.
+139200
+139300
+139400
+139500
+139600
+139700 140-S-ERRODB.
+139800     EXIT.
+139900
+140000
+140100
+140200
+140300
+140400/
+140500******************************************************************
+140600*                R O T I N A     F I N A L                       *
+140700******************************************************************
+140800*
+140900 150-E-FINAL.
+141000
+141100
+141200
+141300
+141400
+141500     CLOSE   DB01
+141600        ON   EXCEPTION
+141700             DISPLAY "PC/GEV/T436/DB : CLOSE ERROR TDBDETRAN"
+141800             PERFORM 140-E-ERRODB    THRU    140-S-ERRODB
+141900             CALL    SYSTEM          DMTERMINATE.
+142000
+142100
+142200
+142300
+142400 150-S-FINAL.
+142500     EXIT.
+142600
+142700******************************************************************
+142800*      TRANSFORMA PLACA MERCOSUL PARA PLACA CINZA                *
+142900******************************************************************
+143000
+143100 160-E-ALTERA-PLACA.
+143200
+143300
+143400     SET     IN1                     TO     1.
+143500     MOVE    SPACES                  TO     AX-ALTEROU.
+143600
+143700
+143800
+143900     IF      AX-NUMERO2X             IS     ALPHABETIC
+144000
+144100             SEARCH  TBA-LET-NUM     AT     END
+144200                     MOVE   "N"      TO     AX-ALTEROU
+144300             WHEN    TBA-LET (IN1)   =      AX-NUMERO2X
+144400                   MOVE    TBA-NUM (IN1)    TO  AX-PLC-CINZA-P5
+144500                   MOVE   "S"        TO     AX-ALTEROU.
+144600
+144700
+144800
+144900
+145000 160-S-ALTERA-PLACA.
+145100     EXIT.
+145200

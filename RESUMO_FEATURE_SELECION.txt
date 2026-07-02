@@ -1,0 +1,216 @@
+╔════════════════════════════════════════════════════════════════╗
+║         NOVO: SELEÇÃO CUSTOMIZADA DE PROGRAMAS                ║
+╚════════════════════════════════════════════════════════════════╝
+
+MUDANÇA IMPORTANTE:
+═══════════════════════════════════════════════════════════════════
+
+Agora você pode escolher QUAIS programas testar!
+
+Antes:  3 opcoes fixas (Basicos / Expandidos / Manual)
+Depois: 3 opcoes fixas + 1 opcao customizada
+
+
+NOVO BOTAO VERDE:
+═══════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────┐
+│  ▶ Testes Basicos (Azul)                │
+│  ⚙ Testes Expandidos (Roxo)             │
+│  🎯 Selecionar Programas (Verde)  ← NEW │
+│  ⏹ Cancelar (Vermelho, quando rodar)   │
+└─────────────────────────────────────────┘
+
+
+INTERFACE DE SELEÇÃO:
+═══════════════════════════════════════════════════════════════════
+
+Ao clicar em "🎯 Selecionar Programas":
+
+1. Janela modal abre
+2. Mostra 42 programas organizados:
+   - GAA (16 programas)
+   - GEV (26 programas)
+   - GAT (2 programas)
+3. Cada programa tem checkbox
+4. Botoes auxiliares:
+   - "Selecionar Todos"
+   - "Desselecionar Todos"
+5. Botao para executar:
+   - "Executar Testes Selecionados"
+6. Botao para fechar
+
+
+FLOW DE USO:
+═══════════════════════════════════════════════════════════════════
+
+┌─────────────────────┐
+│  Interface principal│
+└──────────┬──────────┘
+           │
+           ├─→ [▶ Basicos]      → 17 testes, 5ms
+           │
+           ├─→ [⚙ Expandidos]   → 43 testes, 40ms
+           │
+           └─→ [🎯 Selecionar]  → Abre seletor
+                    │
+                    ├─→ [✓ Todos]
+                    │   │
+                    │   └─→ [Desselecionar Todos]
+                    │
+                    ├─→ [Checkboxes dos programas]
+                    │
+                    └─→ [▶ Executar Selecionados]
+                        └─→ Testa apenas selecionados
+                            └─→ Resultado em arquivo
+
+
+EXEMPLOS DE SELEÇÃO:
+═══════════════════════════════════════════════════════════════════
+
+Teste Rapido (1 programa):
+  ☑ PF-GAA-L004
+  ☐ ... (todos desmarcados)
+  └─→ Tempo: ~1ms, Testes: 17
+
+Teste de Categoria (26 programas GEV):
+  ☐ GAA (todos)
+  ☑ GEV (todos)
+  ☐ GAT (todos)
+  └─→ Tempo: ~15ms, Testes: 26
+
+Teste Mix (3 programas):
+  ☑ PF-GAA-L004
+  ☑ PF-GEV-T005-DB
+  ☑ PF-GAT-L006-DB
+  └─→ Tempo: ~3ms, Testes: 19
+
+
+ARQUIVO DE RESULTADO:
+═══════════════════════════════════════════════════════════════════
+
+Antes:
+  TEST_RESULTS_*.json          (Basicos)
+  TEST_RESULTS_EXPANDED_*.json (Expandidos)
+
+Depois:
+  TEST_RESULTS_*.json          (Basicos)
+  TEST_RESULTS_EXPANDED_*.json (Expandidos)
+  TEST_RESULTS_CUSTOM_*.json   (Customizados) ← NOVO!
+
+Cada arquivo contém APENAS os testes selecionados
+
+
+API ENDPOINTS NOVOS:
+═══════════════════════════════════════════════════════════════════
+
+GET /api/programas
+  └─ Retorna lista de todos 42 programas
+  └─ Organizado por categoria
+
+POST /api/test/run-custom
+  └─ Inicia testes customizados
+  └─ Body: {"programas": ["PF-GAA-L004", "PF-GEV-T005-DB"]}
+
+
+COMPATIBILIDADE:
+═══════════════════════════════════════════════════════════════════
+
+✓ Chrome 90+
+✓ Firefox 88+
+✓ Safari 14+
+✓ Edge 90+
+✓ Mobile browsers
+
+
+CASOS DE USO:
+═══════════════════════════════════════════════════════════════════
+
+1. Debug rapido
+   "Preciso testar só PF-GEV-T005-DB"
+   └─ Seleciona 1, testa em ~1ms
+
+2. Teste de regressao
+   "Mudei PF-GAA-L004 e PF-GEV-T005-DB"
+   └─ Seleciona 2, testa em ~2ms
+
+3. Validacao de categoria
+   "Quero verificar todos GEV"
+   └─ Seleciona 26, testa em ~15ms
+
+4. CI/CD
+   "Pipeline escolhe automaticamente"
+   └─ API POST com lista do commit
+
+
+COMO FICOU VISUAL:
+═══════════════════════════════════════════════════════════════════
+
+ANTES:
+  ┌──────────────────────────────────┐
+  │ Execução de Testes               │
+  │ ▶ Testes Basicos                 │
+  │ ⚙ Testes Expandidos              │
+  │ ⏹ Cancelar                       │
+  └──────────────────────────────────┘
+
+DEPOIS:
+  ┌──────────────────────────────────┐
+  │ Execução de Testes               │
+  │ ▶ Testes Basicos                 │
+  │ ⚙ Testes Expandidos              │
+  │ 🎯 Selecionar Programas ← NOVO   │
+  │ ⏹ Cancelar                       │
+  └──────────────────────────────────┘
+        ↓ Clique em 🎯
+  ┌──────────────────────────────────┐
+  │ Selecion Programas               │
+  │ [✓ Todos] [✗ Nenhum]            │
+  │                                  │
+  │ ═ GAA (16)                       │
+  │ ☐ PF-GAA-B100-DB ☐ ...          │
+  │                                  │
+  │ ═ GEV (26)                       │
+  │ ☐ PF-GEV-L006-DB ☐ ...          │
+  │                                  │
+  │ ═ GAT (2)                        │
+  │ ☐ PF-GAT-L006-DB ☐ PF-GAT-T030 │
+  │                                  │
+  │ [▶ Executar Selecionados] [✕]   │
+  └──────────────────────────────────┘
+
+
+ARQUIVOS MODIFICADOS:
+═══════════════════════════════════════════════════════════════════
+
+✓ web_app.py
+  ├─ Rota GET /api/programas
+  ├─ Rota POST /api/test/run-custom
+  └─ Funcao _execute_tests_custom()
+
+✓ templates/index.html
+  ├─ Botao verde e secao de seleção
+  ├─ CSS para interface
+  └─ JavaScript para logica
+
+✓ test_suite_expanded.py
+  ├─ Parametro programas_selecionados
+  ├─ Metodo get_programas_disponiveis()
+  └─ Filtro em testes
+
+
+STATUS: ✅ IMPLEMENTADO E TESTADO
+
+Data: 2026-07-02
+Versao: 2.1.0
+
+═══════════════════════════════════════════════════════════════════
+
+RESUMO:
+  ✨ Novo botao para selecionar programas
+  ✨ Interface com checkboxes
+  ✨ Testes customizados
+  ✨ Arquivo de resultado separado
+  ✨ API REST para programas
+
+═══════════════════════════════════════════════════════════════════

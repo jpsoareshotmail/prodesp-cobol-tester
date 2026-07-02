@@ -1,0 +1,247 @@
+╔════════════════════════════════════════════════════════════════╗
+║     NOVO: EXECUTAR PROGRAMA INDIVIDUAL COM DADOS               ║
+╚════════════════════════════════════════════════════════════════╝
+
+O QUE FOI ADICIONADO:
+═══════════════════════════════════════════════════════════════════
+
+✨ Botao "⚡ Testar" ao lado de cada programa
+  └─ Permite executar programa isoladamente
+
+📝 Formulario dinamico com dados mockados
+  └─ Valores pre-preenchidos mas edítaveis
+  └─ Campos variam por programa
+
+📋 Exemplos rápidos pré-definidos
+  └─ Botoes para carregar dados de exemplo
+  └─ Testa diferentes cenários rapidamente
+
+⚡ Execução individual com resultado imediato
+  └─ Saída formatada em JSON
+  └─ Mostra entrada + saída
+
+
+COMO USAR - 3 PASSOS:
+═══════════════════════════════════════════════════════════════════
+
+1. Abrir seletor de programas
+   └─ Clique em "🎯 Selecionar Programas"
+
+2. Clicar em "⚡ Testar" ao lado do programa
+   └─ Formulario abre com dados mockados
+
+3. Executar
+   └─ Modificar valores (opcional)
+   └─ Clicar em "▶ Executar Programa"
+   └─ Ver resultado imediatamente
+
+
+EXEMPLO - Validador de Placas:
+═══════════════════════════════════════════════════════════════════
+
+Programa: PF-GAA-L004
+
+Tela 1 - Seletor:
+  ┌─────────────────────────────────┐
+  │ 🎯 Selecionar Programas         │
+  │                                 │
+  │ ═ GAA (16 programas)           │
+  │ ☐ PF-GAA-L004        [⚡ Testar]│ ← Clique aqui
+  │   Validador de Placas           │
+  └─────────────────────────────────┘
+
+Tela 2 - Formulário:
+  ┌─────────────────────────────────┐
+  │ ⚡ Executar Programa Individual │
+  │ 📝 PF-GAA-L004                  │
+  │ [← Voltar]                      │
+  │                                 │
+  │ Placa:                          │
+  │ [AAA0A00___________] ← Editável │
+  │                                 │
+  │ Exemplos:                       │
+  │ [Mercosul-SP] [2-letras] [Antigo]
+  │                                 │
+  │ [▶ Executar] [↻ Limpar]        │
+  └─────────────────────────────────┘
+
+Tela 3 - Resultado:
+  ┌─────────────────────────────────┐
+  │ ✓ Execução bem-sucedida!       │
+  │                                 │
+  │ Entrada:                        │
+  │ {"placa": "AAA0A00"}           │
+  │                                 │
+  │ Saída:                          │
+  │ {                               │
+  │   "valida": true,               │
+  │   "codigo": 11,                 │
+  │   "descricao": "Mercosul - SP"  │
+  │ }                               │
+  └─────────────────────────────────┘
+
+
+DADOS MOCKADOS SUPORTADOS:
+═══════════════════════════════════════════════════════════════════
+
+PF-GAA-L004 (Validador de Placas)
+  Campos: placa (texto, max 10)
+  Exemplos:
+    1. AAA0A00 (Mercosul - SP)
+    2. AB12C34 (2 letras - Carros)
+    3. SP1234 (Placa Antiga - SP)
+    4. ABC-1234 (Com caractere especial)
+    5. (Vazia)
+
+PF-GEV-L006-DB (Gestão Empadronização)
+  Campos: placa, ano (1980-2026), marca
+  Exemplos:
+    1. AAA0A00 / 2020 / Toyota
+    2. SP1234 / 2010 / Volkswagen
+
+PF-GAT-L006-DB (Gestão Autoridades)
+  Campos: codigo (001-999), nome, uf (SP/RJ/MG/BA/RS)
+  Exemplos:
+    1. 001 / DETRAN SP / SP
+    2. 002 / DETRAN RJ / RJ
+
+PF-GAT-T030-DB (Tabela de Penalidades)
+  Campos: codigo, descricao, pontos (0-20)
+  Exemplos:
+    1. 0001 / Estacionamento proibido / 3
+    2. 0002 / Dirigir sem habilitação / 20
+
+
+TIPOS DE CAMPOS SUPORTADOS:
+═══════════════════════════════════════════════════════════════════
+
+1. Texto
+   └─ Input normal
+   └─ maxlength, placeholder
+
+2. Numero
+   └─ Input number
+   └─ min, max, placeholder
+
+3. Select
+   └─ Dropdown de opcoes
+   └─ Valor padrão selecionado
+
+4. Textarea
+   └─ Área de texto multi-linha
+   └─ rows customizavel
+
+
+API ENDPOINTS NOVOS:
+═══════════════════════════════════════════════════════════════════
+
+GET /api/programa/<nome>/dados
+  └─ Retorna dados mockados para programa
+
+POST /api/programa/<nome>/executar
+  └─ Executa programa com dados fornecidos
+  └─ Body: {"campo1": "valor1", ...}
+
+POST /api/programa/<nome>/validar
+  └─ Valida dados sem executar
+
+
+ARQUIVOS CRIADOS/MODIFICADOS:
+═══════════════════════════════════════════════════════════════════
+
+NOVO:
+  ✓ mock_data.py
+    ├─ Dicionario com dados mockados
+    ├─ get_mock_data(programa)
+    ├─ validar_entrada(programa, dados)
+    └─ 5+ programas com dados
+
+MODIFICADO:
+  ✓ web_app.py
+    ├─ GET /api/programa/<nome>/dados
+    ├─ POST /api/programa/<nome>/executar
+    ├─ POST /api/programa/<nome>/validar
+    └─ Importacao de mock_data
+
+  ✓ templates/index.html
+    ├─ Nova secao #executor-card
+    ├─ CSS para formularios
+    ├─ Botao ⚡ Testar em cada programa
+    ├─ abrirExecutor()
+    ├─ renderizarCampos()
+    ├─ renderizarExemplos()
+    ├─ carregarExemplo()
+    ├─ executarPrograma()
+    └─ voltarSeletor()
+
+
+FLUXO COMPLETO:
+═══════════════════════════════════════════════════════════════════
+
+Seletor (inicial)
+  ↓ Clica em ⚡ Testar
+Executor (formulario)
+  ↓ Modifica valores (opcional)
+  ↓ Clica em ▶ Executar
+Resultado (JSON)
+  ↓ Clica em ← Voltar
+Seletor (novamente)
+
+
+CASOS DE USO:
+═══════════════════════════════════════════════════════════════════
+
+1. Debug rapido
+   "Testar PF-GAA-L004 com placa customizada"
+   └─ Abrir → Modificar → Executar → Ver resultado
+
+2. Validacao de comportamento
+   "Como PF-GEV-L006-DB responde a dados inválidos?"
+   └─ Abrir → Deixar vazio → Executar → Ver erro
+
+3. Teste de exemplos
+   "Rodar todos os exemplos de PF-GAT-L006-DB"
+   └─ Abrir → Clicar em cada exemplo → Comparar
+
+4. Desenvolvimento
+   "Escrever novo programa COBOL"
+   └─ Criar mock_data
+   └─ Testar entrada/saída
+   └─ Validar implementacao
+
+
+VALIDACAO:
+═══════════════════════════════════════════════════════════════════
+
+Automática:
+  ✓ Campos obrigatórios
+  ✓ Tipo de dado (numero vs texto)
+  ✓ Comprimento máximo
+  ✓ Range (min/max para números)
+
+Mensagens de erro:
+  "Campo obrigatório: Placa"
+  "Placa deve ter máximo 10 caracteres"
+  "Ano deve ser um número"
+
+
+STATUS: ✅ IMPLEMENTADO E TESTADO
+
+Data: 2026-07-02
+Versao: 2.2.0
+
+Para mais detalhes:
+  EXECUTAR_PROGRAMA_INDIVIDUAL.md
+
+═══════════════════════════════════════════════════════════════════
+
+RESUMO:
+  ✨ Botão ⚡ Testar em cada programa
+  ✨ Formulário dinâmico com campos variáveis
+  ✨ Dados mockados pré-preenchidos
+  ✨ Exemplos rápidos para carregar
+  ✨ Execução individual com resultado JSON
+  ✨ Validação automática de entrada
+  ✨ Volta ao seletor a qualquer tempo
+
+═══════════════════════════════════════════════════════════════════

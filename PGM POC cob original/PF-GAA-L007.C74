@@ -1,0 +1,321 @@
+000000* VERSION   4.1  ; SAVED 20181122 10:24:27                    |000
+000100$$SET SHARING=SHAREDBYALL
+000200$$SET TEMPORARY
+000300 IDENTIFICATION  DIVISION.
+000400**************************
+000500*
+000600*PROGRAM-ID.     PC-GAA-L007.
+000700 AUTHOR.         SSA.
+000800 DATE-WRITTEN.   ABRIL/2018.
+000900 SECURITY.
+001000*
+001100******************************************************************
+001200*    OBJETIVO:    SUBSTITUI A L006 - PLACA MERCOSUL              *
+001300*        CONSISTE PLACA INFORMANDO AO CHAMADOR O FORMATO         *
+001400*        DA PLACA PRONTO PARA ACESSO AO BANCO DE DADOS PARA      *
+001500*        DE 2 E 3 LETRAS E MERCOSUL                              *
+001600******************************************************************
+001700*                A   L   T   E   R   A   C   A   O               *
+001800******************************************************************
+001900*                                                                *
+002000*  DATA       AN /PROGR    OBJETIVO                              *
+002100*  ====       =========    ========                              *
+002200*                                                                *
+002300*  11/07/2018 SSA/SSA  ACERTO NO TIPO RETORNO NUMERICO           *
+002303*  16/10/2018 SSA/SSA  VERIFICACAO DAS LETRAS DA NOVA NA 5 POS.  *
+002306*  22/11/2018 SSA/SSA  RETIRAR VERIFICA¸¶O DAS LETRAS            *
+002400*  --/--/--   ---/---      ------------------------------------  *
+002500*  --/--/--   ---/---      ------------------------------------  *
+002600******************************************************************
+002700*
+002800
+002900
+003000 ENVIRONMENT DIVISION.
+003100**********************
+003200*
+003300 CONFIGURATION   SECTION.
+003400*************************
+003500*
+003600 OBJECT-COMPUTER.    A15.
+003700 SPECIAL-NAMES.
+003800*
+003900     DECIMAL-POINT                   IS      COMMA.
+004000
+004100
+004200/
+004300 DATA        DIVISION.
+004400
+004500 WORKING-STORAGE SECTION.
+004600*************************
+004700*
+004800
+004900*====> PODE VIR:     LLmNNNbranco
+005000****                 LLNNNNbranco
+005100****                 LLNNNbrancobranco
+005200****                 LLNNNNbranco
+005300****                 LLLNNNN     (3 LETRAS NORMAL)
+005400****                 LLLNLNN     (NOVA MERCOSUL)
+005500*
+005600
+005700 01          AX-PARM-PLACA       PIC X(007).
+005800
+005900 01          AX-PARM-PLACA-R     REDEFINES   AX-PARM-PLACA.
+006000     05      AX-PARM-PLACA-1-6.
+006003       10    AX-PARM-PLACA-1-2   PIC X(002).
+006006       10    AX-PARM-PLACA-3-6   PIC X(004).
+006100     05      AX-PARM-PLACA-7     PIC X(001).
+006200
+006300 01          AX-PARM-PLACA-R1    REDEFINES   AX-PARM-PLACA.
+006500     05      FILLER              PIC X(002).
+006600     05      AX-PARM-PLACA-3-5   PIC X(003).
+006700     05      AX-PARM-PLACA-6-7   PIC X(002).
+006800
+006803 01          AX-PARM-PLACA-R2    REDEFINES   AX-PARM-PLACA.
+006809     05      FILLER              PIC X(002).
+006812     05      AX-PARM-PLACA-3     PIC X(001).
+006815     05      AX-PARM-PLACA-4-6   PIC X(003).
+006818     05      FILLER              PIC X(001).
+007500
+007600*
+007700*====> AX-RET-TIPO =  0 : PLACA INVALIDA
+007800*                     1 : PLACA DE MOTO 2 LETRAS
+007900*                     2 : PLACA COM 2 LETRAS
+008000*                     3 : PLACA COM 3 LETRAS
+008100*                     4 : PLACA NOVA MERCOSUL
+008200
+008300*  TIPO RET/ PLACA ACESSO BCO ANTIGO / PLACA ACESSO NOVO TAM.10
+008400
+008500
+008600 01          AX-RETORNO.
+008700
+008800     05      AX-RET-TIPO       PIC 9(001).
+008900
+009100     05      AX-RET-LET        PIC X(003).
+009200     05      AX-RET-LET-R      REDEFINES   AX-RET-LET.
+009300       10    FILLER            PIC X(001).
+009400       10    AX-RET-LET12      PIC X(002).
+009700     05      AX-RET-NUMERO     PIC 9(004)  COMP.
+009800
+009900     05      AX-RET-NUMERO-R   REDEFINES   AX-RET-NUMERO.
+010000        10   AX-RET-NUM123     PIC 9(003)  COMP.
+010100        10   AX-RET-NUM4       PIC 9(001)  COMP.
+010200
+010900     05      AX-RET-PLACA-MERC.
+011000        10   AX-RET-PLACAM     PIC X(007).
+011100        10   FILLER            PIC X(003).
+011200
+012000     05      AX-RET-PLACAM-MERC-R1 REDEFINES   AX-RET-PLACA-MERC.
+012100        10   AX-RET-LET2M      PIC X(002).
+012200        10   AX-RET-NUMCAR     PIC X(004).
+012300        10   FILLER            PIC X(004).
+012400
+012500     05      AX-RET-PLACAM-MERC-R2 REDEFINES   AX-RET-PLACA-MERC.
+012600        10   FILLER            PIC X(002).
+012700        10   AX-RET-NUMMOTO    PIC X(003).
+012800        10   FILLER            PIC X(005).
+012900
+013000
+013100***--------> AREA AUXILIAR PARA A PLACA RECEBIDA
+013200
+013300 01          AX-PLACA.
+013400     05      FILLER         PIC X(001).
+013500     05      AX-PLAC-2-7    PIC X(006).
+013600
+013700 01          AX-PLACA-R     REDEFINES    AX-PLACA.
+013800     05      AX-PLAC        PIC X(001)   OC  7.
+013900
+014000 01          AX-PLACA-R1    REDEFINES    AX-PLACA.
+014100     05      FILLER         PIC X(001).
+014200     05      AX-LET-R1      PIC X(002).
+014300     05      FILLER         PIC X(004).
+014400
+014500 01          AX-PLACA-R2    REDEFINES    AX-PLACA.
+014600     05      FILLER         PIC X(003).
+015000     05      AX-NUM-R2-X.
+015100       10    AX-NUM-R2      PIC 9(003).
+015103     05      AX-MOTO        PIC X(001).
+015200
+015300 01          AX-PLACA-R3    REDEFINES    AX-PLACA.
+015400     05      AX-LET         PIC X(003).
+015500     05      AX-NUMERO-X.
+015600       10    AX-NUMERO      PIC 9(004).
+015700
+016400 01          AX-PLACA-R4    REDEFINES    AX-PLACA.
+016500     05      FILLER         PIC X(005).
+016600     05      AX-PLAC-6-7    PIC X(002).
+016700
+016800*
+016900
+017000 01          AX-HIGH-VAL    PIC X(001)   VA  HIGH-VALUES.
+017100 01          AX-HIGH-VAL-R  REDEFINES    AX-HIGH-VAL.
+017200     05      AX-HIGH        PIC 9(001)   COMP.
+017300     05      FILLER         PIC 9(001)   COMP.
+017400
+017500
+017600
+017700/
+017800 PROCEDURE   DIVISION                USING   AX-PARM-PLACA
+017900                                             AX-RETORNO.
+018000
+018100*
+018200 010-E-PROCEDURE.
+018300*
+018400*
+018500     MOVE    SPACES                  TO      AX-PLACA.
+018600     MOVE    LOW-VALUES              TO      AX-RETORNO.
+018700
+018800     MOVE    SPACES                  TO      AX-RET-PLACA-MERC
+018900                                             AX-RET-LET.
+019000
+019100
+019200
+019203     IF      AX-PARM-PLACA-6-7           =   SPACES  OR
+019206                                             LOW-VALUES
+019209***--------> pode ser PLACA LLNNNbrancobranco
+019212             MOVE    AX-PARM-PLACA-1-2   TO  AX-LET-R1
+019215             MOVE    AX-PARM-PLACA-3-5   TO  AX-NUM-R2-X
+019218             MOVE    "M"                 TO  AX-MOTO
+019227     ELSE
+019300     IF      AX-PARM-PLACA-7             =   SPACES  OR
+019400                                             LOW-VALUES
+019403       IF    AX-PARM-PLACA-3             =   "M"
+019406***--------> pode ser PLACA LLmNNNbranco
+019409             MOVE    AX-PARM-PLACA-1-2   TO  AX-LET-R1
+019412             MOVE    AX-PARM-PLACA-4-6   TO  AX-NUM-R2-X
+019415             MOVE    "M"                 TO  AX-MOTO
+019418       ELSE
+019500***--------> pode ser PLACA LLNNNNbranco
+019600             MOVE    AX-PARM-PLACA-1-6   TO  AX-PLAC-2-7
+019800     ELSE
+020100***--------> pode ser PLACA LLLNNNN ou LLLNLNN
+020700             MOVE    AX-PARM-PLACA       TO  AX-PLACA.
+020800
+020900
+021000
+021100     IF      AX-PLAC (01)            =       SPACES
+021103***--------> PLACA DE 2 LETRAS
+021200             NEXT    SENTENCE
+021300     ELSE
+021400     IF      AX-PLAC (01)            NOT     ALPHABETIC
+021500             MOVE    0               TO      AX-RET-TIPO
+021600             GO                      TO      010-S-PROCEDURE
+021603     ELSE
+021605***--------> PLACA DE 3 LETRAS OU MERCOSUL
+021606             GO                      TO      010-1-PROCEDURE.
+021700
+021800
+021900
+022000     IF     (AX-PLAC (02)            NOT     ALPHABETIC OR
+022100             AX-PLAC (02)            =       SPACES     OR
+022200                                             LOW-VALUES)     OR
+022300            (AX-PLAC (03)            NOT     ALPHABETIC OR
+022400             AX-PLAC (03)            =       SPACES     OR
+022500                                             LOW-VALUES)
+022600             MOVE    0               TO      AX-RET-TIPO
+022700             GO                      TO      010-S-PROCEDURE.
+022702
+022703
+022706
+022709     IF     (AX-PLAC (04)            NOT     NUMERIC OR
+022712             AX-PLAC (04)            =       SPACES  OR
+022715                                             LOW-VALUES)     OR
+022718            (AX-PLAC (05)            NOT     NUMERIC OR
+022721             AX-PLAC (05)            =       SPACES  OR
+022724                                             LOW-VALUES)     OR
+022727            (AX-PLAC (06)            NOT     NUMERIC OR
+022730             AX-PLAC (06)            =       SPACES  OR
+022733                                             LOW-VALUES)
+022736             MOVE    0               TO      AX-RET-TIPO
+022739             GO                      TO      010-S-PROCEDURE.
+022800
+022900
+023000
+023100     IF      AX-PLAC (07)            NOT     NUMERIC
+023200       IF    AX-PLAC (07)            NOT =   "M"
+023300             MOVE    0               TO      AX-RET-TIPO
+023400             GO                      TO      010-S-PROCEDURE
+023403       ELSE
+023406             MOVE    1               TO      AX-RET-TIPO
+023408*****----->  MOTO DE 2 LETRAS
+023409             MOVE    AX-LET-R1       TO      AX-RET-LET12
+023412                                             AX-RET-LET2M
+023415             MOVE    AX-NUM-R2       TO      AX-RET-NUM123
+023418                                             AX-RET-NUMMOTO
+023421             MOVE    AX-HIGH         TO      AX-RET-NUM4
+023424     ELSE
+023427             MOVE    2               TO      AX-RET-TIPO
+023429*****----->  AUTO DE 2 LETRAS
+023430             MOVE    AX-LET-R1       TO      AX-RET-LET12
+023433                                             AX-RET-LET2M
+023436             MOVE    AX-NUMERO       TO      AX-RET-NUMERO
+023439                                             AX-RET-NUMCAR.
+023442
+023445
+023500     GO                              TO      010-S-PROCEDURE.
+023600
+023603
+023606
+023609 010-1-PROCEDURE.
+023612
+023615
+023700     IF     (AX-PLAC (02)            NOT     ALPHABETIC OR
+023703             AX-PLAC (02)            =       SPACES     OR
+023706                                             LOW-VALUES)     OR
+023709            (AX-PLAC (03)            NOT     ALPHABETIC OR
+023712             AX-PLAC (03)            =       SPACES     OR
+023715                                             LOW-VALUES)
+023718             MOVE    0               TO      AX-RET-TIPO
+023721             GO                      TO      010-S-PROCEDURE.
+023724
+023727
+023730
+023733     IF     (AX-PLAC (04)            NOT     NUMERIC OR
+023736             AX-PLAC (04)            =       SPACES  OR
+023739                                             LOW-VALUES)     OR
+023742            (AX-PLAC (06)            NOT     NUMERIC OR
+023745             AX-PLAC (06)            =       SPACES  OR
+023748                                             LOW-VALUES)     OR
+023751            (AX-PLAC (07)            NOT     NUMERIC OR
+023754             AX-PLAC (07)            =       SPACES  OR
+023757                                             LOW-VALUES)
+023760             MOVE    0               TO      AX-RET-TIPO
+023763             GO                      TO      010-S-PROCEDURE.
+023766
+023769
+023772
+024900     IF      AX-PLAC (05)            =       SPACES  OR
+025000                                             LOW-VALUES
+025100             MOVE    0               TO      AX-RET-TIPO
+025200             GO                      TO      010-S-PROCEDURE
+025300     ELSE
+025400     IF      AX-PLAC (05)            NOT     NUMERIC
+025500       IF    AX-PLAC (05)            NOT     ALPHABETIC
+025600             MOVE    0               TO      AX-RET-TIPO
+025700             GO                      TO      010-S-PROCEDURE
+025703       ELSE
+025708       IF    AX-NUMERO-X             =       "0A00"
+025713             MOVE    0               TO      AX-RET-TIPO
+025718             GO                      TO      010-S-PROCEDURE
+025723       ELSE
+025728***       IF    AX-PLAC (05)            =       "A" OR "B" OR "C"
+025733***                                     OR      "D" OR "E" OR "F"
+025738***                                     OR      "G" OR "H" OR "I"
+025743***                                     OR      "J"
+025748             MOVE    4               TO      AX-RET-TIPO
+025753*****----->  MERCOSUL NOVA LLLNLNNBBB
+025758             MOVE    AX-PLACA        TO      AX-RET-PLACAM
+025763***       ELSE
+025768***             MOVE    0               TO      AX-RET-TIPO
+025773***             GO                      TO      010-S-PROCEDURE
+025778     ELSE
+025783             MOVE    3               TO      AX-RET-TIPO
+025788*****----->  AUTO DE 3 LETRAS NORMAL MOVIMENTADA LLLNNNNBBB
+025800             MOVE    AX-LET          TO      AX-RET-LET
+025900             MOVE    AX-NUMERO       TO      AX-RET-NUMERO
+026000             MOVE    AX-PLACA        TO      AX-RET-PLACAM.
+027600
+027700
+031900
+032000 010-S-PROCEDURE.
+032100     EXIT PROGRAM.
+032200*****************************************************************

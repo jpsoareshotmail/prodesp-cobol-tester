@@ -1,0 +1,778 @@
+000000* VERSION 13.1   ; SAVED 20250722 07:32:46                    |13.
+000100 ID          DIVISION.
+000200*--------------------*
+000300
+000400 PROGRAM-ID.     PC-GAA-B100-DB.
+000500 AUTHOR.         JAIR.
+000600 DATE-WRITTEN.   JUNHO/2000.
+000700 SECURITY.
+000800
+000900*----------------------------------------------------------------*
+001000*    OBJETIVO - CARREGAR REGISTRO DA ASSINATURA DIGITAL          *
+001100*                                                                *
+001200*----------------------------------------------------------------*
+001300*    ALTERACOES EFETUADAS:                                       *
+001400*                                                                *
+001500*    SEQ     DATA     O.S.  PATCH  PROGRAMADOR   ANALISTA        *
+001600*                                                                *
+001700*    001  15/06/2000  ....   001   CHININ        CHININ..        *
+001710*    002  05/07/2000  ....   002   CHININ        CHININ..        *
+001800*    003  10/07/2000  ....   003   CHININ        CHININ          *
+001820*    004  11/07/2000  ....   004   CHININ        CHININ..        *
+001830*    005  15/09/2000  ....   005   CHININ        CHININ..        *
+001840*    006  03/10/2000  ....   006   CHININ        CHININ..        *
+001845*    007  19/04/2000  ....   007   CHININ        CHININ (IDEVAL) *
+001850*    008  16/01/2007  ....   008   CHININ        CHININ (TIPO 7) *
+001855*    009  13/04/2011  SSA/SSA  SEPARA E GRAVA ARQUIVO DE COPIA 62*
+001900*    010  29/06/2011  JAC/SSA  DESPREZA RENAVAM ZERADO ......... *
+001905*         19/04/2012  JWD/JAC  INCL ROT ECRVAUTENTICADS          *
+001910*         23/08/2012  JWD/JAC  ALT. TAM RENAVAM                  *
+002000*    ...  07/12/2012  JWD/JAC  AJUSTE CMPO RENAVAM               *
+002100*    ...  24/03/2014  JAC/OBS  REESTRUTURACAO DE TAXAS DE SERVICO*
+002200*    ...  22/10/2014  RUI/RUI  IMPEDIR DUPLICACAO DE DATA/CHAVE. *
+002300*    ...  30/03/2016  JAC/JAC  INCLUSAO DO CODIGO 92  .......... *
+002400*    23/11/2016 JAC / JAC  CONSISTE DUPLICIDADE DE SENHA PATIOS  *
+002402*    14/08/2018 ALF / SSA  POPULAR PLACA-MERC                    *
+002452*    21/01/2019 SSA/SSA ACERTO NO ACESSO                         *
+002460*    13/03/2019 VLG/VLG VERIFICAR EXISTENCIA DE TAXA 92          *
+002462*    18/08/2020 SSA/JWD RETIRADO INCL LICAENVIARDS, E INCL. TAXAS*
+002465*    11/10/2023 SSA/SSA INCLUSAO DAS CHAVES PIX NO REGISTRO      *
+002468*    23/02/2024 JAC/LEE ANO-LIC DE TAXA E DE PLC/PLI             *
+002500*    06/03/2024 JAC/JAC QUANDO NAO ENCONTRA LICAENVIARDS CRIAR   *
+002503*    27/05/2025 SSA/SSA RD 245079 COD SERV NOVO 93 PRECO PUBL EST*
+002550*----------------------------------------------------------------*
+002600/
+002700 ENVIRONMENT DIVISION.
+002800*--------------------*
+002900
+003000 CONFIGURATION   SECTION.
+003100
+003200 SPECIAL-NAMES.
+003300     DECIMAL-POINT   IS  COMMA.
+003400
+003500 INPUT-OUTPUT    SECTION.
+003600 FILE-CONTROL.
+003700
+003800
+003900     SELECT  GAAD100E   ASSIGN  TO  DISK.
+003905     SELECT  GAAD100S   ASSIGN  TO  DISK.
+004000
+004100
+004200/
+004300 DATA        DIVISION.
+004400*--------------------*
+004500
+004600 FILE            SECTION.
+004700
+004800*------> ARQUIVO ENVIADO PELA SECRETARIA DA FAZENDA/BANCOS
+004900*        VIA BBS
+005000*
+005100
+005200
+005300 FD          GAAD100E
+005400             BLOCK            CONTAINS       100 RECORDS
+005500             RECORD           CONTAINS       164 CHARACTERS.
+005600
+005700 01          RG-GAAD100E.
+005800     05      100E-TIP-REG     PIC 9(002).
+005805** Cpo CPFCGC - pode vir CPF, CNPJ ou RENAVAM
+005900     05      100E-CPFCGC      PIC 9(014).
+006000     05      100E-MUNICIPIO   PIC 9(004).
+006100     05      100E-PLACA       PIC X(007).
+006150     05      100E-PLACA-R     REDEFINES    100E-PLACA.
+006200       10    100E-LETRA       PIC X(003).
+006300       10    100E-NUMERO.
+006310        15   100E-NUM-1       PIC X(001).
+006320        15   100E-NUM-234     PIC 9(003).
+006330       10    100E-NUMERO-R    REDEFINES    100E-NUMERO.
+006400        15   100E-NUMERO1     PIC 9(002).
+006500        15   100E-NUMERO2     PIC 9(002).
+006520       10    100E-NUMERO-R1   REDEFINES    100E-NUMERO.
+006540        15   FILLER           PIC 9(001).
+006560        15   100E-NUM5        PIC X(001).
+006580        15   FILLER           PIC X(002).
+006600     05      100E-SENHA       PIC X(064).
+006620     05      100E-SENHA-R     REDEFINES    100E-SENHA.
+006662       10    100E-SENHA-04    PIC X(004).
+006663       10    FILLER           PIC X(060).
+006664     05      100E-NV-CONTEUDO REDEFINES      100E-SENHA.
+006665       10    100E-CPFCNPJ     PIC 9(014).
+006666       10    100E-CPFCNPJ-R   REDEFINES      100E-CPFCNPJ.
+006667        15   FILLER           PIC 9(003).
+006668        15   100E-CPF-NV      PIC 9(011).
+006669       10    100E-CPFCNPJ-RR  REDEFINES      100E-CPFCNPJ.
+006670        15   FILLER           PIC 9(003).
+006671        15   100E-RENAVAM-NV  PIC 9(011).
+006672       10    100E-COD-BCO     PIC 9(003).
+006673       10    100E-DTA-PGTO    PIC 9(006).
+006674       10    100E-NSU-PRODESP PIC 9(009).
+006675** Cod Serv -01 A 99
+006676       10    100E-COD-SERV    PIC 9(002).
+006677       10    100E-NSU-BCO     PIC 9(012).
+006678       10    100E-VLR-PAGO    PIC 9(008)V99.
+006679       10    100E-DTA-CONTAB  PIC 9(006).
+006680       10    100E-ANO-LIC     PIC 9(002).
+006683     05      100E-PIX-IDTRANS PIC X(035).
+006686     05      100E-PIX-IDFIM   PIC X(035).
+006689     05      100E-TIP-DOC     PIC 9(003).
+006700
+006800 01          RG-GAAD100E-R.
+006900     05      FILLER           PIC X(002).
+007000     05      FILLER           PIC X(003).
+007100     05      100E-CPF         PIC 9(011).
+007200     05      FILLER           PIC X(148).
+007300
+007400 01          RG-GAAD100E-RR.
+007500     05      FILLER           PIC X(002).
+007600     05      FILLER           PIC X(003).
+007700     05      100E-RENAVAM     PIC 9(011).
+007710     05      FILLER           PIC X(148).
+007713
+007716/
+007717
+007718*--> ARQUIVO IMAGEM DO LIC ELETRONICO PARA COPIA=62
+007719*
+007720
+007722 FD          GAAD100S
+007725             BLOCK           119
+007728             RECORD          119.
+007731
+007734 01          RG-GAAD100S.
+007737     05      100S-RENAVAM    PIC 9(011).
+007740     05      100S-DATA       PIC 9(008).
+007743     05      100S-BANCO      PIC X(003).
+007746     05      100S-AGENCIA    PIC 9(005).
+007749     05      100S-MUNICIPIO  PIC 9(004).
+007752     05      100S-PLACA      PIC X(007).
+007755     05      100S-CEP        PIC 9(008).
+007758     05      100S-DESP       PIC 9(005).
+007761     05      100S-ANOLIC     PIC 9(004).
+007765     05      100S-SENHA      PIC X(064).
+007800
+007900/
+008000 DATA-BASE       SECTION.
+008100*-----------------------*
+008200
+008300 DB          DB01    =            TDBDETRAN.
+008400
+008500 01          LICAENVIARDS.
+008503 01          PRODPLCDS.
+008600 01          PRODPLIDS.
+008700 01          PRODRDSDS.
+008800
+009100
+009200
+009205 DB          DB02    =            TDBTAXAS.
+009210
+009215 01          TAXASDS.
+009220
+009225 01          TAXASRDSDS.
+009230
+009235 01          VALIDADOSDS.
+009240
+009245 01          EXPURGODS.
+009300
+009400
+009500/
+009600
+009700 WORKING-STORAGE SECTION.
+009800
+009900
+010000
+010100
+010200 77          CT-LIDOS        PIC 9(007)  COMP.
+010300 77          CT-DESP         PIC 9(007)  COMP.
+010400 77          CT-GRAV         PIC 9(007)  COMP.
+010405 77          CT-COPIA        PIC 9(007)  COMP.
+010450 77          CT-ANOLIC-ANT   PIC 9(007)  COMP.
+010500 77          CT-TEMP         PIC 9(004)  COMP.
+010505 77          CT-063132       PIC 9(007)  COMP.
+010600 77          CT-EXPURGOS          PIC 9(008).
+010602
+010700 01          CH-FIM          PIC 9(001)  VALUE 0.
+010800 01          CH-EXISTE-TAXA       PIC X(001).
+010805 01          CH-NOT-VALID         PIC X(001).
+010810 01          CH-NOT-LIC           PIC X(001).
+010900
+011000 01          AX-DATA-H       PIC X(010)  TYPE IS NUMERIC-DATE.
+011100 01          AX-DATA-H-R     REDEFINES   AX-DATA-H.
+011200     05      AX-MES-H        PIC 9(002).
+011300     05      FILLER          PIC X(001).
+011400     05      AX-DIA-H        PIC 9(002).
+011500     05      FILLER          PIC X(001).
+011600     05      AX-ANO-H        PIC 9(004).
+011700
+011800
+011900 01          AX-DATE         PIC 9(008).
+012000 01          AX-DATE-R       REDEFINES       AX-DATE.
+012100     05      AX-DATE-ANO     PIC 9(004).
+012200     05      AX-DATE-MES     PIC 9(002).
+012300     05      AX-DATE-DIA     PIC 9(002).
+012310
+012320 01          AX-NUMERO.
+012330     05      AX-NUM-123      PIC 9(003)     COMP.
+012340     05      AX-NUM-4        PIC 9(001)     COMP.
+012400
+012402 01          AX-ANTERIOR     .
+012404     05      AX-CPF-CGC      PIC 9(014).
+012406     05      AX-RENAVAM      PIC 9(011).
+012408     05      AX-HORA         PIC 9(008).
+012409
+012410
+012411 01          AX-PLACA-MERC.
+012412     05      AX-PL-MERC      PIC X(007).
+012413     05      FILLER          PIC X(003).
+012414
+012415
+012420 01          AX-ANO-LIC      PIC 9(004).
+012422 01          AX-ANO-LIC-R    REDEFINES   AX-ANO-LIC.
+012424     05      AX-LIC-SS       PIC 9(002).
+012426     05      AX-LIC-AA       PIC 9(002).
+012428
+012430
+014800
+014900
+015000
+015100 PROCEDURE DIVISION.
+015200*------------------*
+015300
+015400*----------------------------------------------------------------*
+015500*            M O N I T O R A                                     *
+015600*----------------------------------------------------------------*
+015700*
+015800
+015900 000-E-MONITORA.
+016000
+016100     PERFORM 010-E-INICIO    THRU    010-S-INICIO.
+016200
+016300     PERFORM 020-E-PROCESSO  THRU    020-S-PROCESSO
+016400             UNTIL  CH-FIM   =       1.
+016500
+016600     PERFORM 100-E-FINAL     THRU    100-S-FINAL.
+016700
+016800 000-S-MONITORA.
+016900     STOP RUN.
+017000/
+017100*----------------------------------------------------------------*
+017200*            I N I C I A L I Z A C A O                           *
+017300*----------------------------------------------------------------*
+017400*
+017500
+017600 010-E-INICIO.
+017700
+017800     OPEN    UPDATE  DB01
+017900       ON    EXCEPTION
+018000             DISPLAY "PC/GAA/B100/DB - OPEN ERROR TDBDETRAN"
+018100             CALL    SYSTEM          DMTERMINATE.
+018200
+018205
+018210     OPEN    UPDATE  DB02
+018215       ON    EXCEPTION
+018220             DISPLAY "PC/GAA/B100/DB - OPEN ERROR TDBDTAXAS"
+018225             CALL    SYSTEM          DMTERMINATE.
+018230
+018235
+018300     OPEN    INPUT   GAAD100E
+018400             OUTPUT  GAAD100S.
+018405
+018500
+018600     ACCEPT  AX-DATA-H               FROM    DATE.
+018700
+018800     MOVE    AX-ANO-H                TO      AX-DATE-ANO.
+018900     MOVE    AX-MES-H                TO      AX-DATE-MES.
+019000     MOVE    AX-DIA-H                TO      AX-DATE-DIA.
+019020
+019040     MOVE    ZEROS                   TO      AX-CPF-CGC.
+019060     MOVE    ZEROS                   TO      AX-RENAVAM.
+019080     MOVE    ZEROS                   TO      AX-HORA.
+019100
+019200     PERFORM 070-E-LER               THRU    070-S-LER.
+019300
+019400 010-S-INICIO.
+019500     EXIT.
+019600/
+019700*----------------------------------------------------------------*
+019800*    P R O C E S S A M E N T O    P R I N C I P A L              *
+019900*----------------------------------------------------------------*
+020000*
+020100
+020200 020-E-PROCESSO.
+020205
+020210     MOVE    " "                     TO      CH-EXISTE-TAXA
+020215                                             CH-NOT-VALID
+020220                                             CH-NOT-LIC.
+020225
+020230** ROT para TAXASDS a partir de 19/09/2020
+020235
+020240
+020245     IF      100E-SENHA-04           IS      NUMERIC
+020250             PERFORM 130-E-TAXASDS   THRU   130-S-TAXASDS
+020260         IF  CH-NOT-LIC              =       "S"
+020265**---------> EH UMA TAXA DE LICENC OK E NOTFOUND LICAENVIARDS
+020270             GO                      TO      020-2-CRIA
+020275         ELSE
+020280             GO                      020-80-PROC.
+020285
+020290
+020295     IF      100E-SENHA-04           NOT     NUMERIC
+020300             ADD     1               TO      CT-DESP
+020305             GO                      TO      020-80-PROC.
+020310
+020315
+020660 020-2-CRIA.
+023000
+023100     BEGIN-TRANSACTION               NO-AUDIT      PRODRDSDS
+023200       ON    EXCEPTION
+023300             DISPLAY "PC/GAA/B100/DB - ERRO BEGIN-TRANS LICA"
+023400             CALL    SYSTEM  DMTERMINATE.
+023500
+023600
+023900     CREATE  LICAENVIARDS
+024000       ON    EXCEPTION
+024100             DISPLAY "PC/GAA/B100/DB - ERRO CREATE LICA"
+024200             CALL    SYSTEM  DMTERMINATE.
+024300
+024820
+024900     MOVE    100E-RENAVAM            TO     LIV-RENAVAM.
+025000     MOVE    100E-PLACA              TO     LIV-PLACA.
+025100     MOVE    100E-MUNICIPIO          TO     LIV-MUNICIPIO.
+025200     MOVE    100E-SENHA              TO     LIV-SENHA.
+025300     MOVE    100E-TIP-DOC            TO     LIV-COD-SERVICO.
+025400
+025500     MOVE    TAX-DT-INCLUSAO         TO     LIV-DT-INCLUSAO
+025600     MOVE    TAX-HR-INCLUSAO         TO     LIV-HR-INCLUSAO.
+026000
+026500
+026600     STORE   LICAENVIARDS
+026700        ON   EXCEPTION
+026800             DISPLAY "PC/GAA/B100/DB - ERRO STORE LICAENVIARDS"
+026900             CALL    SYSTEM  DMTERMINATE.
+027000
+027400
+027500     END-TRANSACTION                 NO-AUDIT    PRODRDSDS
+027600       ON    EXCEPTION
+027700             DISPLAY "PC/GAA/B100/DB - ERR END-TRANS LICA"
+027800             CALL    SYSTEM  DMTERMINATE.
+027900
+028000
+028500     ADD     1                       TO      CT-GRAV.
+028600
+028700 020-80-PROC.
+028800
+028900
+029000     PERFORM 070-E-LER               THRU    070-S-LER.
+029100
+029200
+029300 020-S-PROCESSO.
+029400     EXIT.
+029500/
+029600*----------------------------------------------------------------*
+029700*            L E I T U R A  D O  ARQUIVO IMAGEM DO PLC/PLI       *
+029800*----------------------------------------------------------------*
+029900*
+030000
+030100 070-E-LER.
+030200
+030300     READ    GAAD100E
+030400       AT    END
+030500             MOVE    1               TO      CH-FIM
+030600             GO                              070-S-LER.
+030700
+030800
+030900*
+031000
+031100     ADD     1                       TO      CT-LIDOS.
+031200
+031300
+031400 070-S-LER.
+031500     EXIT.
+031600/
+031700*----------------------------------------------------------------*
+031800*            F I N A L I Z A C A O                               *
+031900*----------------------------------------------------------------*
+032000*
+032100
+032200 100-E-FINAL.
+032300
+032400
+032500     DISPLAY "PC/GAA/B100/DB -     LIDOS   = "CT-LIDOS.
+032600     DISPLAY "PC/GAA/B100/DB -  GRAVADOS LICA  = "CT-GRAV.
+032700     DISPLAY "PC/GAA/B100/DB - DESP.TIPO 7 = "CT-DESP.
+032800     DISPLAY "PC/GAA/B100/DB -  COPIA      = "CT-COPIA.
+032805     DISPLAY "PC/GAA/B100/DB - GRAV. 06-31-32 = "CT-063132.
+032820     DISPLAY "PC/GAA/B100/DB - ANO-LIC ANTER. = "  CT-ANOLIC-ANT.
+032900
+033000
+033100     CLOSE   GAAD100E SAVE.
+033200     CLOSE   GAAD100S LOCK.
+033300
+033400
+033500     CLOSE   DB01
+033600         ON  EXCEPTION
+033700             CALL    SYSTEM          DMTERMINATE.
+033800
+033805
+033810     CLOSE   DB02
+033815         ON  EXCEPTION
+033820             CALL    SYSTEM          DMTERMINATE.
+033825
+033900 100-S-FINAL.
+034000     EXIT.
+034100/
+034200*----------------------------------------------------------------*
+034300*    GRAVACAO DO ARQUIVO DE COPIA PARA EMISSAO COMO LICELETR     *
+034400*----------------------------------------------------------------*
+034500
+034600
+034700 110-E-COPIA.
+034800
+034900
+035000     MOVE    100E-RENAVAM            TO      100S-RENAVAM.
+035100     MOVE    AX-DATE                 TO      100S-DATA.
+035200
+035300     MOVE    100E-MUNICIPIO          TO      100S-MUNICIPIO.
+035400     MOVE    100E-PLACA              TO      100S-PLACA.
+035410     MOVE    100E-SENHA              TO      100S-SENHA.
+035500
+035600     MOVE    ZEROS                   TO      100S-BANCO
+035700                                             100S-AGENCIA
+035800                                             100S-CEP
+035900                                             100S-DESP
+036000                                             100S-ANOLIC.
+036100
+036200     WRITE   RG-GAAD100S.
+036300
+036400
+036500
+036600
+036700 110-S-COPIA.
+036800     EXIT.
+036900
+037000/
+043800******************************************************************
+043900*                    CRIA TAXASDS                                *
+044000******************************************************************
+044100
+044200 130-E-TAXASDS.
+044300
+044400
+044500** P/ todos os servicos - verifica se ja exite taxasds
+044510     MOVE    "N"                     TO     CH-NOT-LIC.
+044600
+044700     PERFORM 140-E-FINDTAX           THRU   140-S-FINDTAX
+044750
+044900*
+045000     IF      100E-TIP-DOC            =       61      AND
+045100             100E-RENAVAM            =       0
+045200             ADD     1               TO      CT-DESP
+045300             GO                      130-S-TAXASDS
+045400     ELSE
+045500     IF      100E-TIP-DOC            =       62
+045600       IF    100E-RENAVAM            =       0
+045700             ADD     1               TO      CT-DESP
+045800             GO                      130-S-TAXASDS
+045900       ELSE
+046000             PERFORM 110-E-COPIA     THRU    110-S-COPIA
+046100             ADD     1               TO      CT-COPIA
+046200             GO                      130-S-TAXASDS
+046300     ELSE
+046400     IF      100E-TIP-DOC            =       07
+046500             ADD     1               TO      CT-DESP
+046600             GO                      130-S-TAXASDS.
+046700
+046800
+046900     IF      CH-EXISTE-TAXA          =      "S"
+047000             PERFORM 150-E-EXPURGO   THRU   150-S-EXPURGO
+047100             ADD     1               TO     CT-EXPURGOS
+047200             GO                      130-LICAENVIARDS
+047300     ELSE
+047400     IF      CH-EXISTE-TAXA          =      "N"
+047500** VERIFICA no VALIDADOSDS
+047600             PERFORM 160-E-VALIDADOS THRU   160-S-VALIDADOS
+047700** Se encontrou no validados  cria EXPURGODS e sai
+047800             IF   CH-NOT-VALID       =      "N"
+047900                  PERFORM 150-E-EXPURGO     THRU   150-S-EXPURGO
+048000                  ADD     1          TO     CT-EXPURGOS
+048100                  GO                 130-S-TAXASDS.
+048200
+048300** SENAO CRIA TAXASDS
+048400
+048500
+048600
+048700     CREATE  TAXASDS
+048800       ON    EXCEPTION
+048900             DISPLAY "PC/GAA/B100/DB -ERRO CREATE TAXASDS"
+049000             CALL    SYSTEM  DMTERMINATE.
+049100
+049200*
+049300     IF      100E-TIP-DOC            =      06 OR 92 OR 93 OR
+049400                                            35 OR 36 OR 37 OR
+049500                                            39 OR 40 OR 44 OR
+049600                                            45 OR 73 OR 49 OR
+049605                                            50 OR 51 OR 52 OR
+049610                                            53 OR 54 OR 55
+049700** move o cpf (do campo R4)
+049800             MOVE  100E-CPFCGC       TO     TAX-CPF-CGC
+049900     ELSE
+050000             MOVE  100E-RENAVAM      TO     TAX-RENAVAM.
+050100
+050200     MOVE    100E-TIP-DOC            TO     TAX-COD-SERVICO.
+050400
+050500     MOVE    100E-PLACA              TO     TAX-PLACA-MERC.
+050600
+050700     MOVE    100E-MUNICIPIO          TO     TAX-MUNICIPIO.
+050800
+050900     MOVE    ZEROS                   TO     TAX-DESP-SSP.
+051000
+051100     MOVE    100E-SENHA              TO     TAX-SENHA-SEFAZ.
+051200**   Campo TAX-IDENTIF  pode ser CNPJ. CPF ou RENAVAM.
+051300     MOVE    100E-CPFCNPJ            TO     TAX-IDENTIF.
+051400     MOVE    100E-COD-BCO            TO     TAX-COD-BANCO.
+051500     MOVE    100E-DTA-PGTO           TO     TAX-DT-PAGMT.
+051600     MOVE    100E-NSU-PRODESP        TO     TAX-NSU-PROD.
+051700** Cod Serv -01 A 99
+051800     MOVE    100E-COD-SERV           TO     TAX-COD-PAG.
+051900     MOVE    100E-NSU-BCO            TO     TAX-NSU-BANCO.
+052000     MOVE    100E-VLR-PAGO           TO     TAX-VALOR.
+052100     MOVE    100E-DTA-CONTAB         TO     TAX-DT-CONTB.
+052200     MOVE    100E-ANO-LIC            TO     TAX-ANO-LIC.
+052203
+052206     MOVE    100E-PIX-IDTRANS        TO     TAX-ID-PIX.
+052209     MOVE    100E-PIX-IDFIM          TO     TAX-ID-FIM.
+052300
+052400     MOVE    ZEROS                   TO     TAX-SITUACAO.
+052500
+052600     ACCEPT  TAX-DT-INCLUSAO         FROM   DATE YYYYMMDD.
+052700
+052800     ACCEPT  TAX-HR-INCLUSAO         FROM   TIME.
+052900
+053000
+053100
+053200     BEGIN-TRANSACTION               NO-AUDIT      TAXASRDSDS
+053300       ON    EXCEPTION
+053400             DISPLAY "PC/GAA/B100/DB - ERRO BEGIN-TRANS TDBTAXA"
+053500             CALL    SYSTEM  DMTERMINATE.
+053600*
+053700
+053800
+053900     STORE   TAXASDS
+054000        ON   EXCEPTION
+054100             DISPLAY "PC/GAA/B100/DB - ERRO STORE TAXASDS"
+054200             CALL    SYSTEM  DMTERMINATE.
+054300
+054400
+054500
+054600     END-TRANSACTION                 NO-AUDIT    TAXASRDSDS
+054700       ON    EXCEPTION
+054800             DISPLAY "PC/GAA/B100/DB - ERR END-TRANS TAXASDS"
+054900             CALL    SYSTEM  DMTERMINATE.
+055000
+055100 130-LICAENVIARDS.
+055103
+055106     IF      100E-TIP-DOC            =       02
+055109             PERFORM 170-E-PLCPLI    THRU    170-S-PLCPLI.
+055112
+055200
+055300 130-S-TAXASDS.
+055400     EXIT.
+055500/
+055600******************************************************************
+055700*           VERIFICA EXISTENCIA DE TAXA - TODOS                  *
+055800******************************************************************
+055900*
+056000 140-E-FINDTAX.
+056100
+056200     MOVE    "N"                     TO     CH-EXISTE-TAXA.
+056300
+056400
+056500     FIND    LAST  TAXSENHASE1        AT
+056600             TAX-SENHA-SEFAZ          =       100E-SENHA
+056700       ON    EXCEPTION
+056800       IF    DMSTATUS(NOTFOUND)
+056900             GO                      140-S-FINDTAX
+057000       ELSE
+057100             DISPLAY "PC/GAA/B100/DB - ERRO FIND TAXSENHASE1"
+057200             CALL    SYSTEM DMTERMINATE.
+057300
+057400     MOVE    "S"                     TO      CH-EXISTE-TAXA.
+057500
+057600
+057700
+057800 140-S-FINDTAX.
+057900     EXIT.
+058000/
+058100******************************************************************
+058200*   CRIA EXPURGODS - qdo ja existe no TAXASDS ou  VALIDADOSDS    *
+058300******************************************************************
+058400
+058500 150-E-EXPURGO.
+058600
+058700     BEGIN-TRANSACTION               NO-AUDIT      TAXASRDSDS
+058800       ON    EXCEPTION
+058900             DISPLAY "PC/GAA/B100/DB - ERRO BEGIN-TRANS TDBTAXA"
+059000             CALL    SYSTEM  DMTERMINATE.
+059100
+059200
+059300     CREATE  EXPURGODS
+059400       ON    EXCEPTION
+059500             DISPLAY "PC/GAA/B100/DB - ERRO CREATE EXPURGODSS"
+059600             CALL    SYSTEM  DMTERMINATE.
+059700
+059800
+059900     IF      100E-TIP-DOC            =      06  OR  31 OR  32 OR
+060000                                            64  OR  65 OR  75 OR
+060100                                            76  OR  77 OR  78 OR
+060200                                            92  OR  93
+060300** move o cpf (IDEM rotina TAXASDS)
+060400             MOVE  100E-CPFCGC       TO     TEX-CPF-CGC
+060500     ELSE
+060600             MOVE  100E-RENAVAM      TO     TEX-RENAVAM.
+060700
+060800
+060900     MOVE    100E-TIP-DOC            TO     TEX-COD-SERVICO.
+061100
+061200     MOVE    100E-PLACA              TO     TEX-PLACA-MERC.
+061300
+061400     MOVE    100E-MUNICIPIO          TO     TEX-MUNICIPIO.
+061500
+061600     MOVE    ZEROS                   TO     TEX-DESP-SSP.
+061700
+061800     MOVE    100E-COD-BCO            TO     TEX-COD-BANCO.
+061900     MOVE    100E-SENHA              TO     TEX-SENHA-SEFAZ
+062000**   Campo TEX-IDENTIF  pode ser CNPJ. CPF ou RENAVAM.
+062100     MOVE    100E-CPFCNPJ            TO     TEX-IDENTIF.
+062200     MOVE    100E-DTA-PGTO           TO     TEX-DT-PAGMT.
+062300     MOVE    100E-NSU-PRODESP        TO     TEX-NSU-PROD.
+062400** Cod Serv -01 A 99
+062500     MOVE    100E-COD-SERV           TO     TEX-COD-PAG.
+062600     MOVE    100E-NSU-BCO            TO     TEX-NSU-BANCO.
+062700     MOVE    100E-VLR-PAGO           TO     TEX-VALOR
+062800     MOVE    100E-DTA-CONTAB         TO     TEX-DT-CONTB.
+062900     MOVE    100E-ANO-LIC            TO     TEX-ANO-LIC.
+062903
+062906     MOVE    100E-PIX-IDTRANS        TO     TEX-ID-PIX.
+062909     MOVE    100E-PIX-IDFIM          TO     TEX-ID-FIM.
+063000
+063100     MOVE    ZEROS                   TO     TEX-SITUACAO.
+063200
+063300     ACCEPT  TEX-DT-INCLUSAO         FROM   DATE YYYYMMDD.
+063400
+063500     ACCEPT  TEX-HR-INCLUSAO         FROM   TIME.
+063600
+063700
+063800
+063900     STORE   EXPURGODS
+064000        ON   EXCEPTION
+064100             DISPLAY "PC/GAA/B100/DB - ERRO STORE EXPURGODS"
+064200             DISPLAY "100E-PLACA = "100E-PLACA
+064300             DISPLAY "100E-SENHA = "100E-SENHA
+064400             DISPLAY "AVISAR ANALISE - VEICULOS"
+064500             CALL    SYSTEM  DMTERMINATE.
+064600
+064700
+064800
+064900
+065000     END-TRANSACTION                 NO-AUDIT    TAXASRDSDS
+065100       ON    EXCEPTION
+065200             DISPLAY "PC/GAA/B100/DB - ERR END-TRANS EXPURGOSDS"
+065300             CALL    SYSTEM  DMTERMINATE.
+065400
+065500
+065600 150-S-EXPURGO.
+065700     EXIT.
+065800/
+065900******************************************************************
+066000*           VERIFICA EXISTENCIA DE TAXA - TODOS                  *
+066100******************************************************************
+066200*
+066300 160-E-VALIDADOS.
+066400
+066500     MOVE    "N"                     TO     CH-NOT-VALID.
+066600
+066700
+066800     FIND    LAST  TAVSENHASE1       AT
+066900             TAV-SENHA-SEFAZ         =      100E-SENHA
+067000       ON    EXCEPTION
+067100       IF    DMSTATUS(NOTFOUND)
+067200             MOVE    "S"             TO     CH-NOT-VALID
+067300             GO                      160-S-VALIDADOS
+067400       ELSE
+067500             DISPLAY "PC/GAA/B100/DB - ERRO FIND VALIDADOSDS"
+067600             CALL    SYSTEM DMTERMINATE.
+067700
+067800
+067900
+068000 160-S-VALIDADOS.
+068100     EXIT.
+068200/
+068300******************************************************************
+068400*    VERIFICA EXISTENCIA NO PLC OU PLI                           *
+068500******************************************************************
+068600*
+068700
+068800 170-E-PLCPLI.
+068900
+069000
+069100     IF      100E-MUNICIPIO          =       0  OR  7107
+069200             NEXT    SENTENCE
+069300     ELSE
+069400             GO      TO                      170-1-PLCPLI.
+069500
+069550
+069600
+069700     FIND    PRODRENCMSS             AT
+069800             PLC-NUM-RENAVAM         =       100E-RENAVAM
+069900       ON    EXCEPTION
+070000         IF  DMSTATUS(NOTFOUND)
+070005             IF      100E-MUNICIPIO  =       0
+070010                     GO      TO              170-1-PLCPLI
+070015             ELSE
+070100                     GO      TO              170-S-PLCPLI
+070200         ELSE
+070300             DISPLAY "PC/GAA/B100/DB - ERRO FIND PLC"
+070400             CALL    SYSTEM DMTERMINATE.
+070500
+070520
+070540
+070600     GO      TO              170-2-PLCPLI.
+070700
+070800
+070900 170-1-PLCPLI.
+071000
+071100     FIND    PRODRENIMSS             AT
+071200             PLI-NUM-RENAVAM         =       100E-RENAVAM
+071400       ON    EXCEPTION
+071500         IF  DMSTATUS(NOTFOUND)
+071600             GO      TO                      170-S-PLCPLI
+071700         ELSE
+071800             DISPLAY "PC/GAA/B100/DB - ERRO FIND PLI"
+071900             CALL    SYSTEM DMTERMINATE.
+072000
+072005
+072100     MOVE    PRODPLIDS               TO      PRODPLCDS.
+072200
+072300
+072400 170-2-PLCPLI.
+072500
+072520     MOVE    100E-ANO-LIC            TO      AX-LIC-AA.
+072540     MOVE    20                      TO      AX-LIC-SS.
+072560
+072600     IF      AX-ANO-LIC              NOT >   PLC-EMIS-LIC
+072650             ADD     01              TO      CT-ANOLIC-ANT
+072700             GO      TO                      170-S-PLCPLI.
+072800
+072900
+073000     FIND    LIVRENAVAMSE            AT
+073100             LIV-RENAVAM             =       100E-RENAVAM
+073200       ON    EXCEPTION
+073300         IF  DMSTATUS(NOTFOUND)
+073400             MOVE    "S"             TO      CH-NOT-LIC
+073500         ELSE
+073600             DISPLAY "PC/GAA/B100/DB - ERRO FIND LIVRENAVAMSE"
+073700             CALL    SYSTEM DMTERMINATE.
+073800
+074000
+074100 170-S-PLCPLI.
+074200     EXIT.
+074300/
+074400
