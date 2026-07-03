@@ -211,10 +211,25 @@ def get_programa_codigo(programa_nome):
 
         # Procurar arquivo COBOL
         codigo_dir = Path("PGM POC cob original")
-        arquivo = codigo_dir / f"{programa_nome}.C74"
 
-        if not arquivo.exists():
-            print(f"[CODIGO] Arquivo não encontrado: {arquivo}")
+        # Tentar diferentes extensões
+        arquivo = None
+        for ext in [".C74", ".SEQ", ".cob", ".cbl"]:
+            arquivo_teste = codigo_dir / f"{programa_nome}{ext}"
+            if arquivo_teste.exists():
+                arquivo = arquivo_teste
+                break
+
+        # Se não encontrou com a extensão exata, procurar por padrão
+        if not arquivo:
+            # Procurar qualquer arquivo que contenha o nome do programa
+            for arq in codigo_dir.glob(f"{programa_nome}*"):
+                if arq.is_file():
+                    arquivo = arq
+                    break
+
+        if not arquivo or not arquivo.exists():
+            print(f"[CODIGO] Arquivo não encontrado para: {programa_nome}")
             return jsonify({"error": "Arquivo de código não encontrado", "sucesso": False}), 404
 
         # Ler código
@@ -225,7 +240,7 @@ def get_programa_codigo(programa_nome):
             with open(arquivo, 'r', encoding='utf-8', errors='ignore') as f:
                 codigo = f.read()
 
-        print(f"[CODIGO] Código carregado com sucesso: {len(codigo)} bytes")
+        print(f"[CODIGO] Código carregado com sucesso: {len(codigo)} bytes de {arquivo.name}")
 
         return jsonify({
             "sucesso": True,
