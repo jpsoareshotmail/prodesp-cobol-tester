@@ -1535,6 +1535,10 @@
             let html = `
                 <h2 style="margin-bottom: 20px; color: var(--dark);">Codigo Fonte - ${nomeProgramaCod}</h2>
 
+                <div id="codigo-carregando" style="text-align: center; padding: 20px;">
+                    <p>Carregando código...</p>
+                </div>
+
                 <div id="codigo-resultado" style="display: none; margin-top: 16px;">
                     <div class="detail-section">
                         <div class="detail-section-title">Arquivo COBOL</div>
@@ -1552,6 +1556,9 @@
 
             document.getElementById('modal-codigo-content').innerHTML = html;
             document.getElementById('codigo-modal').classList.add('active');
+
+            // Carregar código após abrir modal
+            carregarCodigoFonte(nomeProgramaCod);
         }
 
         // Carregar código fonte
@@ -1579,6 +1586,7 @@
                 }
 
                 // Exibir código
+                const divCarregando = document.getElementById('codigo-carregando');
                 const divResultado = document.getElementById('codigo-resultado');
                 const divInfo = document.getElementById('codigo-info');
                 const divCodigo = document.getElementById('codigo-texto');
@@ -1593,6 +1601,8 @@
                 // Escaper HTML para exibir código corretamente
                 divCodigo.textContent = resultado.codigo;
 
+                // Esconder carregando e mostrar resultado
+                if (divCarregando) divCarregando.style.display = 'none';
                 divResultado.style.display = 'block';
 
                 console.log(`[CODIGO] Código carregado com sucesso!`);
