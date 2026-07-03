@@ -1,0 +1,147 @@
+╔════════════════════════════════════════════════════════════════╗
+║         RENDER - GUIA RÁPIDO (10 MINUTOS)                       ║
+╚════════════════════════════════════════════════════════════════╝
+
+PRÉ-REQUISITO
+═══════════════════════════════════════════════════════════════════
+✅ Projeto no GitHub
+   (Siga GITHUB_RAPIDO.txt primeiro)
+
+PASSO 1: Criar Conta Render
+═══════════════════════════════════════════════════════════════════
+1. Acesse: https://render.com
+2. Clique "Sign up"
+3. Escolha "Sign up with GitHub"
+4. Autorize acesso ao GitHub
+5. Complete perfil
+6. Confirme email
+
+PASSO 2: Criar Novo Serviço
+═══════════════════════════════════════════════════════════════════
+1. Acesse dashboard: https://dashboard.render.com
+2. Clique "New +"
+3. Escolha "Web Service"
+4. Selecione seu repositório GitHub
+   - Se não aparecer, clique "Configure account"
+   - Autorize Render acessar GitHub
+5. Clique "Connect" ao lado do repositório
+
+PASSO 3: Configurar Serviço
+═══════════════════════════════════════════════════════════════════
+Nome:                 prodesp-cobol-tester
+Ambiente:             Python 3
+Build Command:        pip install -r requirements.txt
+Start Command:        gunicorn web_app:app --bind 0.0.0.0:$PORT
+Plan:                 FREE (gratuito)
+
+PASSO 4: Deploy
+═══════════════════════════════════════════════════════════════════
+1. Clique "Create Web Service"
+2. Render começa a fazer build
+3. Vê logs da compilação
+4. Quando terminar, terá URL como:
+   https://prodesp-cobol-tester.onrender.com
+
+PASSO 5: Testar
+═══════════════════════════════════════════════════════════════════
+1. Abra a URL no navegador
+2. Deve mostrar tela de login
+3. Digite: prodesp_2026
+4. Clique [Entrar]
+5. Dashboard aparece!
+
+SUCESSO!
+═══════════════════════════════════════════════════════════════════
+Aplicação está rodando na nuvem!
+
+URL: https://prodesp-cobol-tester.onrender.com
+Compartilhe com qualquer um!
+
+MONITORAR DEPLOY
+═══════════════════════════════════════════════════════════════════
+1. Render Dashboard: https://dashboard.render.com
+2. Clique no seu serviço
+3. Vê logs em tempo real
+4. Status do deploy
+
+SE DER ERRO
+═══════════════════════════════════════════════════════════════════
+1. Veja os logs do Render
+2. Erros comuns:
+   - ImportError: requirements.txt está correto?
+   - Port error: Start Command tem $PORT?
+   - File not found: Arquivo está no GitHub?
+
+3. Clique "Redeploy" para tentar novamente
+
+ATUALIZAÇÕES FUTURAS
+═══════════════════════════════════════════════════════════════════
+Fez mudança no código?
+
+1. Git commit + push para GitHub:
+   git add .
+   git commit -m "Descrição"
+   git push
+
+2. Render detecta mudança automaticamente
+3. Inicia novo deploy
+4. Aplicação atualiza sozinha!
+
+LIMITAÇÕES DO PLANO FREE
+═══════════════════════════════════════════════════════════════════
+⚠️ App dorme após 15 min de inatividade
+   → Primeira requisição demora ~30 segundos
+
+⚠️ Recursos limitados
+   → 0.5 GB RAM
+   → Banda limitada
+
+✅ Ideal para demos e testes
+❌ Não recomendado para produção
+
+MANTER ACORDADO (Opcional)
+═══════════════════════════════════════════════════════════════════
+Use UptimeRobot para evitar dormência:
+
+1. Crie conta: https://uptimerobot.com
+2. Monitore sua URL
+3. Configure para fazer ping a cada 5 minutos
+4. App nunca dorme
+
+Plano Free: até 50 monitores
+
+URL DE STATUS
+═══════════════════════════════════════════════════════════════════
+Render oferece status page:
+Vê se app está up/down
+Monitore performance
+
+SCALE UP (Pago)
+═══════════════════════════════════════════════════════════════════
+Quer produção?
+Upgrade para Starter Plan:
+- Sem dormência
+- Mais RAM
+- Melhor performance
+
+Clique no serviço > Settings > Plan
+
+DOCUMENTAÇÃO COMPLETA
+═══════════════════════════════════════════════════════════════════
+DEPLOY_RENDER.md
+- Instruções detalhadas
+- Troubleshooting
+- Configurações avançadas
+
+URL ÚTEIS
+═══════════════════════════════════════════════════════════════════
+Render:         https://render.com
+Dashboard:      https://dashboard.render.com
+Documentação:   https://render.com/docs
+Status:         https://status.render.com
+
+═══════════════════════════════════════════════════════════════════
+Data: 2026-07-02
+Status: ✅ Pronto para usar
+
+Próximo: TESTAR A APLICAÇÃO NA NUVEM!

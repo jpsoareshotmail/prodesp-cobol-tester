@@ -1,12 +1,20 @@
 # Deploy no Render
 
-Guia passo a passo para fazer deploy da aplicação Flask no Render (plano gratuito).
+Guia completo passo a passo para fazer deploy da aplicação Flask no Render (plano gratuito).
 
 ## Pré-requisitos
 
-1. **Conta GitHub** - https://github.com
-2. **Conta Render** - https://render.com (gratuito)
-3. **Git instalado** - https://git-scm.com
+✅ **Conta GitHub com repositório**
+   - Repositório: prodesp-cobol-tester
+   - Código: push completo
+   - Arquivo: requirements.txt presente
+
+✅ **Conta Render**
+   - Crie em: https://render.com
+   - Use GitHub para login (mais fácil)
+
+✅ **Git instalado**
+   - https://git-scm.com
 
 ## Passo 1: Preparar Repositório Git
 
