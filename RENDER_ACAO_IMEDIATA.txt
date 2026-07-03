@@ -1,0 +1,184 @@
+╔════════════════════════════════════════════════════════════════╗
+║       RENDER - AÇÃO IMEDIATA PARA CORRIGIR PROBLEMA             ║
+╚════════════════════════════════════════════════════════════════╝
+
+PROBLEMA ATUAL
+═══════════════════════════════════════════════════════════════════
+❌ Programas não aparecem na lista
+❌ Testes não executam
+❌ Código fonte não abre
+
+CAUSA PROVÁVEL
+═══════════════════════════════════════════════════════════════════
+Render não consegue encontrar os arquivos COBOL.
+Arquivos estão no GitHub, mas não em local correto no servidor.
+
+SOLUÇÃO - PASSO 1: FORÇAR NOVO BUILD
+═══════════════════════════════════════════════════════════════════
+
+1. Acesse: https://dashboard.render.com
+2. Selecione "prodesp-cobol-tester"
+3. Clique "Manual Deploy"
+4. Clique "Latest Commit"
+5. Aguarde 3-5 minutos
+
+Ou:
+
+1. Dashboard
+2. Seu serviço
+3. Settings (canto superior direito)
+4. Clique "Redeploy"
+5. Clique "Yes"
+
+SOLUÇÃO - PASSO 2: VERIFICAR LOGS
+═══════════════════════════════════════════════════════════════════
+
+1. No Render Dashboard
+2. Seu serviço
+3. Clique "Logs"
+4. Vê última compilação
+5. Procura por erros:
+
+   PROCURE POR:
+   ✓ "Build succeeded"
+   ✓ "Live"
+   ✗ "failed"
+   ✗ "error"
+   ✗ "FileNotFoundError"
+
+SOLUÇÃO - PASSO 3: TESTAR
+═══════════════════════════════════════════════════════════════════
+
+Após rebuild:
+
+1. Abra: https://prodesp-cobol-tester.onrender.com
+2. Digite: prodesp_2026
+3. [Entrar]
+4. Clique "🎯 Selecionar Programa para Teste"
+5. Vê lista de 42 programas?
+
+SE AINDA NÃO FUNCIONA
+═══════════════════════════════════════════════════════════════════
+
+Método Nuclear: Delete e Recria
+
+1. Dashboard → prodesp-cobol-tester
+2. Settings
+3. "Delete Service" (na parte inferior)
+4. Confirma: "prodesp-cobol-tester"
+5. Delete
+
+6. Dashboard → "New +"
+7. "Web Service"
+8. Seleciona repositório
+9. Configura novamente:
+   Name: prodesp-cobol-tester
+   Build: pip install -r requirements.txt
+   Start: gunicorn web_app:app --bind 0.0.0.0:$PORT
+   Plan: Free
+
+10. "Create Web Service"
+11. Aguarda 5 minutos
+12. Testa
+
+ALTERNATIVA: LIMPAR CACHE
+═══════════════════════════════════════════════════════════════════
+
+Se Render está cacheando versão velha:
+
+1. Dashboard
+2. Seu serviço
+3. Settings
+4. "Environment"
+5. Adicione variável:
+   Key: CACHE_BUSTER
+   Value: [data aleatória, tipo: 20260703]
+6. Save
+7. Auto redeploy
+
+VERIFICAÇÕES
+═══════════════════════════════════════════════════════════════════
+
+☐ Arquivos COBOL estão no GitHub?
+  → git ls-files | grep C74 | wc -l
+  → Deve ser: 42
+
+☐ requirements.txt está completo?
+  → Deve ter: Flask, Gunicorn, Flask-Cors
+
+☐ Todos .py estão no GitHub?
+  → web_app.py
+  → mock_data_expanded.py
+  → program_descriptions.py
+  → executor_cobol.py
+  → etc
+
+☐ Procfile existe?
+  → web: gunicorn web_app:app
+
+SE TUDO FALHAR
+═══════════════════════════════════════════════════════════════════
+
+1. Copie logs do Render:
+   - Dashboard
+   - Seu serviço
+   - Logs
+   - Últimas 20 linhas
+
+2. Procure por:
+   - "ModuleNotFoundError: No module named 'xxx'"
+   - "FileNotFoundError: [Errno 2] No such file"
+   - "ImportError"
+   - "Path not found"
+
+3. Compartilhe mensagem de erro com solicitação de ajuda
+
+ESPERADO APÓS CORRIGIR
+═══════════════════════════════════════════════════════════════════
+
+✅ Página de login aparece
+✅ Autenticação funciona (prodesp_2026)
+✅ Dashboard aparece
+✅ Botão "🎯 Selecionar Programa para Teste"
+✅ Abre lista com 42 programas
+✅ Cada programa mostra:
+   - Nome
+   - Descrição
+   - Objetivo
+   - Entrada
+   - Saída (carregando...)
+✅ Botões [Testar], [Histórico], [Código]
+✅ Todos funcionam
+
+TIMELINE
+═══════════════════════════════════════════════════════════════════
+
+Manual Deploy:  ~3-5 minutos para build
+Reload página:  Carga imediata se server ok
+Delete/Recria:  ~8-10 minutos total
+
+STATUS DO GITHUB
+═══════════════════════════════════════════════════════════════════
+
+✅ Todos arquivos estão lá!
+✅ 42 programas COBOL (.C74)
+✅ Todos módulos Python
+✅ requirements.txt presente
+✅ Procfile presente
+✅ Templates presentes
+
+PROBLEMA ESTÁ NO RENDER, NÃO NO GITHUB!
+
+PRÓXIMAS AÇÕES
+═══════════════════════════════════════════════════════════════════
+
+1. Execute Manual Deploy no Render
+2. Aguarde 3-5 minutos
+3. Recarregue página do browser (Ctrl+F5)
+4. Testa novamente
+5. Se não funcionar, delete e recria
+
+═══════════════════════════════════════════════════════════════════
+Data: 2026-07-03
+Checklist: ✅ Arquivos no GitHub
+Próximo: ⚙️ Rebuild no Render
