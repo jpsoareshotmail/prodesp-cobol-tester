@@ -12,15 +12,16 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 from dataclasses import dataclass, asdict
 import sys
-sys.path.insert(0, '.')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from executor_cobol import ExecutorCOBOL
+from app.executor_cobol import ExecutorCOBOL
 try:
-    from executor_cobol import ValidadorPlaca
+    from app.executor_cobol import ValidadorPlaca
 except ImportError:
     # Se não está em executor_cobol, importar de runner.py
     import importlib.util
-    spec = importlib.util.spec_from_file_location("runner", "runner.py")
+    spec = importlib.util.spec_from_file_location("runner", str(Path(__file__).parent.parent / "app" / "runner.py"))
     runner = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(runner)
     ValidadorPlaca = runner.ValidadorPlaca

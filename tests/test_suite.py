@@ -11,7 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Tuple
 from dataclasses import dataclass, asdict
-from executor_cobol import ExecutorCOBOL
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from app.executor_cobol import ExecutorCOBOL
 
 @dataclass
 class TestResult:

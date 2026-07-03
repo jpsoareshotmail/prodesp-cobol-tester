@@ -14,15 +14,15 @@ from pathlib import Path
 from io import StringIO
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
-from test_suite import TestSuite
-from test_suite_expanded import TestSuiteExpanded
+from tests.test_suite import TestSuite
+from tests.test_suite_expanded import TestSuiteExpanded
 try:
-    from mock_data_expanded import get_mock_data, validar_entrada
+    from data.mock_data_expanded import get_mock_data, validar_entrada
 except ImportError:
-    from mock_data import get_mock_data, validar_entrada
+    from data.mock_data import get_mock_data, validar_entrada
 
 try:
-    from program_descriptions import get_program_description, get_all_programs_with_descriptions
+    from data.program_descriptions import get_program_description, get_all_programs_with_descriptions
 except ImportError:
     def get_program_description(nome):
         return {"nome": nome, "descricao": "Programa COBOL", "objetivo": "Processar dados"}
@@ -30,7 +30,7 @@ except ImportError:
         return {}
 
 try:
-    from program_history import get_program_history
+    from data.program_history import get_program_history
 except ImportError:
     def get_program_history(nome):
         return {"autor": "Desconhecido", "criacao": "2024-01-01", "versao_atual": "1.0", "alteracoes": []}

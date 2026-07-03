@@ -1,0 +1,245 @@
+╔════════════════════════════════════════════════════════════════╗
+║          ESTRUTURA DE PASTAS - NOVO LAYOUT                      ║
+╚════════════════════════════════════════════════════════════════╝
+
+ESTRUTURA PROPOSTA
+═══════════════════════════════════════════════════════════════════
+
+prodesp-cobol-tester/
+├── README.md                      (Documentação principal)
+├── requirements.txt               (Dependências Python)
+├── Procfile                       (Deploy)
+├── render.yaml                    (Configuração Render)
+├── runtime.txt                    (Versão Python)
+├── .gitignore                     (Arquivos ignorados)
+│
+├── app/                           (Código da aplicação)
+│   ├── __init__.py                (Init do módulo)
+│   ├── web_app.py                 (Flask principal)
+│   ├── executor_cobol.py           (Executor COBOL)
+│   ├── startup.py                 (Startup script)
+│   ├── runner.py                  (Suporte)
+│   └── simple_test.py             (Teste simples)
+│
+├── data/                          (Dados e módulos de dados)
+│   ├── mock_data.py               (Dados mockados)
+│   ├── mock_data_expanded.py       (Dados expandidos)
+│   ├── program_descriptions.py     (Descrições dos programas)
+│   ├── program_history.py          (Histórico de versões)
+│   ├── test_cases.json            (Casos de teste)
+│   └── config_mobile.json         (Configuração mobile)
+│
+├── tests/                         (Testes automatizados)
+│   ├── test_suite.py              (Suite básica)
+│   ├── test_suite_expanded.py      (Suite expandida)
+│   ├── test_mobile_example.py      (Testes mobile)
+│   ├── test_quick.py              (Teste rápido)
+│   └── TEST_RESULTS_*.json        (Resultados)
+│
+├── templates/                     (Interface web)
+│   ├── index.html                 (Dashboard principal)
+│   └── test_page.html             (Página de testes)
+│
+├── PGM POC cob original/          (Programas COBOL - 42 arquivos .C74)
+│
+├── docs/                          (Documentação)
+│   ├── SETUP.md                   (Como começar)
+│   ├── GITHUB_SETUP.md            (Setup GitHub)
+│   ├── GITHUB_RAPIDO.txt          (GitHub rápido)
+│   ├── DEPLOY_RENDER.md           (Deploy Render)
+│   ├── RENDER_RAPIDO.txt          (Render rápido)
+│   ├── RENDER_CHECKLIST.md        (Checklist Render)
+│   ├── RENDER_ACAO_IMEDIATA.txt   (Ação imediata)
+│   ├── RENDER_PROBLEMAS.md        (Troubleshooting)
+│   ├── AUTENTICACAO_LOGIN.md      (Login)
+│   ├── CODIGO_FONTE_PROTEGIDO.md  (Código fonte)
+│   ├── INTERFACE_WEB_FEATURES.md  (Features web)
+│   ├── CATEGORIAS_REAIS_PROGRAMAS.md (Categorias)
+│   └── ... (outros docs)
+│
+└── scripts/                       (Scripts úteis)
+    ├── setup_github.ps1           (Setup GitHub)
+    ├── run_web.bat                (Rodar Windows)
+    ├── run_web.sh                 (Rodar Unix)
+    └── build.sh                   (Build script)
+
+TOTAL: ~60 arquivos organizados
+
+
+ARQUIVOS PRINCIPAIS
+═══════════════════════════════════════════════════════════════════
+
+RAIZ (5 arquivos essenciais)
+  • web_app.py         → app/web_app.py
+  • mock_data*.py      → data/
+  • program_*.py       → data/
+  • test_suite*.py     → tests/
+  • requirements.txt   → MANTER NA RAIZ
+
+TEMPLATES (1 pasta existente)
+  • templates/ → MANTER NA RAIZ (Flask precisa)
+
+COBOL (1 pasta existente)
+  • PGM POC cob original/ → MANTER NA RAIZ (Referência importante)
+
+DOCS (40+ arquivos)
+  • Todos os .md/.txt → docs/
+
+SCRIPTS (4 scripts)
+  • setup_github.ps1 → scripts/
+  • run_web.* → scripts/
+  • build.sh → scripts/
+
+
+PASSOS PARA REORGANIZAR
+═══════════════════════════════════════════════════════════════════
+
+1. Criar pastas
+   mkdir -p app data tests docs scripts
+
+2. Mover código Python
+   move executor_cobol.py app/
+   move mock_data*.py data/
+   move program_*.py data/
+   move test_suite*.py tests/
+   move test_*.py tests/
+   move runner.py app/
+   move startup.py app/
+   move simple_test.py tests/
+
+3. Mover testes
+   move TEST_RESULTS_*.json tests/
+   move test_cases.json data/
+   move test_page.html templates/
+   move config_mobile.json data/
+
+4. Mover documentação
+   move *.md docs/
+   move *.txt docs/ (exceto README.md)
+
+5. Mover scripts
+   move setup_github.ps1 scripts/
+   move run_web.* scripts/
+   move build.sh scripts/
+
+6. Atualizar imports em todos os .py
+
+
+IMPORTS QUE PRECISAM MUDAR
+═══════════════════════════════════════════════════════════════════
+
+Arquivo: app/web_app.py
+  from mock_data_expanded import ...
+    → from data.mock_data_expanded import ...
+  from program_descriptions import ...
+    → from data.program_descriptions import ...
+  from program_history import ...
+    → from data.program_history import ...
+  from test_suite_expanded import ...
+    → from tests.test_suite_expanded import ...
+  from executor_cobol import ...
+    → from app.executor_cobol import ...
+
+Arquivo: tests/test_suite_expanded.py
+  from executor_cobol import ...
+    → from app.executor_cobol import ...
+  from program_descriptions import ...
+    → from data.program_descriptions import ...
+  from mock_data_expanded import ...
+    → from data.mock_data_expanded import ...
+
+Arquivo: app/executor_cobol.py
+  (sem mudanças normalmente)
+
+ESTRUTURA FINAL
+═══════════════════════════════════════════════════════════════════
+
+prodesp-cobol-tester/
+├── app/
+│   ├── __init__.py
+│   ├── web_app.py ✅
+│   ├── executor_cobol.py ✅
+│   ├── startup.py ✅
+│   └── runner.py ✅
+├── data/
+│   ├── __init__.py
+│   ├── mock_data.py ✅
+│   ├── mock_data_expanded.py ✅
+│   ├── program_descriptions.py ✅
+│   ├── program_history.py ✅
+│   ├── test_cases.json ✅
+│   └── config_mobile.json ✅
+├── tests/
+│   ├── __init__.py
+│   ├── test_suite.py ✅
+│   ├── test_suite_expanded.py ✅
+│   ├── test_mobile_example.py ✅
+│   ├── test_quick.py ✅
+│   └── TEST_RESULTS_*.json ✅
+├── templates/
+│   ├── index.html ✅
+│   └── test_page.html ✅
+├── docs/
+│   ├── SETUP.md ✅
+│   ├── GITHUB_SETUP.md ✅
+│   └── ... (40+ docs)
+├── scripts/
+│   ├── setup_github.ps1 ✅
+│   ├── run_web.sh ✅
+│   └── build.sh ✅
+├── PGM POC cob original/ (42 arquivos) ✅
+├── README.md ✅
+├── requirements.txt ✅
+└── Procfile ✅
+
+
+GIT CHANGES
+═══════════════════════════════════════════════════════════════════
+
+git add .
+git commit -m "Reorganizar estrutura de pastas"
+git push
+
+
+DEPOIS DA REORGANIZAÇÃO
+═══════════════════════════════════════════════════════════════════
+
+Testar localmente:
+  python app/web_app.py
+
+Rebuild no Render:
+  Manual Deploy
+
+URLs não mudam:
+  http://localhost:5000
+  https://prodesp-cobol-tester.onrender.com
+
+
+VANTAGENS
+═══════════════════════════════════════════════════════════════════
+
+✅ Código mais organizado
+✅ Fácil navegar entre arquivos
+✅ Separação clara de responsabilidades
+✅ Padrão profissional de projeto Python
+✅ Melhor para colaboração em equipe
+✅ Mais fácil adicionar novos módulos
+✅ Documentação em lugar central
+✅ Scripts em lugar separado
+
+
+CHECKLIST
+═══════════════════════════════════════════════════════════════════
+
+☐ Criar todas as pastas
+☐ Mover arquivos para suas pastas
+☐ Criar __init__.py em cada pasta Python
+☐ Atualizar todos os imports
+☐ Testar localmente
+☐ Git commit + push
+☐ Rebuild no Render
+☐ Testar em produção
+
+═══════════════════════════════════════════════════════════════════
+Data: 2026-07-03
+Status: Planejado
