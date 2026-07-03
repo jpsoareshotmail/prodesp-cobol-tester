@@ -30,7 +30,9 @@ class TestSuite:
     """Suite de testes para COBOL"""
 
     def __init__(self):
-        self.executor = ExecutorCOBOL("c:\\Projetos\\outros\\prodescp\\codigo")
+        # Usar diretório atual para funcionar em qualquer lugar (local ou Render)
+        base_dir = Path(__file__).parent
+        self.executor = ExecutorCOBOL(str(base_dir))
         self.resultados: List[TestResult] = []
         self.tempo_inicio = None
 

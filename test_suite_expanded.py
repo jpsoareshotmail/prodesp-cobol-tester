@@ -43,7 +43,9 @@ class TestSuiteExpanded:
     """Suite de testes expandida para todos os programas COBOL"""
 
     def __init__(self, programas_selecionados: List[str] = None):
-        self.executor = ExecutorCOBOL("c:\\Projetos\\outros\\prodescp\\codigo")
+        # Usar diretório atual para funcionar em qualquer lugar (local ou Render)
+        base_dir = Path(__file__).parent
+        self.executor = ExecutorCOBOL(str(base_dir))
         self.resultados: List[TestResult] = []
         self.tempo_inicio = None
         self.programas = self._descobrir_programas()
@@ -51,7 +53,13 @@ class TestSuiteExpanded:
 
     def _descobrir_programas(self) -> Dict:
         """Descobre todos os programas COBOL disponíveis"""
-        codigo_dir = Path("c:\\Projetos\\outros\\prodescp\\codigo\\PGM POC cob original")
+        # Usar caminho relativo para funcionar em qualquer lugar (local ou Render)
+        codigo_dir = Path(__file__).parent / "PGM POC cob original"
+
+        # Fallback para caminho absoluto (compatibilidade com código antigo)
+        if not codigo_dir.exists():
+            codigo_dir = Path("PGM POC cob original")
+
         programas = {}
 
         # Agrupar por tipo de programa

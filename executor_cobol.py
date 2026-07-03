@@ -436,7 +436,9 @@ def main():
     print("=" * 70)
     print("")
 
-    executor = ExecutorCOBOL("c:\\Projetos\\outros\\prodescp\\codigo")
+    # Usar diretório atual para funcionar em qualquer lugar
+    base_dir = Path(__file__).parent
+    executor = ExecutorCOBOL(str(base_dir))
 
     # Menu
     if len(sys.argv) < 2:
