@@ -1591,10 +1591,14 @@
                 const divInfo = document.getElementById('codigo-info');
                 const divCodigo = document.getElementById('codigo-texto');
 
+                // Contar linhas
+                const linhas = resultado.codigo.split('\n').length;
+
                 divInfo.innerHTML = `
                     <strong>Programa:</strong> ${resultado.programa}<br>
                     <strong>Arquivo:</strong> ${resultado.arquivo}<br>
                     <strong>Tamanho:</strong> ${(resultado.tamanho / 1024).toFixed(2)} KB<br>
+                    <strong>Linhas:</strong> ${linhas.toLocaleString()}<br>
                     <strong>Tipo:</strong> COBOL (Micro Focus)
                 `;
 
