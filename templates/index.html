@@ -576,6 +576,44 @@
             display: block;
         }
 
+        .brq-logo {
+            height: 40px;
+            width: auto;
+            margin-right: 16px;
+        }
+
+        footer {
+            margin-top: 60px;
+            padding: 24px;
+            background: white;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        .footer-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .footer-logo {
+            height: 30px;
+            width: auto;
+        }
+
         @media (max-width: 768px) {
             .grid {
                 grid-template-columns: 1fr;
@@ -597,6 +635,11 @@
             .stat-value {
                 font-size: 24px;
             }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 8px;
+            }
         }
     </style>
 </head>
@@ -604,6 +647,12 @@
     <!-- Tela de Login -->
     <div id="login-screen" style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
         <div style="background: white; padding: 40px; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 400px;">
+            <div style="text-align: center; margin-bottom: 24px;">
+                <svg class="brq-logo" viewBox="0 0 200 50" style="display: inline-block;">
+                    <!-- BRQ Logo simplificado -->
+                    <text x="10" y="35" font-size="32" font-weight="bold" fill="#2563eb">BRQ</text>
+                </svg>
+            </div>
             <h1 style="text-align: center; color: var(--dark); margin-bottom: 8px; font-size: 24px;">
                 🔐 Sistema COBOL
             </h1>
@@ -639,9 +688,15 @@
     <div id="dashboard" style="display: none;">
     <div class="container">
         <header style="display: flex; justify-content: space-between; align-items: flex-start;">
-            <div>
-                <h1>🧪 Sistema de Testes COBOL</h1>
-                <p class="subtitle">Interface para execução e acompanhamento de testes - Prodesp</p>
+            <div style="display: flex; align-items: center;">
+                <svg class="brq-logo" viewBox="0 0 200 50" style="height: 50px; margin-right: 16px;">
+                    <!-- BRQ Logo -->
+                    <text x="10" y="35" font-size="32" font-weight="bold" fill="#2563eb">BRQ</text>
+                </svg>
+                <div>
+                    <h1>🧪 Sistema de Testes COBOL</h1>
+                    <p class="subtitle">Interface para execução e acompanhamento de testes - Prodesp</p>
+                </div>
             </div>
             <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s; margin-top: 4px;">
                 [Sair]
@@ -2041,5 +2096,15 @@ ${saidaFormatada}
             });
         });
     </script>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <svg class="footer-logo" viewBox="0 0 200 50">
+                <text x="10" y="35" font-size="24" font-weight="bold" fill="#2563eb">BRQ</text>
+            </svg>
+            <div>Todos os direitos reservados © 2026 — BRQ</div>
+        </div>
+    </footer>
 </body>
 </html>
