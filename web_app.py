@@ -35,7 +35,7 @@ except ImportError:
     def get_program_history(nome):
         return {"autor": "Desconhecido", "criacao": "2024-01-01", "versao_atual": "1.0", "alteracoes": []}
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)
 
 # Armazenar estado de execução
