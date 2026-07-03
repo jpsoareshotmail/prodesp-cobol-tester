@@ -1532,26 +1532,6 @@
             let html = `
                 <h2 style="margin-bottom: 20px; color: var(--dark);">Codigo Fonte - ${nomeProgramaCod}</h2>
 
-                <div class="detail-section">
-                    <div class="detail-section-title">Autenticacao</div>
-                    <div style="margin-bottom: 16px;">
-                        <label style="display: block; font-weight: 600; color: var(--dark); margin-bottom: 6px;">
-                            Senha de Acesso:
-                        </label>
-                        <div style="display: flex; gap: 8px;">
-                            <input type="password" id="senha-codigo"
-                                placeholder="Digite a senha"
-                                style="flex: 1; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px;"
-                                onkeypress="if(event.key==='Enter') carregarCodigoFonte('${nomeProgramaCod}')">
-                            <button type="button" class="btn btn-primary"
-                                onclick="carregarCodigoFonte('${nomeProgramaCod}')"
-                                style="padding: 10px 20px;">
-                                Carregar Codigo
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <div id="codigo-resultado" style="display: none; margin-top: 16px;">
                     <div class="detail-section">
                         <div class="detail-section-title">Arquivo COBOL</div>
@@ -1571,22 +1551,14 @@
             document.getElementById('codigo-modal').classList.add('active');
         }
 
-        // Carregar código fonte com autenticação
+        // Carregar código fonte
         async function carregarCodigoFonte(nomeProgramaCod) {
             try {
-                const senha = document.getElementById('senha-codigo').value;
-
-                if (!senha) {
-                    alert('Digite a senha!');
-                    return;
-                }
-
-                console.log(`[CODIGO] Carregando código com senha...`);
+                console.log(`[CODIGO] Carregando código de ${nomeProgramaCod}...`);
 
                 const response = await fetch(`/api/programa/${nomeProgramaCod}/codigo`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ senha })
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
                 });
 
                 const resultado = await response.json();

@@ -203,20 +203,11 @@ def get_programa_historico(programa_nome):
         print(f"[HISTORICO] Erro: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/programa/<programa_nome>/codigo', methods=['POST'])
+@app.route('/api/programa/<programa_nome>/codigo', methods=['GET'])
 def get_programa_codigo(programa_nome):
-    """Retorna código fonte do programa COBOL com autenticação por senha"""
+    """Retorna código fonte do programa COBOL"""
     try:
-        data = request.json or {}
-        senha = data.get('senha', '')
-
-        SENHA_CORRETA = 'prodesp_2026'
-
-        print(f"\n[CODIGO] Tentativa de acesso ao código: {programa_nome}")
-
-        if senha != SENHA_CORRETA:
-            print(f"[CODIGO] Senha incorreta!")
-            return jsonify({"error": "Senha incorreta", "sucesso": False}), 401
+        print(f"\n[CODIGO] Carregando código: {programa_nome}")
 
         # Procurar arquivo COBOL
         codigo_dir = Path("PGM POC cob original")
