@@ -249,6 +249,12 @@ def executar_programa(programa_nome):
         print(f"\n[EXEC] Executando programa: {programa_nome}")
         print(f"[EXEC] Dados recebidos: {json.dumps(dados, indent=2)}")
 
+        # Se não há dados, usar dados padrão do programa
+        if not dados:
+            mock_data = get_mock_data(programa_nome)
+            dados = mock_data.get("campos_valor", {})
+            print(f"[EXEC] Usando dados padrão: {json.dumps(dados, indent=2)}")
+
         # Validar entrada
         validacao = validar_entrada(programa_nome, dados)
         if not validacao["valido"]:

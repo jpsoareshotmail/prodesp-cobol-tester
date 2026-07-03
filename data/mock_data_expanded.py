@@ -637,15 +637,19 @@ def _get_gat_generico(programa_nome):
 
 def validar_entrada(programa_nome, dados):
     """Valida dados de entrada para um programa"""
+    # Se não há dados, aceitar (permite execução com valores padrão)
+    if not dados:
+        return {"valido": True, "erros": []}
+
     mock = get_mock_data(programa_nome)
     erros = []
 
-    for campo in mock["campos"]:
+    for campo in mock.get("campos", []):
         nome_campo = campo["nome"]
         tipo_campo = campo["tipo"]
 
+        # Se o campo não foi enviado, pular (usar valor padrão)
         if nome_campo not in dados:
-            erros.append(f"Campo obrigatório: {campo['label']}")
             continue
 
         valor = dados[nome_campo]
