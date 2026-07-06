@@ -12,6 +12,9 @@ import threading
 from datetime import datetime
 from pathlib import Path
 from io import StringIO
+
+# Add app directory to path for executor_cobol imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'app'))
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from tests.test_suite import TestSuite
@@ -56,6 +59,172 @@ def index():
 def health():
     """Verificar saúde da API"""
     return jsonify({"status": "ok", "timestamp": datetime.now().isoformat()})
+
+@app.route('/api/cobol-status', methods=['GET'])
+def cobol_status():
+    """Diagnostico completo do ambiente COBOL com ambos os fluxos"""
+    from cobol_runner import get_status, comparar_placa
+    status = get_status()
+    # Teste comparativo com placa conhecida
+    comp = comparar_placa("ABC1D23")
+    status["teste_comparativo"] = {
+        "placa": "ABC1D23",
+        "original": {"codigo": comp.resultado_original.codigo, "descricao": comp.resultado_original.descricao, "sucesso": comp.resultado_original.sucesso} if comp.resultado_original else None,
+        "convertido": {"codigo": comp.resultado_convertido.codigo, "descricao": comp.resultado_convertido.descricao, "sucesso": comp.resultado_convertido.sucesso} if comp.resultado_convertido else None,
+        "resultados_iguais": comp.resultados_iguais,
+        "diferencas": comp.diferencas,
+    }
+    return jsonify(status)
+
+@app.route('/api/programas-dual', methods=['GET'])
+def get_programas_dual():
+    """Retorna lista de programas com mapeamento original/convertido"""
+    from data.program_mapping import get_programs_by_category, PROGRAM_MAP
+    from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR, BUILD_DIR
+
+    resultado = {}
+    for category, progs in get_programs_by_category().items():
+        resultado[category] = []
+        for prog in progs:
+            orig_file = ORIGINAIS_DIR / prog["original_file"]
+            conv_file = CONVERTIDOS_DIR / prog["converted_file"]
+            standalone = BUILD_DIR / f"{prog['original']}.cob"
+            driver = BUILD_DIR / f"DRIVER-{prog['converted']}.cob"
+            resultado[category].append({
+                "original": prog["original"],
+                "convertido": prog["converted"],
+                "original_existe": orig_file.exists(),
+                "convertido_existe": conv_file.exists(),
+                "standalone_pronto": standalone.exists(),
+                "driver_pronto": driver.exists(),
+            })
+
+    return jsonify({
+        "categorias": resultado,
+        "total_programas": len(PROGRAM_MAP),
+    })
+
+@app.route('/api/comparar-placa', methods=['POST'])
+def comparar_placa_endpoint():
+    """Compara resultado de validacao de placa entre original e convertido"""
+    data = request.json
+    placa = data.get('placa', '').strip().upper()
+
+    if not placa:
+        return jsonify({"error": "Placa vazia"}), 400
+
+    from cobol_runner import comparar_placa
+
+    comp = comparar_placa(placa)
+
+    return jsonify({
+        "placa": placa,
+        "original": {
+            "programa": comp.programa_original,
+            "codigo": comp.resultado_original.codigo if comp.resultado_original else None,
+            "descricao": comp.resultado_original.descricao if comp.resultado_original else None,
+            "sucesso": comp.resultado_original.sucesso if comp.resultado_original else False,
+            "tempo_ms": comp.resultado_original.tempo_ms if comp.resultado_original else 0,
+            "executado_cobol": comp.resultado_original.executado_cobol if comp.resultado_original else False,
+            "erro": comp.resultado_original.erro if comp.resultado_original else None,
+        },
+        "convertido": {
+            "programa": comp.programa_convertido,
+            "codigo": comp.resultado_convertido.codigo if comp.resultado_convertido else None,
+            "descricao": comp.resultado_convertido.descricao if comp.resultado_convertido else None,
+            "sucesso": comp.resultado_convertido.sucesso if comp.resultado_convertido else False,
+            "tempo_ms": comp.resultado_convertido.tempo_ms if comp.resultado_convertido else 0,
+            "executado_cobol": comp.resultado_convertido.executado_cobol if comp.resultado_convertido else False,
+            "erro": comp.resultado_convertido.erro if comp.resultado_convertido else None,
+        },
+        "resultados_iguais": comp.resultados_iguais,
+        "diferencas": comp.diferencas,
+    })
+
+@app.route('/api/executar-fluxo', methods=['POST'])
+def executar_fluxo():
+    """Executa um programa em um fluxo especifico (original ou convertido)"""
+    data = request.json or {}
+    programa = data.get('programa', '')
+    fluxo = data.get('fluxo', 'original')  # "original" ou "convertido"
+    env_vars = data.get('env_vars', {})
+
+    if not programa:
+        return jsonify({"error": "Programa nao informado"}), 400
+
+    from cobol_runner import executar_original, executar_convertido
+    from data.program_mapping import get_converted_name
+
+    if fluxo == "original":
+        resultado = executar_original(programa, env_vars)
+    elif fluxo == "convertido":
+        # Traduzir nome original para convertido se necessario
+        nome_conv = get_converted_name(programa)
+        if nome_conv:
+            programa = nome_conv
+        resultado = executar_convertido(programa, env_vars)
+    else:
+        return jsonify({"error": f"Fluxo invalido: {fluxo}"}), 400
+
+    return jsonify({
+        "programa": resultado.programa,
+        "fluxo": resultado.fluxo,
+        "sucesso": resultado.sucesso,
+        "codigo": resultado.codigo,
+        "descricao": resultado.descricao,
+        "output": resultado.output,
+        "executado_cobol": resultado.executado_cobol,
+        "erro": resultado.erro,
+        "exe_path": resultado.exe_path,
+        "fonte_path": resultado.fonte_path,
+        "tempo_ms": resultado.tempo_ms,
+    })
+
+@app.route('/api/codigo-fonte/<programa>', methods=['GET'])
+def get_codigo_fonte_dual(programa):
+    """Retorna codigo fonte do programa em ambas versoes (original e convertido)"""
+    from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR
+    from data.program_mapping import get_converted_name, get_original_name
+
+    resultado = {"programa": programa, "original": None, "convertido": None}
+
+    # Determinar nomes
+    nome_convertido = get_converted_name(programa)
+    nome_original = get_original_name(programa) if not nome_convertido else programa
+
+    # Carregar original
+    if nome_original:
+        for ext in [".C74", ".cob"]:
+            orig_file = ORIGINAIS_DIR / f"{nome_original}{ext}"
+            if orig_file.exists():
+                try:
+                    codigo = orig_file.read_text(encoding='latin-1')
+                    resultado["original"] = {
+                        "arquivo": orig_file.name,
+                        "tamanho": len(codigo),
+                        "linhas": len(codigo.split('\n')),
+                        "codigo": codigo,
+                    }
+                except:
+                    pass
+                break
+
+    # Carregar convertido
+    if nome_convertido:
+        conv_file = CONVERTIDOS_DIR / nome_convertido
+        if conv_file.exists():
+            try:
+                codigo = conv_file.read_text(encoding='latin-1')
+                resultado["convertido"] = {
+                    "arquivo": conv_file.name,
+                    "tamanho": len(codigo),
+                    "linhas": len(codigo.split('\n')),
+                    "codigo": codigo,
+                }
+            except:
+                pass
+
+    return jsonify(resultado)
 
 @app.route('/api/results', methods=['GET'])
 def get_results():
@@ -278,36 +447,42 @@ def executar_programa(programa_nome):
 
         # Para PF-GAA-L004 (validador de placas)
         if programa_nome == "PF-GAA-L004":
-            try:
+            from cobol_runner import executar_placa_original, executar_placa_convertido, is_gnucobol_available
+
+            placa = dados.get("placa", "")
+            fluxo = dados.get("fluxo", "original")
+            print(f"[EXEC] Placa: {placa}, Fluxo: {fluxo}")
+
+            if not is_gnucobol_available():
                 from executor_cobol import ValidadorPlaca
                 validador = ValidadorPlaca()
-                placa = dados.get("placa", "")
                 resultado = validador.validar(placa)
-
-                print(f"[EXEC] Placa: {placa}")
-                print(f"[EXEC] Resultado: valida={resultado.valida}, codigo={resultado.codigo}, descricao={resultado.descricao}")
-
-                resposta = {
-                    "sucesso": True,
-                    "programa": programa_nome,
-                    "entrada": {"placa": placa},
-                    "saida": {
-                        "valida": resultado.valida,
-                        "codigo": resultado.codigo,
-                        "descricao": resultado.descricao
-                    }
-                }
-                print(f"[EXEC] Resposta: {json.dumps(resposta, indent=2)}")
-                return jsonify(resposta)
-            except ImportError as e:
-                print(f"[EXEC] ImportError: {str(e)}")
-                # Fallback se ValidadorPlaca não estiver disponível
                 return jsonify({
-                    "sucesso": True,
-                    "programa": programa_nome,
-                    "entrada": dados,
-                    "saida": {"mensagem": "Placa validada com sucesso"}
+                    "sucesso": True, "programa": programa_nome,
+                    "entrada": {"placa": placa},
+                    "saida": {"valida": resultado.valida, "codigo": resultado.codigo,
+                              "descricao": resultado.descricao, "motor": "Python (simulacao)"}
                 })
+
+            if fluxo == "convertido":
+                res = executar_placa_convertido(placa)
+            else:
+                res = executar_placa_original(placa)
+
+            return jsonify({
+                "sucesso": res.sucesso,
+                "programa": programa_nome,
+                "fluxo": fluxo,
+                "entrada": {"placa": placa},
+                "saida": {
+                    "codigo": res.codigo,
+                    "descricao": res.descricao,
+                    "valida": res.codigo > 0,
+                    "motor": f"GnuCOBOL - {'Original' if fluxo == 'original' else 'Convertido'}",
+                    "tempo_ms": res.tempo_ms,
+                },
+                "erro": res.erro,
+            })
         else:
             # Para outros programas, gerar saída realista baseado no tipo
             saida = _gerar_saida_programa(programa_nome, dados)
@@ -476,26 +651,72 @@ def cancel_tests():
 
 @app.route('/api/validate-plate', methods=['POST'])
 def validate_plate():
-    """Valida uma placa individual"""
+    """Valida uma placa individual - suporta fluxo original, convertido, ou comparacao"""
     data = request.json
     placa = data.get('placa', '').strip().upper()
+    fluxo = data.get('fluxo', 'comparar')  # "original", "convertido", ou "comparar"
 
     if not placa:
         return jsonify({"error": "Placa vazia"}), 400
 
     try:
-        from executor_cobol import ValidadorPlaca
-        validador = ValidadorPlaca()
-        resultado = validador.validar(placa)
+        from cobol_runner import (
+            executar_placa_original, executar_placa_convertido,
+            comparar_placa, is_gnucobol_available
+        )
 
-        return jsonify({
-            "placa": resultado.placa,
-            "valida": resultado.valida,
-            "codigo": resultado.codigo,
-            "descricao": resultado.descricao,
-        })
-    except ImportError:
-        return jsonify({"error": "ValidadorPlaca não disponível"}), 500
+        if not is_gnucobol_available():
+            # Fallback para simulacao Python
+            from executor_cobol import ValidadorPlaca
+            validador = ValidadorPlaca()
+            resultado = validador.validar(placa)
+            return jsonify({
+                "placa": resultado.placa,
+                "valida": resultado.valida,
+                "codigo": resultado.codigo,
+                "descricao": resultado.descricao,
+                "motor": "Python (simulacao - GnuCOBOL indisponivel)",
+            })
+
+        if fluxo == "original":
+            res = executar_placa_original(placa)
+            return jsonify({
+                "placa": placa,
+                "valida": res.codigo > 0,
+                "codigo": res.codigo,
+                "descricao": res.descricao,
+                "motor": "GnuCOBOL - Original (PF-GAA-L004)",
+                "tempo_ms": res.tempo_ms,
+            })
+        elif fluxo == "convertido":
+            res = executar_placa_convertido(placa)
+            return jsonify({
+                "placa": placa,
+                "valida": res.codigo > 0,
+                "codigo": res.codigo,
+                "descricao": res.descricao,
+                "motor": "GnuCOBOL - Convertido (FGAA004)",
+                "tempo_ms": res.tempo_ms,
+            })
+        else:
+            # Comparar ambos
+            comp = comparar_placa(placa)
+            return jsonify({
+                "placa": placa,
+                "original": {
+                    "codigo": comp.resultado_original.codigo,
+                    "descricao": comp.resultado_original.descricao,
+                    "tempo_ms": comp.resultado_original.tempo_ms,
+                },
+                "convertido": {
+                    "codigo": comp.resultado_convertido.codigo,
+                    "descricao": comp.resultado_convertido.descricao,
+                    "tempo_ms": comp.resultado_convertido.tempo_ms,
+                },
+                "resultados_iguais": comp.resultados_iguais,
+                "diferencas": comp.diferencas,
+                "motor": "GnuCOBOL 3.1.2 (comparacao dual)",
+            })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

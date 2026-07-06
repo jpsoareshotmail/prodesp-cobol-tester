@@ -1,55 +1,134 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 <head>
-    <title>Debug Interface</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Console - BRQ | COBOL</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #00ff00; }
-        .log { margin: 10px 0; padding: 10px; background: #000; border-left: 3px solid #00ff00; }
-        .error { border-left-color: #ff0000; }
-        .success { border-left-color: #00ff00; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --brq-green: #00C853;
+            --brq-green-dark: #00A844;
+            --brq-danger: #E53935;
+            --brq-info: #1E88E5;
+            --brq-border: #E5E7EB;
+            --radius-sm: 6px;
+            --radius-lg: 16px;
+            --shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #FAFAFA;
+            color: #333333;
+            min-height: 100vh;
+            padding: 32px 24px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--brq-border);
+        }
+        .header img { height: 28px; width: auto; }
+        .header h1 {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1A1A1A;
+            letter-spacing: -0.5px;
+        }
+        .header span {
+            font-size: 12px;
+            color: #888888;
+            background: #F7F8FA;
+            padding: 4px 10px;
+            border-radius: 12px;
+            border: 1px solid var(--brq-border);
+        }
+        .console-box {
+            background: #FFFFFF;
+            border: 1px solid var(--brq-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .log {
+            margin: 4px 0;
+            padding: 8px 12px;
+            background: #F7F8FA;
+            border-left: 3px solid var(--brq-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            color: #555555;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+        .log.error { border-left-color: var(--brq-danger); color: var(--brq-danger); }
+        .log.success { border-left-color: var(--brq-green); color: #166534; }
+        .log.info { border-left-color: var(--brq-info); color: var(--brq-info); }
+        footer {
+            margin-top: 32px;
+            text-align: center;
+            color: #888888;
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
-    <h1>Debug Console</h1>
-    <div id="logs"></div>
+    <div class="container">
+        <div class="header">
+            <img src="/static/logobrq.png" alt="BRQ">
+            <h1>Debug Console</h1>
+            <span>COBOL Tester</span>
+        </div>
+        <div class="console-box" id="logs"></div>
+        <footer>BRQ Digital Solutions &copy; 2026</footer>
+    </div>
+
     <script>
-        const logsDiv = document.getElementById('logs');
+    const logsDiv = document.getElementById('logs');
 
-        function log(type, msg) {
-            const div = document.createElement('div');
-            div.className = 'log ' + type;
-            div.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-            logsDiv.appendChild(div);
-            console.log(msg);
+    function log(type, msg) {
+        const div = document.createElement('div');
+        div.className = 'log ' + type;
+        div.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        logsDiv.appendChild(div);
+        logsDiv.scrollTop = logsDiv.scrollHeight;
+    }
+
+    async function test() {
+        log('info', 'Iniciando testes de diagnostico...');
+        try {
+            log('info', 'GET /api/health');
+            const h = await fetch('/api/health');
+            log(h.ok ? 'success' : 'error', 'Health: HTTP ' + h.status);
+
+            log('info', 'GET /api/stats');
+            const s = await fetch('/api/stats');
+            const stats = await s.json();
+            log('success', 'Stats: ' + JSON.stringify(stats));
+
+            log('info', 'GET /api/results');
+            const r = await fetch('/api/results');
+            const results = await r.json();
+            log('success', 'Results: ' + results.length + ' items');
+            results.forEach(function(res, i) {
+                log('info', '  [' + i + '] ' + (res.arquivo || 'N/A') + ' - ' + res.total + ' testes');
+            });
+
+            log('success', 'Diagnostico completo.');
+        } catch (e) {
+            log('error', 'Erro: ' + e.message);
         }
+    }
 
-        async function test() {
-            log('info', 'Iniciando testes...');
-
-            try {
-                log('info', 'Testando /api/health...');
-                const h = await fetch('/api/health');
-                log(h.ok ? 'success' : 'error', `Health: ${h.status}`);
-
-                log('info', 'Testando /api/stats...');
-                const s = await fetch('/api/stats');
-                const stats = await s.json();
-                log('success', `Stats: ${JSON.stringify(stats)}`);
-
-                log('info', 'Testando /api/results...');
-                const r = await fetch('/api/results');
-                const results = await r.json();
-                log('success', `Results: ${results.length} items`);
-                results.forEach((res, i) => {
-                    log('info', `  [${i}] ${res.arquivo || 'N/A'} - ${res.total} testes`);
-                });
-
-            } catch (e) {
-                log('error', `Erro: ${e.message}`);
-            }
-        }
-
-        window.onload = test;
+    window.onload = test;
     </script>
 </body>
 </html>

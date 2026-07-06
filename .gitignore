@@ -42,3 +42,16 @@ TEST_RESULTS_*.json
 # OS
 .DS_Store
 Thumbs.db
+
+# GnuCOBOL binaries (large)
+gnucobol-bin/
+gnucobol/
+*.7z
+
+# Compiled COBOL artifacts
+cobol_build/*.dll
+cobol_build/*.exe
+cobol_build/*_processed
+
+# Extracted sources (large, from .7z)
+fontes_convertidos/

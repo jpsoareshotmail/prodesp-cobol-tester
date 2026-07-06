@@ -1,0 +1,84 @@
+      * Record areas para OGEV020D (gerado automaticamente)
+       01  COMVENDS.
+           05  COMS-IN                        PIC X(030) VALUE SPACES.
+           05  COMS-IN-AGENDA                 PIC X(030) VALUE SPACES.
+           05  COMS-IN-FUNCTION-INDEX         PIC X(030) VALUE SPACES.
+           05  COMS-IN-FUNCTION-STATUS        PIC X(030) VALUE SPACES.
+           05  COMS-IN-INFO                   PIC X(030) VALUE SPACES.
+           05  COMS-IN-MSG-COUNT              PIC X(030) VALUE SPACES.
+           05  COMS-IN-PROGRAM                PIC X(030) VALUE SPACES.
+           05  COMS-IN-RST-LOC                PIC X(030) VALUE SPACES.
+           05  COMS-IN-SECURITY-DESG          PIC X(030) VALUE SPACES.
+           05  COMS-IN-STATION                PIC X(030) VALUE SPACES.
+           05  COMS-IN-STATUS                 PIC X(030) VALUE SPACES.
+           05  COMS-IN-TEXT-LENGTH            PIC X(030) VALUE SPACES.
+           05  COMS-IN-TIMESTAMP              PIC 9(006) VALUE ZEROS.
+           05  COMS-IN-TRANSPARENT            PIC X(030) VALUE SPACES.
+           05  COMS-IN-USERCODE               PIC X(030) VALUE SPACES.
+           05  COMS-IN-VT-FLAG                PIC X(030) VALUE SPACES.
+           05  COMS-OUT                       PIC X(030) VALUE SPACES.
+           05  COMS-OUT-AGENDA                PIC X(030) VALUE SPACES.
+           05  COMS-OUT-CASUAL-OUTPUT         PIC X(030) VALUE SPACES.
+           05  COMS-OUT-CONFIRM-FLAG          PIC X(030) VALUE SPACES.
+           05  COMS-OUT-CONFIRMKEY            PIC X(030) VALUE SPACES.
+           05  COMS-OUT-COUNT                 PIC X(030) VALUE SPACES.
+           05  COMS-OUT-DESTINATION           PIC X(030) VALUE SPACES.
+           05  COMS-OUT-INFO                  PIC X(030) VALUE SPACES.
+           05  COMS-OUT-NEXT-INPUT-AG         PIC X(030) VALUE SPACES.
+           05  COMS-OUT-RETAIN-TRANMODE       PIC X(030) VALUE SPACES.
+           05  COMS-OUT-SET-NEXT-AG           PIC X(030) VALUE SPACES.
+           05  COMS-OUT-STATUS                PIC X(030) VALUE SPACES.
+           05  COMS-OUT-TEXT-LENGTH           PIC X(030) VALUE SPACES.
+           05  COMS-OUT-TRANPARENT            PIC X(030) VALUE SPACES.
+           05  COMS-OUT-VT-FLAG               PIC X(030) VALUE SPACES.
+
+       01  GRAVAMESDS.
+           05  GRA-ANO-TRANSACAO-X            PIC 9(009) VALUE ZEROS.
+           05  GRA-ANOFABR-X                  PIC 9(009) VALUE ZEROS.
+           05  GRA-ANOMOD-X                   PIC 9(009) VALUE ZEROS.
+           05  GRA-CD-AGENTE                  PIC X(030) VALUE SPACES.
+           05  GRA-CD-AGENTE-X                PIC X(030) VALUE SPACES.
+           05  GRA-CGC-AGENTE                 PIC X(030) VALUE SPACES.
+           05  GRA-CGC-AGENTE-X               PIC X(030) VALUE SPACES.
+           05  GRA-CHASSI                     PIC X(030) VALUE SPACES.
+           05  GRA-CHASSI-REM-X               PIC X(030) VALUE SPACES.
+           05  GRA-CHASSI-X                   PIC X(030) VALUE SPACES.
+           05  GRA-CPF-CGC-ANTIG-X            PIC X(030) VALUE SPACES.
+           05  GRA-CPF-CGC-FINAN              PIC X(030) VALUE SPACES.
+           05  GRA-CPF-CGC-FINAN-X            PIC X(030) VALUE SPACES.
+           05  GRA-CPF-CGC-NOVO-X             PIC X(030) VALUE SPACES.
+           05  GRA-DIA-JULIANO-X              PIC X(030) VALUE SPACES.
+           05  GRA-DT-CONTR-VIG               PIC 9(008) VALUE ZEROS.
+           05  GRA-DT-CONTR-VIG-X             PIC 9(008) VALUE ZEROS.
+           05  GRA-DT-EMISSAO                 PIC 9(008) VALUE ZEROS.
+           05  GRA-DT-EMISSAO-X               PIC 9(008) VALUE ZEROS.
+           05  GRA-DT-INCLUSAO                PIC 9(008) VALUE ZEROS.
+           05  GRA-DT-INCLUSAO-X              PIC 9(008) VALUE ZEROS.
+           05  GRA-FILLER1-X                  PIC X(020) VALUE SPACES.
+           05  GRA-FILLER2-X                  PIC X(020) VALUE SPACES.
+           05  GRA-HR-EMISSAO-X               PIC 9(006) VALUE ZEROS.
+           05  GRA-HR-INCLUSAO-X              PIC 9(006) VALUE ZEROS.
+           05  GRA-NOME-AGENTE                PIC X(030) VALUE SPACES.
+           05  GRA-NOME-AGENTE-X              PIC X(040) VALUE SPACES.
+           05  GRA-NOME-FIN-NOVO              PIC X(030) VALUE SPACES.
+           05  GRA-NOME-FIN-NOVO-X            PIC X(040) VALUE SPACES.
+           05  GRA-NOME-FINANC                PIC X(030) VALUE SPACES.
+           05  GRA-NOME-FINANC-X              PIC X(040) VALUE SPACES.
+           05  GRA-NUM-CONTRATO               PIC 9(009) VALUE ZEROS.
+           05  GRA-NUM-CONTRATO-X             PIC 9(009) VALUE ZEROS.
+           05  GRA-NUM-RESTRICAO-X            PIC 9(009) VALUE ZEROS.
+           05  GRA-NUM-SEQ-X                  PIC 9(009) VALUE ZEROS.
+           05  GRA-OPERADORA-X                PIC X(030) VALUE SPACES.
+           05  GRA-PLACA-MERC-X               PIC X(010) VALUE SPACES.
+           05  GRA-PLACA-X                    PIC X(010) VALUE SPACES.
+           05  GRA-RENAVAM-X                  PIC X(030) VALUE SPACES.
+           05  GRA-TIPO-RESTR                 PIC X(030) VALUE SPACES.
+           05  GRA-TIPO-RESTR-X               PIC X(030) VALUE SPACES.
+           05  GRA-TRANSACAO                  PIC X(030) VALUE SPACES.
+           05  GRA-TRANSACAO-X                PIC X(030) VALUE SPACES.
+           05  GRA-UF-GRAVAME-X               PIC X(002) VALUE SPACES.
+           05  GRA-UF-PLACA-X                 PIC X(010) VALUE SPACES.
+
+       01  PRECADCICLODS.
+           05  PRE-CADASTRO                   PIC X(030) VALUE SPACES.
+
