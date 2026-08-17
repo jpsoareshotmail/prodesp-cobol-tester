@@ -1,0 +1,35 @@
+      * WSD copybook for BLOQOBITODS (auto-generated)
+       01  BLOQOBITODS.
+           05  BLOQOBITODS-ROWID              PIC X(018).
+           05  OBI-CPF-X                      PIC X(011).
+           05  OBI-DT-INCLUSAO-X              PIC X(010).
+           05  OBI-DT-NASC-X                  PIC X(010).
+           05  OBI-DT-OBITO-X                 PIC X(010).
+           05  OBI-FILLER1-X                  PIC X(020).
+           05  OBI-FILLER2-X                  PIC X(020).
+           05  OBI-FILLER3-X                  PIC X(020).
+           05  OBI-HR-INCLUSAO-X              PIC X(006).
+           05  OBI-IDENT-CART-X               PIC X(030).
+           05  OBI-NOME-MAE-X                 PIC X(040).
+           05  OBI-NOME-X                     PIC X(040).
+           05  OBI-NRO-FL-LIV-X               PIC X(030).
+           05  OBI-NRO-LIV-OB-X               PIC X(030).
+           05  OBI-NRO-TERM-OB-X              PIC X(030).
+           05  OBI-TPIDENT-CART-X             PIC X(030).
+           05  OBI-USUARIO-X                  PIC X(008).
+           05  OBI-CPF                        PIC X(011).
+           05  OBI-DT-INCLUSAO                PIC 9(009).
+           05  OBI-DT-NASC                    PIC 9(009).
+           05  OBI-DT-OBITO                   PIC 9(009).
+           05  OBI-FILLER1                    PIC X(020).
+           05  OBI-FILLER2                    PIC X(020).
+           05  OBI-FILLER3                    PIC X(020).
+           05  OBI-HR-INCLUSAO                PIC 9(009).
+           05  OBI-IDENT-CART                 PIC X(030).
+           05  OBI-NOME-MAE                   PIC X(040).
+           05  OBI-NOME                       PIC X(040).
+           05  OBI-NRO-FL-LIV                 PIC X(030).
+           05  OBI-NRO-LIV-OB                 PIC X(030).
+           05  OBI-NRO-TERM-OB                PIC X(030).
+           05  OBI-TPIDENT-CART               PIC X(030).
+           05  OBI-USUARIO                    PIC X(008).

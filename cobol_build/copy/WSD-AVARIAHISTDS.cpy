@@ -1,0 +1,35 @@
+      * WSD copybook for AVARIAHISTDS (auto-generated)
+       01  AVARIAHISTDS.
+           05  AVARIAHISTDS-ROWID             PIC X(018).
+           05  AVH-ANO-BOAT-X                 PIC X(004).
+           05  AVH-CHASSI-X                   PIC X(021).
+           05  AVH-DT-HISTORICO-X             PIC X(010).
+           05  AVH-DT-INCLUSAO-X              PIC X(010).
+           05  AVH-DT-OCORR-X                 PIC X(010).
+           05  AVH-HR-HISTORICO-X             PIC X(006).
+           05  AVH-HR-INCLUSAO-X              PIC X(006).
+           05  AVH-MONTA-X                    PIC X(030).
+           05  AVH-MOTIVO-X                   PIC X(030).
+           05  AVH-NRO-BOAT-X                 PIC X(030).
+           05  AVH-NUM-REL-X                  PIC X(010).
+           05  AVH-ORIGEM-X                   PIC X(030).
+           05  AVH-PLACA-MERC-X               PIC X(010).
+           05  AVH-PLACA-X                    PIC X(010).
+           05  AVH-SEGURADORA-X               PIC X(030).
+           05  AVH-US-HISTORICO-X             PIC X(030).
+           05  AVH-ANO-BOAT                   PIC 9(009).
+           05  AVH-CHASSI                     PIC X(021).
+           05  AVH-DT-HISTORICO               PIC 9(009).
+           05  AVH-DT-INCLUSAO                PIC 9(009).
+           05  AVH-DT-OCORR                   PIC 9(009).
+           05  AVH-HR-HISTORICO               PIC 9(009).
+           05  AVH-HR-INCLUSAO                PIC 9(009).
+           05  AVH-MONTA                      PIC X(030).
+           05  AVH-MOTIVO                     PIC X(030).
+           05  AVH-NRO-BOAT                   PIC X(030).
+           05  AVH-NUM-REL                    PIC 9(009).
+           05  AVH-ORIGEM                     PIC X(030).
+           05  AVH-PLACA-MERC                 PIC X(010).
+           05  AVH-PLACA                      PIC X(010).
+           05  AVH-SEGURADORA                 PIC X(030).
+           05  AVH-US-HISTORICO               PIC X(030).

@@ -1,0 +1,31 @@
+      * WSD copybook for PRODCRTDS (auto-generated)
+       01  PRODCRTDS.
+           05  PRODCRTDS-ROWID                PIC X(018).
+           05  CRT-CHASSIS-X                  PIC X(021).
+           05  CRT-COD-REG-X                  PIC X(006).
+           05  CRT-DATA-X                     PIC X(010).
+           05  CRT-FILLER-X                   PIC X(020).
+           05  CRT-INFORMACOES1-X             PIC X(040).
+           05  CRT-INFORMACOES2-X             PIC X(040).
+           05  CRT-LETRA-X                    PIC X(030).
+           05  CRT-MUN-DEST-X                 PIC X(005).
+           05  CRT-MUNICIPIO-X                PIC X(005).
+           05  CRT-NUM-CERT-X                 PIC X(010).
+           05  CRT-NUMERO1-X                  PIC X(030).
+           05  CRT-NUMERO2-X                  PIC X(030).
+           05  CRT-PLACA-MERC-X               PIC X(010).
+           05  CRT-UF-DEST-X                  PIC X(002).
+           05  CRT-CHASSIS                    PIC X(021).
+           05  CRT-COD-REG                    PIC 9(009).
+           05  CRT-DATA                       PIC X(010).
+           05  CRT-FILLER                     PIC X(020).
+           05  CRT-INFORMACOES1               PIC X(040).
+           05  CRT-INFORMACOES2               PIC X(040).
+           05  CRT-LETRA                      PIC X(030).
+           05  CRT-MUN-DEST                   PIC X(005).
+           05  CRT-MUNICIPIO                  PIC 9(009).
+           05  CRT-NUM-CERT                   PIC 9(009).
+           05  CRT-NUMERO1                    PIC X(030).
+           05  CRT-NUMERO2                    PIC X(030).
+           05  CRT-PLACA-MERC                 PIC X(010).
+           05  CRT-UF-DEST                    PIC X(002).

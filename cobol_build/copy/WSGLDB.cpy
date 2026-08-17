@@ -24,3 +24,4 @@
        01  DM-STATUS                 PIC X(002) VALUE "00".
        01  ROUTINE-REF               PIC X(030) VALUE SPACES.
        01  COMMAND-COD               PIC X(010) VALUE SPACES.
+

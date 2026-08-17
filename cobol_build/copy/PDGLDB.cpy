@@ -1,21 +1,41 @@
-      * PDGLDB - Generated DB paragraphs
-       9999-14.
-           CONTINUE.
-       9999-ABEND.
-           CONTINUE.
-       9999-ABEND-TRAP.
-           CONTINUE.
-       9999-FIM.
-           CONTINUE.
+      * PDGLDB - All DB/DMS runtime paragraphs (auto-generated)
        ALERTADS-DB2DMS.
+           CONTINUE.
+       ATUALIZADS-CR.
+           CONTINUE.
+       ATUALIZADS-ST.
+           CONTINUE.
+       AUDITADODS-CR.
+           CONTINUE.
+       AUDITADODS-ST.
+           CONTINUE.
+       AUTCPFCGCSS-STEN.
+           CONTINUE.
+       AUTENTICACAODS-CR.
            CONTINUE.
        AUTENTICACAODS-DB2DMS.
            CONTINUE.
+       AUTENTICACAODS-DL.
+           CONTINUE.
+       AUTENTICACAODS-LOCK.
+           CONTINUE.
+       AUTENTICACAODS-ST.
+           CONTINUE.
        AVARIADOSDS-DB2DMS.
+           CONTINUE.
+       AVARIADOSDS-DL.
+           CONTINUE.
+       AVARIADOSDS-LOCK.
+           CONTINUE.
+       AVARIAHISTDS-CR.
            CONTINUE.
        AVARIAHISTDS-DB2DMS.
            CONTINUE.
+       AVARIAHISTDS-ST.
+           CONTINUE.
        BLINDADOSDS-DB2DMS.
+           CONTINUE.
+       BLOCHASSE-STBG.
            CONTINUE.
        BLOCHASSE-STEN.
            CONTINUE.
@@ -23,17 +43,51 @@
            CONTINUE.
        BLOPLAMSE2-STBG.
            CONTINUE.
+       BLOQFAZDS-CR.
+           CONTINUE.
+       BLOQFAZDS-ST.
+           CONTINUE.
        BLOQOBITODS-DB2DMS.
+           CONTINUE.
+       BLOQUEIODS-CR.
            CONTINUE.
        BLOQUEIODS-DB2DMS.
            CONTINUE.
+       BLOQUEIODS-DL.
+           CONTINUE.
+       BLOQUEIODS-LOCK.
+           CONTINUE.
+       BLOQUEIODS-ST.
+           CONTINUE.
+       CAMBIODS-CR.
+           CONTINUE.
        CAMBIODS-DB2DMS.
+           CONTINUE.
+       CAMBIODS-ST.
            CONTINUE.
        CNPJOFICIALDS-DB2DMS.
            CONTINUE.
+       CNPJORGSE-STBG.
+           CONTINUE.
+       CODSEGCRLVDS-CR.
+           CONTINUE.
        CODSEGCRLVDS-DB2DMS.
            CONTINUE.
+       CODSEGCRLVDS-DL.
+           CONTINUE.
+       CODSEGCRLVDS-LOCK.
+           CONTINUE.
+       CODSEGCRLVDS-ST.
+           CONTINUE.
+       CODSEGCRVDS-CR.
+           CONTINUE.
        CODSEGCRVDS-DB2DMS.
+           CONTINUE.
+       CODSEGCRVDS-DL.
+           CONTINUE.
+       CODSEGCRVDS-LOCK.
+           CONTINUE.
+       CODSEGCRVDS-ST.
            CONTINUE.
        COMVENDHISDS-DB2DMS.
            CONTINUE.
@@ -45,17 +99,47 @@
            CONTINUE.
        CONTAINER-RETURN.
            CONTINUE.
+       CSCPLACASE-STBG.
+           CONTINUE.
        CSVCERTDS-DB2DMS.
+           CONTINUE.
+       CSVCERTDS-DL.
+           CONTINUE.
+       CSVCERTDS-LOCK.
+           CONTINUE.
+       CSVHISTDS-CR.
+           CONTINUE.
+       CSVHISTDS-ST.
+           CONTINUE.
+       CSVPLACAMSE-STEN.
            CONTINUE.
        DATABASE-TERMINATE.
            CONTINUE.
+       DESBLOQUEIODS-CR.
+           CONTINUE.
        DESBLOQUEIODS-DB2DMS.
+           CONTINUE.
+       DESBLOQUEIODS-ST.
+           CONTINUE.
+       DESCHASSE-STEN.
            CONTINUE.
        DESPACHANTEDS-DB2DMS.
            CONTINUE.
        DETTABDS-DB2DMS.
            CONTINUE.
+       EAUCPFCGCSS-STEN.
+           CONTINUE.
+       ECRVAUTENTICADS-CR.
+           CONTINUE.
        ECRVAUTENTICADS-DB2DMS.
+           CONTINUE.
+       ECRVAUTENTICADS-DL.
+           CONTINUE.
+       ECRVAUTENTICADS-LOCK.
+           CONTINUE.
+       ECRVAUTENTICADS-ST.
+           CONTINUE.
+       ECRVAUTENTICASS1-STBG.
            CONTINUE.
        EMPSALVADOSDS-DB2DMS.
            CONTINUE.
@@ -65,27 +149,97 @@
            CONTINUE.
        END-CONTAINER-RETURN.
            CONTINUE.
+       ESCPLACDS-CR.
+           CONTINUE.
        ESCPLACDS-DB2DMS.
+           CONTINUE.
+       ESCPLACDS-LOCK.
+           CONTINUE.
+       ESCPLACDS-ST.
+           CONTINUE.
+       ESPELHODS-CR.
            CONTINUE.
        ESPELHODS-DB2DMS.
            CONTINUE.
+       ESPELHODS-ST.
+           CONTINUE.
+       ESTAMPAGEMDS-CR.
+           CONTINUE.
        ESTAMPAGEMDS-DB2DMS.
+           CONTINUE.
+       ESTAMPAGEMDS-DL.
+           CONTINUE.
+       ESTAMPAGEMDS-LOCK.
+           CONTINUE.
+       ESTAMPAGEMDS-ST.
+           CONTINUE.
+       ESTAMPAGEMSE6-STEN.
+           CONTINUE.
+       EXPURGODS-CR.
+           CONTINUE.
+       EXPURGODS-ST.
+           CONTINUE.
+       FILE-CHECK-IF-RESIDENT.
            CONTINUE.
        FINCONGRADS-DB2DMS.
            CONTINUE.
+       GERCHASSISE-STBG.
+           CONTINUE.
+       GERFICHACADDS-ST.
+           CONTINUE.
+       GEVERDS-CR.
+           CONTINUE.
        GEVERDS-DB2DMS.
+           CONTINUE.
+       GEVERDS-DL.
+           CONTINUE.
+       GEVERDS-LOCK.
+           CONTINUE.
+       GEVERDS-ST.
+           CONTINUE.
+       GEVEXCLUIDODS-CR.
            CONTINUE.
        GEVEXCLUIDODS-DB2DMS.
            CONTINUE.
+       GEVEXCLUIDODS-ST.
+           CONTINUE.
+       GEVINATIVODS-CR.
+           CONTINUE.
        GEVINATIVODS-DB2DMS.
+           CONTINUE.
+       GEVINATIVODS-ST.
+           CONTINUE.
+       GEVLACRACAODS-CR.
            CONTINUE.
        GEVLACRACAODS-DB2DMS.
            CONTINUE.
+       GEVLACRACAODS-ST.
+           CONTINUE.
+       GEVMODIFDS-CR.
+           CONTINUE.
        GEVMODIFDS-DB2DMS.
+           CONTINUE.
+       GEVMODIFDS-DL.
+           CONTINUE.
+       GEVMODIFDS-LOCK.
+           CONTINUE.
+       GEVMODIFDS-ST.
+           CONTINUE.
+       GRACHASSISE-STBG.
+           CONTINUE.
+       GRACHASSISE-STEN.
            CONTINUE.
        GRAVAMECONTRDS-DB2DMS.
            CONTINUE.
+       GRAVAMESDS-CR.
+           CONTINUE.
        GRAVAMESDS-DB2DMS.
+           CONTINUE.
+       GRAVAMESDS-DL.
+           CONTINUE.
+       GRAVAMESDS-LOCK.
+           CONTINUE.
+       GRAVAMESDS-ST.
            CONTINUE.
        HANDLE-DMTERMINATE.
            CONTINUE.
@@ -93,57 +247,223 @@
            CONTINUE.
        INSPECAODS-DB2DMS.
            CONTINUE.
+       INSPECAODS-DL.
+           CONTINUE.
+       INSPECAODS-LOCK.
+           CONTINUE.
+       INSPECAOHISTDS-CR.
+           CONTINUE.
+       INSPECAOHISTDS-ST.
+           CONTINUE.
        IPVAASTDS-DB2DMS.
            CONTINUE.
        LACRACAODS-DB2DMS.
            CONTINUE.
+       LACRACAODS-LOCK.
+           CONTINUE.
+       LACRACAODS-ST.
+           CONTINUE.
+       LICAENVIARDS-CR.
+           CONTINUE.
        LICAENVIARDS-DB2DMS.
+           CONTINUE.
+       LICAENVIARDS-ST.
+           CONTINUE.
+       LOGCADASTRDS-CR.
+           CONTINUE.
+       LOGCADASTRDS-ST.
            CONTINUE.
        MODIFICADODS-DB2DMS.
            CONTINUE.
+       MODIFICADODS-LOCK.
+           CONTINUE.
+       MODIFICADODS-ST.
+           CONTINUE.
+       MOTIVODS-CR.
+           CONTINUE.
+       MOTIVODS-ST.
+           CONTINUE.
+       MOTORDS-CR.
+           CONTINUE.
        MOTORDS-DB2DMS.
+           CONTINUE.
+       MOTORDS-ST.
+           CONTINUE.
+       NOVAPLAC1-DL.
+           CONTINUE.
+       NOVAPLAC1-ST.
+           CONTINUE.
+       NOVAPLAC2-DL.
+           CONTINUE.
+       NOVAPLAC2-ST.
+           CONTINUE.
+       NOVAPLAC3-DL.
+           CONTINUE.
+       NOVAPLAC3-ST.
+           CONTINUE.
+       NOVAPLAC4-DL.
+           CONTINUE.
+       NOVAPLACDS-CR.
            CONTINUE.
        NOVAPLACDS-DB2DMS.
            CONTINUE.
+       NOVAPLACDS-DL.
+           CONTINUE.
+       NOVAPLACDS-LOCK.
+           CONTINUE.
+       NOVAPLACDS-ST.
+           CONTINUE.
+       NOVAPLACDS-STBG.
+           CONTINUE.
+       NOVAPLACSE1-STBG.
+           CONTINUE.
+       NOVAPLACSE2-STBG.
+           CONTINUE.
+       NOVAPLACSS12-STBG.
+           CONTINUE.
+       NOVAPLACSS5-STBG.
+           CONTINUE.
+       NOVAPLACSS6-STBG.
+           CONTINUE.
+       NOVAPLACSS7-STBG.
+           CONTINUE.
+       NOVAPLACSS8-STBG.
+           CONTINUE.
+       NTFISCALDS-CR.
+           CONTINUE.
        NTFISCALDS-DB2DMS.
+           CONTINUE.
+       NTFISCALDS-DL.
+           CONTINUE.
+       NTFISCALDS-LOCK.
+           CONTINUE.
+       NTFISCALDS-ST.
+           CONTINUE.
+       OBSERVCHACODOBS-STBG.
+           CONTINUE.
+       OBSERVCRLVDS-CR.
            CONTINUE.
        OBSERVCRLVDS-DB2DMS.
            CONTINUE.
+       OBSERVCRLVDS-LOCK.
+           CONTINUE.
+       OBSERVCRLVDS-ST.
+           CONTINUE.
        PRECADCICLODS-DB2DMS.
+           CONTINUE.
+       PRECADCICLODS-DL.
+           CONTINUE.
+       PRECADCICLODS-LOCK.
+           CONTINUE.
+       PRECADCICLODS-ST.
+           CONTINUE.
+       PRODARRDS-CR.
            CONTINUE.
        PRODARRDS-DB2DMS.
            CONTINUE.
+       PRODARRDS-LOCK.
+           CONTINUE.
+       PRODARRDS-ST.
+           CONTINUE.
+       PRODCHASSIDS-CR.
+           CONTINUE.
        PRODCHASSIDS-DB2DMS.
+           CONTINUE.
+       PRODCHASSIDS-ST.
            CONTINUE.
        PRODCRTDS-DB2DMS.
            CONTINUE.
+       PRODCRTMSE-STEN.
+           CONTINUE.
        PRODCRVDS-DB2DMS.
+           CONTINUE.
+       PRODCRVDS-LOCK.
+           CONTINUE.
+       PRODCRVDS-ST.
+           CONTINUE.
+       PRODCRVEVENTDS-CR.
+           CONTINUE.
+       PRODCRVEVENTDS-ST.
+           CONTINUE.
+       PRODCSISS-STBG.
            CONTINUE.
        PRODDUTDS-DB2DMS.
            CONTINUE.
+       PRODHSTDS-CR.
+           CONTINUE.
+       PRODHSTDS-ST.
+           CONTINUE.
+       PRODISISS-STBG.
+           CONTINUE.
+       PRODPLACDS-CR.
+           CONTINUE.
        PRODPLACDS-DB2DMS.
+           CONTINUE.
+       PRODPLACDS-LOCK.
+           CONTINUE.
+       PRODPLACDS-ST.
+           CONTINUE.
+       PRODPLCDS-CR.
            CONTINUE.
        PRODPLCDS-DB2DMS.
            CONTINUE.
+       PRODPLCDS-LOCK.
+           CONTINUE.
+       PRODPLCDS-ST.
+           CONTINUE.
+       PRODPLCMSE-STBG.
+           CONTINUE.
+       PRODPLIDS-CR.
+           CONTINUE.
        PRODPLIDS-DB2DMS.
            CONTINUE.
+       PRODPLIDS-LOCK.
+           CONTINUE.
+       PRODPLIDS-ST.
+           CONTINUE.
+       PRODPLIMSE1-STBG.
+           CONTINUE.
        PRODPROTDS-DB2DMS.
+           CONTINUE.
+       PRODRENCMSS-STBG.
+           CONTINUE.
+       PRODRENIMSS-STBG.
+           CONTINUE.
+       PROPRIETARIODS-CR.
+           CONTINUE.
+       PROPRIETARIODS-ST.
            CONTINUE.
        PROPRIETPROVDS-DB2DMS.
            CONTINUE.
        PROTGEVDS-DB2DMS.
            CONTINUE.
+       PROTGEVDS-LOCK.
+           CONTINUE.
+       PROTGEVDS-ST.
+           CONTINUE.
        QUEIXADS-DB2DMS.
            CONTINUE.
        RECUPERADODS-DB2DMS.
+           CONTINUE.
+       REJCHASSISS-STBG.
+           CONTINUE.
+       REJPLAMSS2-STBG.
            CONTINUE.
        RENAJUDDS-DB2DMS.
            CONTINUE.
        RENAVEDS-DB2DMS.
            CONTINUE.
+       RENAVEDS-LOCK.
+           CONTINUE.
+       RENAVEDS-ST.
+           CONTINUE.
        RENAVEHISDS-DB2DMS.
            CONTINUE.
        SEGURADORADS-DB2DMS.
+           CONTINUE.
+       SINISTRODS-CR.
+           CONTINUE.
+       SINISTRODS-ST.
            CONTINUE.
        SIRCOFDS-DB2DMS.
            CONTINUE.
@@ -153,17 +473,121 @@
            CONTINUE.
        TABMUNBRDS-DB2DMS.
            CONTINUE.
+       TANQUEDS-CR.
+           CONTINUE.
+       TANQUEDS-ST.
+           CONTINUE.
+       TAVRENAVSS2-STEN.
+           CONTINUE.
+       TAXADS-CR.
+           CONTINUE.
        TAXADS-DB2DMS.
+           CONTINUE.
+       TAXADS-ST.
+           CONTINUE.
+       TAXAS2-DL.
+           CONTINUE.
+       TAXAS2-ST.
+           CONTINUE.
+       TAXAS4-DL.
+           CONTINUE.
+       TAXAS4-ST.
+           CONTINUE.
+       TAXASDS-CR.
            CONTINUE.
        TAXASDS-DB2DMS.
            CONTINUE.
+       TAXASDS-DL.
+           CONTINUE.
+       TAXASDS-LOCK.
+           CONTINUE.
+       TAXASDS-ST.
+           CONTINUE.
+       TAXBCDTPSE1-STEN.
+           CONTINUE.
+       TAXCPFSS1-STBG.
+           CONTINUE.
+       TAXCPFSS1-STEN.
+           CONTINUE.
+       TAXPLACASS1-STBG.
+           CONTINUE.
+       TAXPLACASS1-STEN.
+           CONTINUE.
+       TAXRENAVSS1-STEN.
+           CONTINUE.
+       TAXSENHASE1-STBG.
+           CONTINUE.
+       TRANSACOESDS-CR.
+           CONTINUE.
+       TRANSACOESDS-ST.
+           CONTINUE.
+       TRANSACTION-BEGIN.
+           CONTINUE.
+       TRANSACTION-END.
+           CONTINUE.
        USUARIODS-DB2DMS.
+           CONTINUE.
+       VALIDACAODS-CR.
            CONTINUE.
        VALIDACAODS-DB2DMS.
            CONTINUE.
+       VALIDACAODS-DL.
+           CONTINUE.
+       VALIDACAODS-LOCK.
+           CONTINUE.
+       VALIDACAODS-ST.
+           CONTINUE.
+       VALIDACAOMSS-STEN.
+           CONTINUE.
+       VALIDADOSDS-CR.
+           CONTINUE.
        VALIDADOSDS-DB2DMS.
+           CONTINUE.
+       VALIDADOSDS-ST.
            CONTINUE.
        VEICCODIPVADS-DB2DMS.
            CONTINUE.
+       VISTHISTDS-CR.
+           CONTINUE.
+       VISTHISTDS-ST.
+           CONTINUE.
        VISTORIADS-DB2DMS.
+           CONTINUE.
+       VISTORIADS-DL.
+           CONTINUE.
+       VISTORIADS-LOCK.
+           CONTINUE.
+       AUTENTICACAODS-RECR.
+           CONTINUE.
+       CODSEGCRLVDS-RECR.
+           CONTINUE.
+       CODSEGCRVDS-RECR.
+           CONTINUE.
+       ECRVAUTENTICADS-RECR.
+           CONTINUE.
+       ESTAMPAGEMDS-RECR.
+           CONTINUE.
+       GEVERDS-RECR.
+           CONTINUE.
+       GEVMODIFDS-RECR.
+           CONTINUE.
+       GRAVAMESDS-RECR.
+           CONTINUE.
+       NOVAPLAC1-RECR.
+           CONTINUE.
+       NOVAPLAC2-RECR.
+           CONTINUE.
+       NOVAPLAC3-RECR.
+           CONTINUE.
+       NOVAPLACDS-RECR.
+           CONTINUE.
+       PRECADCICLODS-RECR.
+           CONTINUE.
+       TAXAS2-RECR.
+           CONTINUE.
+       TAXAS4-RECR.
+           CONTINUE.
+       TAXASDS-RECR.
+           CONTINUE.
+       VALIDACAODS-RECR.
            CONTINUE.

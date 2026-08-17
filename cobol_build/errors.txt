@@ -1,0 +1,34 @@
+cobol_build\FGAA012D_processed: in section '000-E-PROGRAMA':
+cobol_build\FGAA012D_processed: in paragraph '010-E-FIND-PLAS':
+cobol_build\FGAA012D_processed:1655: error: 'QXA-TIPO-DECL' is not defined
+cobol_build\FGAA012D_processed:1657: error: 'QUEIXADS' is not defined
+cobol_build\FGAA012D_processed: in paragraph '010-10-PLAC':
+cobol_build\FGAA012D_processed:1753: error: 'QXA-DT-QUEIXA' is not defined
+cobol_build\FGAA012D_processed:1753: error: 'REC-DT-RECUP' is not defined
+cobol_build\FGAA012D_processed:1755: error: 'QXA-HR-QUEIXA' is not defined
+cobol_build\FGAA012D_processed:1755: error: 'REC-HR-RECUP' is not defined
+cobol_build\FGAA012D_processed:1752: error: invalid expression
+cobol_build\FGAA012D_processed:1760: error: 'REC-TIPO-DECL' is not defined
+cobol_build\FGAA012D_processed:1762: error: 'RECUPERADODS' is not defined
+cobol_build\FGAA012D_processed: in paragraph '010-15-PLAC-MERC':
+cobol_build\FGAA012D_processed:1811: error: invalid expression
+cobol_build\FGAA012D_processed: in paragraph '010-20-PLAC':
+cobol_build\FGAA012D_processed:1869: error: 'ALE-DT-ALERTA' is not defined
+cobol_build\FGAA012D_processed:1871: error: 'ALE-HR-ALERTA' is not defined
+cobol_build\FGAA012D_processed:1869: error: invalid expression
+cobol_build\FGAA012D_processed:1869: error: invalid expression
+cobol_build\FGAA012D_processed:1877: error: invalid expression
+cobol_build\FGAA012D_processed:1877: error: invalid expression
+cobol_build\FGAA012D_processed:1889: error: 'ALERTADS' is not defined
+cobol_build\FGAA012D_processed: in paragraph '010-30-PLAC-MERC':
+cobol_build\FGAA012D_processed:1938: error: invalid expression
+cobol_build\FGAA012D_processed:1946: error: invalid expression
+cobol_build\FGAA012D_processed: in paragraph '020-10-CHAS':
+cobol_build\FGAA012D_processed:2039: error: invalid expression
+cobol_build\FGAA012D_processed: in paragraph '020-20-CHAS':
+cobol_build\FGAA012D_processed:2088: error: invalid expression
+cobol_build\FGAA012D_processed:2088: error: invalid expression
+cobol_build\FGAA012D_processed:2096: error: invalid expression
+cobol_build\FGAA012D_processed:2096: error: invalid expression
+cobol_build\FGAA012D_processed: in paragraph '030-E-FIND-TABMUN':
+cobol_build\FGAA012D_processed:2138: error: 'BR-SIG-EST' is not defined

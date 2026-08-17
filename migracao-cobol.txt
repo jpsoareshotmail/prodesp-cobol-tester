@@ -1,0 +1,2 @@
+cobol Unisys 74 e banco de dados dms 
+-> cobol ibm zos cobol 6.5 base db2

@@ -81,6 +81,16 @@ def preprocessar_sql(source_content: str) -> str:
 
         # Linha normal na PROCEDURE DIVISION
         if in_procedure_div:
+            # Comentar linhas orfas (continuacoes de linhas ja comentadas)
+            # Padrao: linha anterior comentada, linha atual comeca com USING/INTO/FROM/etc
+            if len(result) > 0 and result[-1][6:7] == '*':
+                stripped = line.strip().upper()
+                if stripped and stripped.split()[0] in ('USING', 'INTO', 'FROM', 'WHERE',
+                        'ORDER', 'AND', 'OR', 'SET', 'VALUES', 'BY'):
+                    result.append(_comment_line(line))
+                    i += 1
+                    continue
+
             # Comentar PERFORMs e CALLs de paragrafos de DB (Micro Focus syntax)
             if 'PERFORM' in line.upper() or 'CALL' in line.upper():
                 upper_line = line.upper().strip()
@@ -173,43 +183,43 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
             return True, "Sem SQL (copiado direto)"
 
         # Extrair host variables (precedidas por : em SQL)
-        host_vars = set(re.findall(r':([A-Za-z][\w-]*)', content))
+        # NAO gerar se WSGL-DATASETS.cpy existe (copybooks completos disponiveis)
+        master_cpy = Path(output_path).parent / 'copy' / 'WSGL-DATASETS.cpy'
+        if master_cpy.exists():
+            host_vars = set()  # Copybooks ja definem tudo
+        else:
+            host_vars = set(re.findall(r':([A-Za-z][\w-]*)', content))
 
         # Processar SQL
         processed = preprocessar_sql(content)
 
-        # Adicionar COPY de table stubs se necessario (para programas com EXEC SQL)
-        # Inserir antes da LINKAGE SECTION
-        table_copy = f'       COPY {source_path.stem}-TABLES.\n'
-        table_cpy = Path(output_path).parent / 'copy' / f'{source_path.stem}-TABLES.cpy'
-        if table_cpy.exists():
-            for marker in ['       LINKAGE SECTION', '       PROCEDURE']:
-                if marker in processed:
-                    processed = processed.replace(marker, table_copy + marker, 1)
-                    break
-            # Nao gerar host vars se tables.cpy existe (evita duplicacao)
-            host_vars = set()
-
-        # Adicionar declaracoes de host variables no WORKING-STORAGE
-        if host_vars:
-            var_decls = _gerar_host_vars(host_vars, content)
-            # Inserir antes da LINKAGE SECTION ou PROCEDURE DIVISION
-            inserted = False
-            for marker in ['       LINKAGE SECTION', '       PROCEDURE']:
-                if marker in processed:
-                    processed = processed.replace(
-                        marker,
-                        var_decls + '\n' + marker,
-                        1
-                    )
-                    inserted = True
-                    break
-            if not inserted:
-                # Fallback: inserir antes da ultima linha do WORKING-STORAGE
-                for marker in ['LINKAGE SECTION', 'PROCEDURE   DIVISION', 'PROCEDURE DIVISION']:
+        # Se WSGL-DATASETS existe, nao precisa de -TABLES.cpy nem host vars
+        master_cpy = Path(output_path).parent / 'copy' / 'WSGL-DATASETS.cpy'
+        if not master_cpy.exists():
+            # Adicionar COPY de table stubs (modo antigo)
+            table_copy = f'       COPY {source_path.stem}-TABLES.\n'
+            table_cpy = Path(output_path).parent / 'copy' / f'{source_path.stem}-TABLES.cpy'
+            if table_cpy.exists():
+                for marker in ['       LINKAGE SECTION', '       PROCEDURE']:
                     if marker in processed:
-                        processed = processed.replace(marker, var_decls + '\n       ' + marker, 1)
+                        processed = processed.replace(marker, table_copy + marker, 1)
                         break
+                host_vars = set()
+
+            # Adicionar declaracoes de host variables no WORKING-STORAGE
+            if host_vars:
+                var_decls = _gerar_host_vars(host_vars, content)
+                inserted = False
+                for marker in ['       LINKAGE SECTION', '       PROCEDURE']:
+                    if marker in processed:
+                        processed = processed.replace(marker, var_decls + '\n' + marker, 1)
+                        inserted = True
+                        break
+                if not inserted:
+                    for marker in ['LINKAGE SECTION', 'PROCEDURE   DIVISION', 'PROCEDURE DIVISION']:
+                        if marker in processed:
+                            processed = processed.replace(marker, var_decls + '\n       ' + marker, 1)
+                            break
 
         output_path.write_text(processed, encoding='latin-1')
 

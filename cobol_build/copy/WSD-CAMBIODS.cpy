@@ -1,0 +1,31 @@
+      * WSD copybook for CAMBIODS (auto-generated)
+       01  CAMBIODS.
+           05  CAMBIODS-ROWID                 PIC X(018).
+           05  CAM-CHASSI-X                   PIC X(021).
+           05  CAM-DT-EXCLUSAO-X              PIC X(010).
+           05  CAM-DT-INCLUSAO-X              PIC X(010).
+           05  CAM-DT-PROT-X                  PIC X(010).
+           05  CAM-FILLER2-X                  PIC X(020).
+           05  CAM-HR-EXCLUSAO-X              PIC X(006).
+           05  CAM-HR-INCLUSAO-X              PIC X(006).
+           05  CAM-NUM-CAMBIO-X               PIC X(010).
+           05  CAM-PLACA-MERC-X               PIC X(010).
+           05  CAM-PLACA-X                    PIC X(010).
+           05  CAM-PROTOCOLO-X                PIC X(010).
+           05  CAM-SIT-X                      PIC X(030).
+           05  CAM-USU-EXCL-X                 PIC X(008).
+           05  CAM-USUARIO-X                  PIC X(008).
+           05  CAM-CHASSI                     PIC X(021).
+           05  CAM-DT-EXCLUSAO                PIC 9(009).
+           05  CAM-DT-INCLUSAO                PIC 9(009).
+           05  CAM-DT-PROT                    PIC 9(009).
+           05  CAM-FILLER2                    PIC X(020).
+           05  CAM-HR-EXCLUSAO                PIC 9(009).
+           05  CAM-HR-INCLUSAO                PIC 9(009).
+           05  CAM-NUM-CAMBIO                 PIC 9(009).
+           05  CAM-PLACA-MERC                 PIC X(010).
+           05  CAM-PLACA                      PIC X(010).
+           05  CAM-PROTOCOLO                  PIC X(010).
+           05  CAM-SIT                        PIC X(030).
+           05  CAM-USU-EXCL                   PIC X(008).
+           05  CAM-USUARIO                    PIC X(008).

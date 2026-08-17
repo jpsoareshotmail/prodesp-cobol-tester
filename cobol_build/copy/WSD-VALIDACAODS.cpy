@@ -1,0 +1,29 @@
+      * WSD copybook for VALIDACAODS (auto-generated)
+       01  VALIDACAODS.
+           05  VALIDACAODS-ROWID              PIC X(018).
+           05  VAL-BANCO-X                    PIC X(030).
+           05  VAL-CPF-CGC-X                  PIC X(014).
+           05  VAL-DESP-SSP-X                 PIC X(030).
+           05  VAL-DT-INCLUSAO-X              PIC X(010).
+           05  VAL-DT-PAG-X                   PIC X(010).
+           05  VAL-FILLER-X                   PIC X(020).
+           05  VAL-HR-INCLUSAO-X              PIC X(006).
+           05  VAL-MUNICIPIO-X                PIC X(005).
+           05  VAL-PLACA-MERC-X               PIC X(010).
+           05  VAL-PLACA-X                    PIC X(010).
+           05  VAL-RENAVAM-X                  PIC X(011).
+           05  VAL-TIPO-DOC-X                 PIC X(006).
+           05  VAL-VALOR-X                    PIC X(030).
+           05  VAL-BANCO                      PIC X(030).
+           05  VAL-CPF-CGC                    PIC X(014).
+           05  VAL-DESP-SSP                   PIC X(030).
+           05  VAL-DT-INCLUSAO                PIC 9(009).
+           05  VAL-DT-PAG                     PIC 9(009).
+           05  VAL-FILLER                     PIC X(020).
+           05  VAL-HR-INCLUSAO                PIC 9(009).
+           05  VAL-MUNICIPIO                  PIC 9(009).
+           05  VAL-PLACA-MERC                 PIC X(010).
+           05  VAL-PLACA                      PIC X(010).
+           05  VAL-RENAVAM                    PIC X(011).
+           05  VAL-TIPO-DOC                   PIC X(006).
+           05  VAL-VALOR                      PIC X(030).

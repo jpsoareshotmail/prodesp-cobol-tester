@@ -1,0 +1,37 @@
+      * WSD copybook for DESPACHANTEDS (auto-generated)
+       01  DESPACHANTEDS.
+           05  DESPACHANTEDS-ROWID            PIC X(018).
+           05  DSP-BAIRRO-X                   PIC X(040).
+           05  DSP-CEP-X                      PIC X(008).
+           05  DSP-CIDADE-X                   PIC X(040).
+           05  DSP-CODIGO-X                   PIC X(006).
+           05  DSP-COMPL-X                    PIC X(040).
+           05  DSP-CPF-CGC-X                  PIC X(014).
+           05  DSP-CRDD-X                     PIC X(030).
+           05  DSP-CREDENCIAL-X               PIC X(030).
+           05  DSP-DT-INCLUSAO-X              PIC X(010).
+           05  DSP-DT-SIT-X                   PIC X(010).
+           05  DSP-ENDERECO-X                 PIC X(040).
+           05  DSP-ESTADO-X                   PIC X(030).
+           05  DSP-FANTASIA-X                 PIC X(030).
+           05  DSP-FILLER1-X                  PIC X(020).
+           05  DSP-NOME-X                     PIC X(040).
+           05  DSP-NUMERO-X                   PIC X(030).
+           05  DSP-SIT-SSP-X                  PIC X(030).
+           05  DSP-BAIRRO                     PIC X(040).
+           05  DSP-CEP                        PIC X(008).
+           05  DSP-CIDADE                     PIC X(040).
+           05  DSP-CODIGO                     PIC X(006).
+           05  DSP-COMPL                      PIC X(040).
+           05  DSP-CPF-CGC                    PIC X(014).
+           05  DSP-CRDD                       PIC X(030).
+           05  DSP-CREDENCIAL                 PIC X(030).
+           05  DSP-DT-INCLUSAO                PIC 9(009).
+           05  DSP-DT-SIT                     PIC 9(009).
+           05  DSP-ENDERECO                   PIC X(040).
+           05  DSP-ESTADO                     PIC X(030).
+           05  DSP-FANTASIA                   PIC X(030).
+           05  DSP-FILLER1                    PIC X(020).
+           05  DSP-NOME                       PIC X(040).
+           05  DSP-NUMERO                     PIC X(030).
+           05  DSP-SIT-SSP                    PIC X(030).

@@ -8,3 +8,6 @@
            05  WS-ERROR-MSG          PIC X(080) VALUE SPACES.
            05  WS-PROGRAM-NAME       PIC X(010) VALUE SPACES.
            05  WS-TIMESTAMP          PIC X(026) VALUE SPACES.
+       01  MYSELF.
+           05  TASKVALUE        PIC X(008) VALUE SPACES.
+       01  C-MAPA                   PIC X(008) VALUE SPACES.

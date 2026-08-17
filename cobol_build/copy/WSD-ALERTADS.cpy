@@ -1,0 +1,29 @@
+      * WSD copybook for ALERTADS (auto-generated)
+       01  ALERTADS.
+           05  ALERTADS-ROWID                 PIC X(018).
+           05  ALE-CHASSIS-X                  PIC X(021).
+           05  ALE-DELEG-ALERTA-X             PIC X(030).
+           05  ALE-DT-ALERTA-X                PIC X(010).
+           05  ALE-DT-CADALE-X                PIC X(010).
+           05  ALE-FILLER1-X                  PIC X(020).
+           05  ALE-FILLER2-X                  PIC X(020).
+           05  ALE-HR-ALERTA-X                PIC X(006).
+           05  ALE-HR-CADALE-X                PIC X(006).
+           05  ALE-MUNICIPIO-X                PIC X(005).
+           05  ALE-PLACA-X                    PIC X(010).
+           05  ALE-PLACAX-X                   PIC X(010).
+           05  ALE-UF-JURISD-X                PIC X(002).
+           05  ALE-USU-ALERTA-X               PIC X(008).
+           05  ALE-CHASSIS                    PIC X(021).
+           05  ALE-DELEG-ALERTA               PIC X(030).
+           05  ALE-DT-ALERTA                  PIC 9(009).
+           05  ALE-DT-CADALE                  PIC 9(009).
+           05  ALE-FILLER1                    PIC X(020).
+           05  ALE-FILLER2                    PIC X(020).
+           05  ALE-HR-ALERTA                  PIC 9(009).
+           05  ALE-HR-CADALE                  PIC 9(009).
+           05  ALE-MUNICIPIO                  PIC 9(009).
+           05  ALE-PLACA                      PIC X(010).
+           05  ALE-PLACAX                     PIC X(010).
+           05  ALE-UF-JURISD                  PIC X(002).
+           05  ALE-USU-ALERTA                 PIC X(008).

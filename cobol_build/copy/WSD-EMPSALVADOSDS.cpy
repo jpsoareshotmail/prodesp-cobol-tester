@@ -1,0 +1,33 @@
+      * WSD copybook for EMPSALVADOSDS (auto-generated)
+       01  EMPSALVADOSDS.
+           05  EMPSALVADOSDS-ROWID            PIC X(018).
+           05  SLV-BAIRRO-X                   PIC X(040).
+           05  SLV-CNPJ-X                     PIC X(014).
+           05  SLV-COMPL-X                    PIC X(040).
+           05  SLV-CPF-USUARIO-X              PIC X(011).
+           05  SLV-DT-INCLUSAO-X              PIC X(010).
+           05  SLV-ENDERECO-X                 PIC X(040).
+           05  SLV-FILLER-X                   PIC X(020).
+           05  SLV-FILLER1-X                  PIC X(020).
+           05  SLV-FILLER2-X                  PIC X(020).
+           05  SLV-HR-INCLUSAO-X              PIC X(006).
+           05  SLV-MUNICIPIO-X                PIC X(005).
+           05  SLV-NOME-X                     PIC X(040).
+           05  SLV-NUMERO-X                   PIC X(030).
+           05  SLV-TRANSACAO-X                PIC X(030).
+           05  SLV-USUARIO-X                  PIC X(008).
+           05  SLV-BAIRRO                     PIC X(040).
+           05  SLV-CNPJ                       PIC X(014).
+           05  SLV-COMPL                      PIC X(040).
+           05  SLV-CPF-USUARIO                PIC X(011).
+           05  SLV-DT-INCLUSAO                PIC 9(009).
+           05  SLV-ENDERECO                   PIC X(040).
+           05  SLV-FILLER                     PIC X(020).
+           05  SLV-FILLER1                    PIC X(020).
+           05  SLV-FILLER2                    PIC X(020).
+           05  SLV-HR-INCLUSAO                PIC 9(009).
+           05  SLV-MUNICIPIO                  PIC 9(009).
+           05  SLV-NOME                       PIC X(040).
+           05  SLV-NUMERO                     PIC X(030).
+           05  SLV-TRANSACAO                  PIC X(030).
+           05  SLV-USUARIO                    PIC X(008).
