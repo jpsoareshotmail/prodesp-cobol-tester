@@ -94,6 +94,7 @@
         <div class="tab active" onclick="switchTab('comparar')">Comparar Placas</div>
         <div class="tab" onclick="switchTab('programas')">Programas</div>
         <div class="tab" onclick="switchTab('codigo')">Codigo Fonte</div>
+        <div class="tab" onclick="switchTab('ambiente')">Ambiente</div>
         <div class="tab" onclick="switchTab('status')">Status COBOL</div>
     </div>
 
@@ -145,6 +146,153 @@
                 <button class="btn btn-dark" onclick="carregarCodigo()">Carregar</button>
             </div>
             <div id="code-view"></div>
+        </div>
+    </div>
+
+    <!-- Tab: Ambiente -->
+    <div class="tab-content" id="tab-ambiente">
+        <div class="card">
+            <div class="card-title">Ambiente de Teste vs Ambiente Alvo</div>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">Este sistema usa <strong>GnuCOBOL 3.1.2</strong> para validacao de logica. O ambiente de producao alvo e <strong>IBM z/OS Enterprise COBOL 6.5 com DB2</strong>. Abaixo as diferencas relevantes.</p>
+
+            <div style="overflow-x:auto">
+            <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:20px">
+                <thead>
+                    <tr style="background:var(--card-hover)">
+                        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700">Caracteristica</th>
+                        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-weight:700;background:#F0FDF4">GnuCOBOL 3.1.2<br><span style="font-weight:400;color:var(--text-muted)">(Este ambiente)</span></th>
+                        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-weight:700;background:#EFF6FF">IBM z/OS COBOL 6.5<br><span style="font-weight:400;color:var(--text-muted)">(Ambiente alvo)</span></th>
+                        <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700">Impacto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="border-bottom:1px solid var(--border)">
+                        <td style="padding:8px 12px;font-weight:600">Plataforma</td>
+                        <td style="padding:8px 12px;text-align:center">Windows / Linux (x86-64)</td>
+                        <td style="padding:8px 12px;text-align:center">z/OS (mainframe s390x)</td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Encoding diferente (ASCII vs EBCDIC)</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
+                        <td style="padding:8px 12px;font-weight:600">COBOL Standard</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">COBOL 85/2002</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">COBOL 85/2002/2014</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Nenhum — compativel para programas padrao</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border)">
+                        <td style="padding:8px 12px;font-weight:600">EXEC SQL (DB2)</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-red">Comentado (stub)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Nativo (DSNHPC)</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)"><strong>Critico:</strong> SQL nao executa aqui — logica de negocio OK, acesso DB nao testado</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
+                        <td style="padding:8px 12px;font-weight:600">EXEC CICS</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-red">Comentado (stub)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Nativo (CICS TS)</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)"><strong>Critico:</strong> Transacoes online nao executam aqui</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border)">
+                        <td style="padding:8px 12px;font-weight:600">Object COBOL (INVOKE)</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-red">Nao suportado</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Suportado</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">5 programas afetados (OGEV050D, 433D, 443D, OGAA018D, 640D)</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
+                        <td style="padding:8px 12px;font-weight:600">COMP / COMP-3 / COMP-5</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Suportado</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Suportado</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Atencao: tamanho de COMP pode variar (big-endian vs little-endian)</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border)">
+                        <td style="padding:8px 12px;font-weight:600">Encoding de dados</td>
+                        <td style="padding:8px 12px;text-align:center">ASCII / UTF-8</td>
+                        <td style="padding:8px 12px;text-align:center">EBCDIC (CP1047)</td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Comparacoes alfanumericas podem dar resultado diferente</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
+                        <td style="padding:8px 12px;font-weight:600">DECIMAL-POINT IS COMMA</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Suportado</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Suportado</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Sem diferenca</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border)">
+                        <td style="padding:8px 12px;font-weight:600">REDEFINES flexivel</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">-flarger-redefines-ok</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Permitido</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Sem diferenca com flags relaxadas</td>
+                    </tr>
+                    <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
+                        <td style="padding:8px 12px;font-weight:600">Copybooks</td>
+                        <td style="padding:8px 12px;text-align:center"><span style="color:var(--warning);font-weight:600">Inferidos (2071 campos)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Originais (PDS)</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">PICs inferidos podem ter tamanho diferente do real</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px 12px;font-weight:600">Banco de dados</td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-red">Sem banco (stubs)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">DB2 real</span></td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Nenhuma query e executada neste ambiente</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">O que este ambiente valida</div>
+            <div class="grid-2">
+                <div style="padding:16px;border:1px solid var(--green);border-radius:8px;background:#F0FDF4">
+                    <h4 style="color:#065F46;font-size:13px;margin-bottom:8px">VALIDA</h4>
+                    <ul style="font-size:12px;color:var(--text-3);line-height:2;padding-left:16px">
+                        <li>Logica de negocio pura (calculos, validacoes)</li>
+                        <li>Fluxo de controle (IF/ELSE, PERFORM, GO TO)</li>
+                        <li>Manipulacao de strings e numericos</li>
+                        <li>Comparacao de resultados Original vs Convertido</li>
+                        <li>Compilabilidade do fonte convertido</li>
+                        <li>Estrutura do programa (DIVISION, SECTION, COPY)</li>
+                    </ul>
+                </div>
+                <div style="padding:16px;border:1px solid var(--danger);border-radius:8px;background:#FEF2F2">
+                    <h4 style="color:#991B1B;font-size:13px;margin-bottom:8px">NAO VALIDA</h4>
+                    <ul style="font-size:12px;color:var(--text-3);line-height:2;padding-left:16px">
+                        <li>Acesso real a banco de dados (DB2/DMS)</li>
+                        <li>Transacoes CICS (containers, commarea)</li>
+                        <li>Performance em mainframe</li>
+                        <li>Encoding EBCDIC e collation sequence</li>
+                        <li>Integracao com JES/VSAM/QSAM</li>
+                        <li>Comportamento de runtime z/OS (LE runtime)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">Caminho para Producao</div>
+            <div style="display:flex;gap:12px;flex-wrap:wrap">
+                <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid var(--green);text-align:center">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 1</div>
+                    <div style="font-size:13px;font-weight:600;margin-top:4px">GnuCOBOL</div>
+                    <div style="font-size:11px;color:var(--text-3)">Validacao logica</div>
+                    <div style="font-size:10px;color:var(--green);margin-top:4px">ATUAL</div>
+                </div>
+                <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid var(--info);text-align:center">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 2</div>
+                    <div style="font-size:13px;font-weight:600;margin-top:4px">IBM Wazi</div>
+                    <div style="font-size:11px;color:var(--text-3)">Compilacao z/OS</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px">PROXIMO</div>
+                </div>
+                <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid var(--warning);text-align:center">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 3</div>
+                    <div style="font-size:13px;font-weight:600;margin-top:4px">Homologacao</div>
+                    <div style="font-size:11px;color:var(--text-3)">DB2 + CICS real</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px">PENDENTE</div>
+                </div>
+                <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid #1A1A1A;text-align:center">
+                    <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 4</div>
+                    <div style="font-size:13px;font-weight:600;margin-top:4px">Producao</div>
+                    <div style="font-size:11px;color:var(--text-3)">z/OS Prodesp</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:4px">FUTURO</div>
+                </div>
+            </div>
         </div>
     </div>
 
