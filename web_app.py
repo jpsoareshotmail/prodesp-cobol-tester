@@ -747,6 +747,40 @@ def get_stats():
         "taxa_sucesso": taxa_sucesso,
     })
 
+@app.route('/api/estrutura/gerar', methods=['POST'])
+def gerar_estrutura():
+    """Gera DDL + massa de dados a partir dos programas COBOL + copybooks.
+
+    Usa a ferramenta tooling/ para inferir a estrutura das tabelas DB2 a partir
+    dos EXEC SQL dos programas, tipando as colunas pelos copybooks disponiveis.
+    """
+    try:
+        data = request.json or {}
+        n_massa = int(data.get('massa', 10))
+        if n_massa < 1:
+            n_massa = 1
+        if n_massa > 50:
+            n_massa = 50
+
+        from tooling.orchestrator import gerar_para_web
+
+        # Pastas de copybooks disponiveis (stubs + copybooks de tela entregues)
+        pastas_copy = ['cobol_build/copy']
+        amostra = Path('entregas/copybook-Amostragem POC  - Fontes Convertidos/Originais')
+        if amostra.exists():
+            pastas_copy.append(str(amostra))
+
+        resultado = gerar_para_web(
+            'fontes_convertidos/Convertidos',
+            pastas_copy,
+            n_massa=n_massa,
+        )
+        return jsonify(resultado)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 def _execute_tests():
     """Executa suite de testes em background"""
     global test_state

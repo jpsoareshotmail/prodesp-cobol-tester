@@ -218,3 +218,56 @@ def gerar_tudo(pasta_programas, pastas_copybooks: list, out_dir, n_massa: int = 
         'campos_copybook': len(copy_idx),
         'out': str(out),
     }
+
+
+def gerar_para_web(pasta_programas, pastas_copybooks: list, n_massa: int = 10) -> dict:
+    """Versao em memoria para a interface web. Nao escreve arquivos.
+
+    Retorna:
+      {
+        'resumo': {'tabelas': N, 'campos_copybook': N, 'colunas_fieis': N,
+                   'colunas_inferidas': N, 'fidelidade': 99.7},
+        'schema': '<DDL completa>',
+        'massa': '<INSERTs>',
+        'tabelas': [ {nome, colunas, fieis, inferidas, programas}, ... ]
+      }
+    """
+    copy_idx = indexar_copybooks(pastas_copybooks)
+    tabelas = coletar_tabelas(pasta_programas)
+
+    ddl_all = []
+    massa_all = []
+    tab_rows = []
+    total_fieis = 0
+    total_inf = 0
+    for key in sorted(tabelas):
+        ti = tabelas[key]
+        ddl_all.append(gerar_ddl_tabela(ti, copy_idx))
+        massa_all.append(gerar_massa_tabela(ti, copy_idx, n=n_massa))
+        resolvidas = resolver_colunas(ti, copy_idx)
+        fieis = sum(1 for r in resolvidas if r[2] == 'copybook')
+        inf = len(resolvidas) - fieis
+        total_fieis += fieis
+        total_inf += inf
+        tab_rows.append({
+            'nome': ti.full_name,
+            'colunas': len(ti.columns),
+            'fieis': fieis,
+            'inferidas': inf,
+            'programas': len(ti.programs),
+        })
+
+    total_col = total_fieis + total_inf
+    fidelidade = round(100 * total_fieis / total_col, 1) if total_col else 0.0
+    return {
+        'resumo': {
+            'tabelas': len(tabelas),
+            'campos_copybook': len(copy_idx),
+            'colunas_fieis': total_fieis,
+            'colunas_inferidas': total_inf,
+            'fidelidade': fidelidade,
+        },
+        'schema': '\n\n'.join(ddl_all),
+        'massa': '\n\n'.join(massa_all),
+        'tabelas': tab_rows,
+    }

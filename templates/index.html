@@ -94,6 +94,7 @@
         <div class="tab active" onclick="switchTab('comparar')">Comparar Placas</div>
         <div class="tab" onclick="switchTab('programas')">Programas</div>
         <div class="tab" onclick="switchTab('codigo')">Codigo Fonte</div>
+        <div class="tab" onclick="switchTab('estrutura')">Estrutura de Dados</div>
         <div class="tab" onclick="switchTab('ambiente')">Ambiente</div>
         <div class="tab" onclick="switchTab('status')">Status COBOL</div>
     </div>
@@ -293,6 +294,22 @@
                     <div style="font-size:10px;color:var(--text-muted);margin-top:4px">FUTURO</div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Tab: Estrutura de Dados -->
+    <div class="tab-content" id="tab-estrutura">
+        <div class="card">
+            <div class="card-title">Geracao Automatica de Estrutura de Dados</div>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">
+                Gera a <strong>DDL (CREATE TABLE)</strong> e a <strong>massa de dados de teste</strong> automaticamente a partir do codigo-fonte COBOL, sem depender do mainframe. As tabelas DB2 sao extraidas dos comandos <code>EXEC SQL</code> dos programas e os tipos das colunas vem dos copybooks disponiveis.
+            </p>
+            <div class="input-row" style="align-items:center">
+                <label style="font-size:13px;color:var(--text-3)">Linhas de massa por tabela:</label>
+                <input type="number" id="estrutura-massa" value="10" min="1" max="50" style="width:80px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
+                <button class="btn btn-dark" onclick="gerarEstrutura()">Gerar DDL + Massa</button>
+            </div>
+            <div id="estrutura-view"><p style="color:var(--text-muted);font-size:13px">Clique em "Gerar" para produzir a estrutura de dados.</p></div>
         </div>
     </div>
 
@@ -574,6 +591,65 @@ async function carregarStatus() {
         html += '</div>';
         div.innerHTML = html;
     } catch(e) { div.innerHTML = '<p style="color:var(--danger)">Erro: ' + e.message + '</p>'; }
+}
+
+// Estrutura de Dados (DDL + massa)
+async function gerarEstrutura() {
+    const div = document.getElementById('estrutura-view');
+    const n = document.getElementById('estrutura-massa').value || 10;
+    div.innerHTML = '<span class="spinner"></span> Gerando estrutura a partir do codigo-fonte...';
+    try {
+        const r = await fetch('/api/estrutura/gerar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({massa: parseInt(n)}) });
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
+        const rs = d.resumo;
+        let html = '';
+        // resumo em stats
+        html += '<div class="grid-3" style="margin:16px 0">';
+        html += '<div class="stat"><div class="stat-value">' + rs.tabelas + '</div><div class="stat-label">Tabelas</div></div>';
+        html += '<div class="stat"><div class="stat-value">' + (rs.colunas_fieis + rs.colunas_inferidas) + '</div><div class="stat-label">Colunas</div></div>';
+        html += '<div class="stat"><div class="stat-value">' + rs.fidelidade + '%</div><div class="stat-label">Fidelidade (copybook)</div></div>';
+        html += '</div>';
+        html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:16px">' + rs.colunas_fieis + ' colunas tipadas pelo copybook (fieis) e ' + rs.colunas_inferidas + ' inferidas por heuristica. Campos de copybook indexados: ' + rs.campos_copybook + '.</p>';
+
+        // botoes de download
+        html += '<div style="display:flex;gap:8px;margin-bottom:16px">';
+        html += '<button class="btn btn-outline btn-sm" onclick="baixarTexto(\'schema.sql\', window.__ddl)">Baixar schema.sql</button>';
+        html += '<button class="btn btn-outline btn-sm" onclick="baixarTexto(\'massa.sql\', window.__massa)">Baixar massa.sql</button>';
+        html += '</div>';
+
+        // tabela de cobertura
+        html += '<div class="card-title" style="font-size:13px;margin-top:8px">Cobertura por tabela</div>';
+        html += '<div style="overflow-x:auto;max-height:280px;overflow-y:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:8px;text-align:left">Tabela</th><th>Colunas</th><th>Fieis</th><th>Inferidas</th><th>Programas</th></tr>';
+        d.tabelas.forEach(t => {
+            html += '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-family:monospace">' + t.nome + '</td>' +
+                '<td style="text-align:center">' + t.colunas + '</td>' +
+                '<td style="text-align:center"><span class="badge badge-green">' + t.fieis + '</span></td>' +
+                '<td style="text-align:center">' + (t.inferidas > 0 ? '<span class="badge badge-red">' + t.inferidas + '</span>' : '0') + '</td>' +
+                '<td style="text-align:center">' + t.programas + '</td></tr>';
+        });
+        html += '</table></div>';
+
+        // previews de DDL e massa
+        html += '<div class="card-title" style="font-size:13px;margin-top:20px">DDL (CREATE TABLE)</div>';
+        html += '<div class="code-block">' + escapeHtml(d.schema.substring(0, 8000)) + (d.schema.length > 8000 ? '\n\n... (baixe o arquivo para ver tudo)' : '') + '</div>';
+        html += '<div class="card-title" style="font-size:13px;margin-top:20px">Massa de dados (INSERT)</div>';
+        html += '<div class="code-block">' + escapeHtml(d.massa.substring(0, 6000)) + (d.massa.length > 6000 ? '\n\n... (baixe o arquivo para ver tudo)' : '') + '</div>';
+
+        window.__ddl = d.schema;
+        window.__massa = d.massa;
+        div.innerHTML = html;
+    } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
+}
+
+function baixarTexto(nome, conteudo) {
+    const blob = new Blob([conteudo || ''], {type: 'text/plain'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = nome;
+    a.click();
+    URL.revokeObjectURL(a.href);
 }
 
 function escapeHtml(text) { const d = document.createElement('div'); d.textContent = text; return d.innerHTML; }
