@@ -55,3 +55,16 @@ cobol_build/*_processed
 
 # Extracted sources (large, from .7z)
 fontes_convertidos/
+
+# Entregas (arquivos grandes: zips, 7z, PDFs, amostragem)
+entregas/*.zip
+entregas/*.7z
+entregas/*.pdf
+entregas/prodesp.zip
+
+# Saida gerada pela ferramenta (artefato, regeneravel)
+saida_estrutura/
+
+# Amostragem entregue (fontes de referencia, nao codigo do projeto)
+entregas/copybook-Amostragem*/
+entregas/PGM POC cob original/
