@@ -33,7 +33,8 @@ TRANSACOES = {
              "tela": "DUT1 - Emissao do documento unico de transito (1a via)"},
     "CDAV": {"descricao": "Consulta dados ampliados do veiculo na RENAVAM",
              "tela": "CDAV - IND.CRV ELETR=SIM, numero CRV gerado"},
-    "PJOF": {"descricao": "Cadastro de CNPJ oficial"},
+    "PJOF": {"descricao": "Cadastro de CNPJ oficial",
+             "tela": "PJO1 (menu: 1-Inclusao, 2-Exclusao, 3-Pesquisa) / PJO2 (inclusao: CNPJ, categoria M/E/U, nome, atividade)"},
     "PEST": {"descricao": "Consulta de estampagem"},
     "CEST": {"descricao": "Cancelamento de estampagem"},
 }
@@ -84,9 +85,9 @@ def _passos_oficial():
     """Fluxo do orgao oficial: sem taxa 06, com verificacao de CNPJ oficial (PJOF)."""
     # remove os passos de taxa (2 e 3) e renumera de forma limpa
     base = [p for p in _PASSOS_PARTICULAR if p["ordem"] not in (2, 3)]
-    passo_cnpj = {"titulo": "Verificar CNPJ oficial", "camada": "Mainframe", "transacao": "PJOF",
-                  "descricao": "Categoria oficial exige o CNPJ no cadastro de CNPJ oficial (PJOF); se nao existir, deve ser inserido.",
-                  "resultado_esperado": "CNPJ oficial encontrado (ou inserido, se ausente)."}
+    passo_cnpj = {"titulo": "Verificar/incluir CNPJ oficial", "camada": "Mainframe", "transacao": "PJOF",
+                  "descricao": "PJO1 opcao 3 pesquisa o CNPJ; se retornar 'CNPJ NAO CADASTRADO', usa-se PJO1 opcao 1 -> PJO2 para incluir (categoria M/E/U, nome do orgao, atividade economica).",
+                  "resultado_esperado": "CNPJ oficial presente no cadastro (pesquisa OK) ou incluido com sucesso via PJO2."}
     # inserir o passo de CNPJ logo apos consultar chassi
     ordenados = base[:1] + [passo_cnpj] + base[1:]
     # renumerar 1..N

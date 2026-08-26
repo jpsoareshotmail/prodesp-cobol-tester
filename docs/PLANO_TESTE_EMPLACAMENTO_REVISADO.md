@@ -152,15 +152,32 @@ foi possivel confirmar as telas reais e extrair dados que o texto nao trazia:
 | Emissao CRV | **DUT1/EDUT** - Emissao do Documento Unico de Transito | Placa DSR0A30, tipo 1 (1a via) |
 | Consulta ampliada | **CDAV** - Dados ampliados na RENAVAM | IND.CRV ELETR SIM, NUMERO CRV 250001955268, sem pendencia |
 
+**Cenario Orgao Oficial (telas confirmadas):**
+
+| Passo | Tela / Transacao | Dados observados no print |
+|-------|------------------|---------------------------|
+| Consulta chassi | **PER1** | Chassi 9C2GAA1SNSP772010; mensagem "(MSG52) CODIGO INVALIDO" (sem emplacamento) |
+| Criar ficha | **eCRV (web)** | Placa escolhida CAQ8J74; status Aprovado; download de Planilha Renavam e Relatorio de Auditoria |
+| Situacao da ficha | **GEVER** | Ficha 875/2025, chassi 772010, placa CAQ8J74, **STATUS REG 05**, 01-Aprovado |
+| Verificar CNPJ | **PJO1** (opcao 3 - pesquisa) | CNPJ 08518623000162 -> "CNPJ NAO CADASTRADO - CORRIJA E TECLE ENTER" |
+| Incluir CNPJ | **PJO1** (opcao 1) -> **PJO2** | CNPJ 08518623000162, categoria **M (Municipio)**, nome "EMPRESA MUNICIPAL DE AGUA E ESGOTO", atividade "SERVICOS" |
+
+O cenario oficial **confirma a diferenca-chave**: sem taxa 06, e com o cadastro de
+CNPJ oficial via PJO1/PJO2 (o texto so dizia "PJOF"; os prints revelam que sao duas
+telas - menu PJO1 e inclusao PJO2 - com categoria M/E/U = Municipio/Estado/Uniao).
+
 **Descobertas relevantes:**
 1. O **eCRV e uma aplicacao web** moderna (nao mainframe) - a criacao da ficha e
    a escolha da placa acontecem no portal do Governo SP, so depois refletindo no mainframe.
-2. O texto dizia "situacao muda de 1 para 5"; o print **confirma STATUS REG = 05** na
-   tela GEVER, validando o campo real (dataset **GEVERDS**, que ja mapeamos na ferramenta de estrutura).
-3. As telas mainframe usam codigos proprios (PER1, TXUT, CAV2, PGE4, DUT1, CDAV) alem
-   das transacoes citadas no texto - util para rastrear a origem dos dados de teste.
-4. Os dados de teste sao **consistentes e reais** (mesmo chassi/CPF/placa aparecem em
+2. O texto dizia "situacao muda de 1 para 5"; os prints **confirmam STATUS REG = 05** na
+   tela GEVER nos dois cenarios (capital ficha 860/2025, oficial ficha 875/2025),
+   validando o campo real (dataset **GEVERDS**, que ja mapeamos na ferramenta de estrutura).
+3. As telas mainframe usam codigos proprios (PER1, TXUT, CAV2, PGE4, DUT1, CDAV, PJO1, PJO2)
+   alem das transacoes citadas no texto - util para rastrear a origem dos dados de teste.
+4. Os dados de teste sao **consistentes e reais** (mesmo chassi/CPF/CNPJ/placa aparecem em
    todas as telas), servindo como massa de validacao confiavel.
+5. O CNPJ oficial (08518623000162) e uma **Empresa Municipal de Agua e Esgoto** - categoria M,
+   o que explica o fluxo diferenciado (isencao de taxa) do cenario oficial.
 
 ---
 
