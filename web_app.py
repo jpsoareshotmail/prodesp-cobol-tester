@@ -39,7 +39,10 @@ except ImportError:
     def get_program_history(nome):
         return {"autor": "Desconhecido", "criacao": "2024-01-01", "versao_atual": "1.0", "alteracoes": []}
 
-app = Flask(__name__, static_folder='static', static_url_path='/static')
+app = Flask(__name__,
+            template_folder='frontend/templates',
+            static_folder='frontend/static',
+            static_url_path='/static')
 CORS(app)
 
 # --- Autenticacao ---
@@ -935,6 +938,21 @@ def gerar_estrutura():
             n_massa=n_massa,
         )
         return jsonify(resultado)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/roteiros', methods=['GET'])
+def get_roteiros_endpoint():
+    """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
+    try:
+        from data.roteiros_teste import get_roteiros, get_transacoes
+        return jsonify({
+            'roteiros': get_roteiros(),
+            'transacoes': get_transacoes(),
+        })
     except Exception as e:
         import traceback
         traceback.print_exc()
