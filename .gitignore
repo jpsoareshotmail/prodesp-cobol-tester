@@ -71,3 +71,6 @@ entregas/PGM POC cob original/
 
 # Windows
 desktop.ini
+
+# Usuarios (contem hashes de senha - nao versionar)
+data/users.json

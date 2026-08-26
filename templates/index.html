@@ -80,6 +80,10 @@
             <h1>COBOL Tester</h1>
             <div class="subtitle">Comparacao Original vs Convertido | Prodesp</div>
         </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+            <span style="font-size:13px;color:var(--text-3)">{{ usuario }}<span style="color:var(--text-muted)"> ({{ papel }})</span></span>
+            <button class="btn btn-outline btn-sm" onclick="sair()">Sair</button>
+        </div>
     </header>
 
     <!-- Status -->
@@ -97,6 +101,7 @@
         <div class="tab" onclick="switchTab('estrutura')">Estrutura de Dados</div>
         <div class="tab" onclick="switchTab('ambiente')">Ambiente</div>
         <div class="tab" onclick="switchTab('status')">Status COBOL</div>
+        {% if papel == 'admin' %}<div class="tab" onclick="switchTab('usuarios')">Usuarios</div>{% endif %}
     </div>
 
     <!-- Tab: Comparar -->
@@ -322,6 +327,38 @@
         </div>
     </div>
 
+    {% if papel == 'admin' %}
+    <!-- Tab: Usuarios (admin) -->
+    <div class="tab-content" id="tab-usuarios">
+        <div class="card">
+            <div class="card-title">Novo Usuario</div>
+            <div class="grid-3" style="align-items:end">
+                <div>
+                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Usuario</label>
+                    <input type="text" id="nu-username" placeholder="ex: joao.silva">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Senha (min. 6)</label>
+                    <input type="text" id="nu-senha" placeholder="senha inicial">
+                </div>
+                <div>
+                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Papel</label>
+                    <select id="nu-role" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#fff">
+                        <option value="user">user</option>
+                        <option value="admin">admin</option>
+                    </select>
+                </div>
+            </div>
+            <button class="btn btn-dark" onclick="criarUsuario()" style="margin-top:14px">Criar Usuario</button>
+            <div id="nu-msg" style="margin-top:10px"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Usuarios Cadastrados</div>
+            <div id="usuarios-lista"><p style="color:var(--text-muted);font-size:13px">Carregando...</p></div>
+        </div>
+    </div>
+    {% endif %}
+
     <footer>BRQ Digital Solutions &copy; 2026 | GnuCOBOL 3.1.2 | Prodesp</footer>
 </div>
 <script>
@@ -332,6 +369,79 @@ function switchTab(name) {
     document.getElementById('tab-' + name).classList.add('active');
     event.target.classList.add('active');
     if (name === 'programas') carregarProgramas();
+    if (name === 'usuarios') carregarUsuarios();
+}
+
+// Logout
+async function sair() {
+    try { await fetch('/api/logout', { method: 'POST' }); } catch(e) {}
+    window.location.href = '/login';
+}
+
+// Gestao de usuarios (admin)
+async function carregarUsuarios() {
+    const div = document.getElementById('usuarios-lista');
+    if (!div) return;
+    div.innerHTML = '<span class="spinner"></span> Carregando...';
+    try {
+        const r = await fetch('/api/usuarios');
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<p style="color:var(--danger)">' + d.error + '</p>'; return; }
+        let html = '<table style="width:100%;font-size:13px;border-collapse:collapse">';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:8px;text-align:left">Usuario</th><th>Papel</th><th>Criado em</th><th>Criado por</th><th>Acoes</th></tr>';
+        d.usuarios.forEach(u => {
+            const badge = u.role === 'admin' ? '<span class="badge badge-blue">admin</span>' : '<span class="badge badge-green">user</span>';
+            html += '<tr style="border-bottom:1px solid var(--border)">' +
+                '<td style="padding:8px;font-weight:600">' + u.username + '</td>' +
+                '<td style="text-align:center">' + badge + '</td>' +
+                '<td style="text-align:center;color:var(--text-muted);font-size:12px">' + (u.criado_em || '-') + '</td>' +
+                '<td style="text-align:center;color:var(--text-muted);font-size:12px">' + (u.criado_por || '-') + '</td>' +
+                '<td style="text-align:center">' +
+                '<button class="btn btn-outline btn-sm" onclick="redefinirSenha(\'' + u.username + '\')">Senha</button> ' +
+                '<button class="btn btn-danger btn-sm" onclick="excluirUsuario(\'' + u.username + '\')">Excluir</button>' +
+                '</td></tr>';
+        });
+        html += '</table>';
+        div.innerHTML = html;
+    } catch(e) { div.innerHTML = '<p style="color:var(--danger)">Erro: ' + e.message + '</p>'; }
+}
+
+async function criarUsuario() {
+    const msg = document.getElementById('nu-msg');
+    const username = document.getElementById('nu-username').value.trim();
+    const senha = document.getElementById('nu-senha').value;
+    const role = document.getElementById('nu-role').value;
+    msg.innerHTML = '';
+    try {
+        const r = await fetch('/api/usuarios', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({username, senha, role}) });
+        const d = await r.json();
+        if (d.error) { msg.innerHTML = '<div class="diff-item">' + d.error + '</div>'; return; }
+        msg.innerHTML = '<div style="padding:8px 12px;background:#F0FDF4;border-left:3px solid var(--green);border-radius:4px;font-size:13px;color:#065F46">Usuario "' + d.usuario.username + '" criado.</div>';
+        document.getElementById('nu-username').value = '';
+        document.getElementById('nu-senha').value = '';
+        carregarUsuarios();
+    } catch(e) { msg.innerHTML = '<div class="diff-item">Erro: ' + e.message + '</div>'; }
+}
+
+async function excluirUsuario(username) {
+    if (!confirm('Excluir o usuario "' + username + '"?')) return;
+    try {
+        const r = await fetch('/api/usuarios/' + encodeURIComponent(username), { method: 'DELETE' });
+        const d = await r.json();
+        if (d.error) { alert(d.error); return; }
+        carregarUsuarios();
+    } catch(e) { alert('Erro: ' + e.message); }
+}
+
+async function redefinirSenha(username) {
+    const nova = prompt('Nova senha para "' + username + '" (min. 6 caracteres):');
+    if (!nova) return;
+    try {
+        const r = await fetch('/api/usuarios/' + encodeURIComponent(username) + '/senha', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({senha: nova}) });
+        const d = await r.json();
+        if (d.error) { alert(d.error); return; }
+        alert('Senha redefinida.');
+    } catch(e) { alert('Erro: ' + e.message); }
 }
 
 // Stats

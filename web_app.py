@@ -8,6 +8,7 @@ import os
 import sys
 import json
 import time
+import secrets
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -41,6 +42,40 @@ except ImportError:
 app = Flask(__name__, static_folder='static', static_url_path='/static')
 CORS(app)
 
+# --- Autenticacao ---
+from functools import wraps
+from flask import session, redirect, url_for
+import auth as auth_mod
+
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+auth_mod.init_auth()
+
+# Rotas que nao exigem login
+PUBLIC_ENDPOINTS = {'login', 'do_login', 'static', 'health'}
+
+
+@app.before_request
+def require_login():
+    endpoint = request.endpoint or ''
+    if endpoint in PUBLIC_ENDPOINTS:
+        return None
+    if session.get('user'):
+        return None
+    # API responde 401; navegador vai para tela de login
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'nao autenticado'}), 401
+    return redirect(url_for('login'))
+
+
+def admin_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        user = session.get('user')
+        if not user or user.get('role') != 'admin':
+            return jsonify({'error': 'acesso restrito a administradores'}), 403
+        return f(*args, **kwargs)
+    return wrapper
+
 # Armazenar estado de execução
 test_state = {
     "running": False,
@@ -53,7 +88,87 @@ test_state = {
 @app.route('/')
 def index():
     """Página principal"""
-    return render_template('index.html')
+    user = session.get('user', {})
+    return render_template('index.html', usuario=user.get('username', ''), papel=user.get('role', 'user'))
+
+
+@app.route('/login', methods=['GET'])
+def login():
+    """Tela de login"""
+    if session.get('user'):
+        return redirect(url_for('index'))
+    return render_template('login.html')
+
+
+@app.route('/api/login', methods=['POST'])
+def do_login():
+    """Autentica o usuario e cria a sessao"""
+    data = request.json or {}
+    username = data.get('username', '')
+    senha = data.get('senha', '')
+    user = auth_mod.verify_login(username, senha)
+    if not user:
+        return jsonify({'error': 'Usuario ou senha invalidos'}), 401
+    session['user'] = user
+    return jsonify({'ok': True, 'username': user['username'], 'role': user['role']})
+
+
+@app.route('/api/logout', methods=['POST'])
+def do_logout():
+    session.pop('user', None)
+    return jsonify({'ok': True})
+
+
+@app.route('/api/me', methods=['GET'])
+def me():
+    """Retorna o usuario logado"""
+    return jsonify(session.get('user', {}))
+
+
+# --- Gestao de usuarios (somente admin) ---
+@app.route('/api/usuarios', methods=['GET'])
+@admin_required
+def listar_usuarios():
+    return jsonify({'usuarios': auth_mod.list_users()})
+
+
+@app.route('/api/usuarios', methods=['POST'])
+@admin_required
+def criar_usuario():
+    data = request.json or {}
+    try:
+        novo = auth_mod.create_user(
+            data.get('username', ''),
+            data.get('senha', ''),
+            data.get('role', 'user'),
+            criado_por=session['user']['username'],
+        )
+        return jsonify({'ok': True, 'usuario': novo})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/usuarios/<username>', methods=['DELETE'])
+@admin_required
+def excluir_usuario(username):
+    if username == session['user']['username']:
+        return jsonify({'error': 'Voce nao pode excluir o proprio usuario.'}), 400
+    try:
+        auth_mod.delete_user(username)
+        return jsonify({'ok': True})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@app.route('/api/usuarios/<username>/senha', methods=['POST'])
+@admin_required
+def redefinir_senha(username):
+    data = request.json or {}
+    try:
+        auth_mod.set_password(username, data.get('senha', ''))
+        return jsonify({'ok': True})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 @app.route('/api/health', methods=['GET'])
 def health():
