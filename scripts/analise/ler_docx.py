@@ -7,7 +7,8 @@ from pathlib import Path
 
 def ler_docx(path: Path) -> str:
     with zipfile.ZipFile(path) as z:
-        xml = z.read('word/document.xml').decode('utf-8', errors='ignore')
+        # document.xml e sempre UTF-8 no formato .docx (OOXML)
+        xml = z.read('word/document.xml').decode('utf-8')
     # Quebra de paragrafo -> nova linha
     xml = xml.replace('</w:p>', '\n')
     # Quebra de linha explicita
