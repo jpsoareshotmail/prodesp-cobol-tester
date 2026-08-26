@@ -949,9 +949,15 @@ def get_roteiros_endpoint():
     """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
     try:
         from data.roteiros_teste import get_roteiros, get_transacoes
+        # indice de imagens (prints de tela) publicadas em static/roteiros/
+        imagens = {}
+        idx = Path('frontend/static/roteiros/indice.json')
+        if idx.exists():
+            imagens = json.loads(idx.read_text(encoding='utf-8'))
         return jsonify({
             'roteiros': get_roteiros(),
             'transacoes': get_transacoes(),
+            'imagens': imagens,
         })
     except Exception as e:
         import traceback
