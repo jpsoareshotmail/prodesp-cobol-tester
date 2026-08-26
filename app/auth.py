@@ -78,7 +78,7 @@ def init_auth() -> None:
             'role': 'admin',
             'criado_em': datetime.now().isoformat(timespec='seconds'),
             'criado_por': 'sistema',
-            'must_change_password': True,
+            'must_change_password': False,
         }
         _save(users)
 
