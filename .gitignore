@@ -74,3 +74,6 @@ desktop.ini
 
 # Usuarios (contem hashes de senha - nao versionar)
 data/users.json
+
+# Imagens extraidas dos roteiros (.docx) - temporarias
+_imgs_roteiros/

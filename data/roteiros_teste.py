@@ -7,18 +7,32 @@ orgao oficial) com seus dados de teste (chassi, CPF/CNPJ) e o passo a passo
 com as transacoes do mainframe envolvidas.
 """
 
-# Transacoes citadas nos roteiros -> descricao e programa COBOL relacionado (quando conhecido)
+# Ambiente observado nos prints dos roteiros (Unisys ClearPath MCP via Web Enabler)
+AMBIENTE = {
+    "host": "HNPRDSP06",
+    "ip": "10.200.206.132",
+    "window": "WDMCS/1",
+    "plataforma": "Unisys ClearPath MCP (Web Enabler)",
+}
+
+# Transacoes citadas nos roteiros -> descricao, tela real (dos prints) e programa COBOL relacionado
 TRANSACOES = {
-    "901":  {"descricao": "Consulta veiculo por chassi na BIN/Serpro", "sistema": "BIN"},
+    "901":  {"descricao": "Consulta veiculo por chassi na BIN/Serpro", "sistema": "BIN",
+             "tela": "PER1 - Pesquisa de veiculos cadastrados no sistema RENAVAM"},
     "RAUT": {"descricao": "Inclusao de taxa (recebimento SEFAZ)", "window": "WDGAA35"},
     "GAA/B100/DB": {"descricao": "Batch de contingencia - recebimento de taxa", "programa": "PGAA100D", "fonte": "PF-GAA-B100-DB"},
-    "TXUT": {"descricao": "Consulta de taxa"},
-    "PGER": {"descricao": "Consulta/situacao da ficha no mainframe"},
+    "TXUT": {"descricao": "Consulta de taxa (Cadastro de Certificados Emitidos)",
+             "tela": "TXUT - Pesquisa de taxas por CPF/CNPJ (COD.SERV 06, situacao 0-Aguarda Uso)"},
+    "PGER": {"descricao": "Consulta/situacao da ficha (GEVER - situacao de registro em GEVERDS)",
+             "tela": "PGE4/GEVER - status do registro (STATUS REG 01->05)"},
     "DHAB": {"descricao": "Processamento diario (habilitacao)"},
-    "PEPM": {"descricao": "Cadastro da placa na base estadual (Detran)"},
-    "PTRE": {"descricao": "Base fabril da BIN"},
-    "EDUT": {"descricao": "Emissao de CRV"},
-    "CDAV": {"descricao": "Consulta da base ampliada da BIN"},
+    "PEPM": {"descricao": "Cadastro da placa na base estadual (Detran)",
+             "tela": "CAV2 - Cadastro de Certificados Emitidos / Primeiro Emplacamento"},
+    "PTRE": {"descricao": "Base fabril da BIN", "tela": "PTRE"},
+    "EDUT": {"descricao": "Emissao do Documento Unico de Transito (CRV)",
+             "tela": "DUT1 - Emissao do documento unico de transito (1a via)"},
+    "CDAV": {"descricao": "Consulta dados ampliados do veiculo na RENAVAM",
+             "tela": "CDAV - IND.CRV ELETR=SIM, numero CRV gerado"},
     "PJOF": {"descricao": "Cadastro de CNPJ oficial"},
     "PEST": {"descricao": "Consulta de estampagem"},
     "CEST": {"descricao": "Cancelamento de estampagem"},

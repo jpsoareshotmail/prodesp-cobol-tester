@@ -131,7 +131,40 @@ uma validacao ponta a ponta.
 
 ---
 
-## 7. Limitacoes e proximos passos
+## 7. Analise dos prints de tela (imagens dos documentos)
+
+Os `.docx` contem 40-44 prints de tela por cenario. Analisando as capturas,
+foi possivel confirmar as telas reais e extrair dados que o texto nao trazia:
+
+**Ambiente:** Unisys ClearPath MCP acessado via Web Enabler
+(host `HNPRDSP06`, IP `10.200.206.132`, window `WDMCS/1`).
+
+**Telas confirmadas (cenario Capital):**
+
+| Passo | Tela / Transacao | Dados observados no print |
+|-------|------------------|---------------------------|
+| Consulta chassi | **PER1** - Pesquisa de veiculos no RENAVAM | Chassi 9C2GAA1SNSP772009 informado; retorna sem emplacamento |
+| Consulta taxa | **TXUT** - Pesquisa de taxas por CPF/CNPJ | CPF 097.587.878-61, COD.SERV 06, COD.PGTO 06, VALOR R$ 150,00, SITUACAO 0-Aguarda Uso |
+| Criar ficha | **eCRV (web)** - Primeiro Registro de Veiculo | Categoria PARTICULAR, placa gratuita escolhida: DSR-0A30 (SP-Municipio) |
+| Ficha gerada | Ficha PDF (fichaCadastral.do) | Ficha No 860/2025, proprietario ALESSANDRA ALMEIDA, RENAVAM |
+| Cadastro/emplacamento | **CAV2** - Cadastro de Certificados / Primeiro Emplacamento | Placa DSR0A30, RENAVAM 01001057632, TIPO 04, CATEG 01 |
+| Situacao da ficha | **PGE4/GEVER** - Situacao de registro em GEVERDS | Ficha 860/2025, OPCAO 01-Primeiro Emplacamento, **STATUS REG 05**, 01-Aprovado |
+| Emissao CRV | **DUT1/EDUT** - Emissao do Documento Unico de Transito | Placa DSR0A30, tipo 1 (1a via) |
+| Consulta ampliada | **CDAV** - Dados ampliados na RENAVAM | IND.CRV ELETR SIM, NUMERO CRV 250001955268, sem pendencia |
+
+**Descobertas relevantes:**
+1. O **eCRV e uma aplicacao web** moderna (nao mainframe) - a criacao da ficha e
+   a escolha da placa acontecem no portal do Governo SP, so depois refletindo no mainframe.
+2. O texto dizia "situacao muda de 1 para 5"; o print **confirma STATUS REG = 05** na
+   tela GEVER, validando o campo real (dataset **GEVERDS**, que ja mapeamos na ferramenta de estrutura).
+3. As telas mainframe usam codigos proprios (PER1, TXUT, CAV2, PGE4, DUT1, CDAV) alem
+   das transacoes citadas no texto - util para rastrear a origem dos dados de teste.
+4. Os dados de teste sao **consistentes e reais** (mesmo chassi/CPF/placa aparecem em
+   todas as telas), servindo como massa de validacao confiavel.
+
+---
+
+## 8. Limitacoes e proximos passos
 
 - **Estampagem depende do sistema EMPLACA** (terceiro) - nao ha como automatizar
   esse trecho sem o ambiente parceiro; o roteiro preve o cancelamento como
@@ -139,3 +172,5 @@ uma validacao ponta a ponta.
 - **Validacao end-to-end** exige os programas/copybooks e o banco DB2 pendentes
   (ver `docs/EMAIL_SOLICITACAO_PRODESP.md` e `docs/analise/COPYBOOKS_FALTANTES.md`).
 - Os roteiros estao disponiveis na aba **"Roteiros de Teste"** do dashboard.
+- Os prints foram extraidos para analise; para incluir as imagens no dashboard,
+  usar `scripts/analise/extrair_imgs_docx.py`.
