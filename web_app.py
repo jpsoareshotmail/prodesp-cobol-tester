@@ -52,6 +52,8 @@ auth_mod.init_auth()
 
 # Rotas que nao exigem login
 PUBLIC_ENDPOINTS = {'login', 'do_login', 'static', 'health'}
+# Rotas liberadas enquanto o usuario precisa trocar a senha
+PASSWORD_CHANGE_ENDPOINTS = {'trocar_senha', 'do_logout', 'me', 'trocar_senha_page'}
 
 
 @app.before_request
@@ -59,12 +61,18 @@ def require_login():
     endpoint = request.endpoint or ''
     if endpoint in PUBLIC_ENDPOINTS:
         return None
-    if session.get('user'):
-        return None
-    # API responde 401; navegador vai para tela de login
-    if request.path.startswith('/api/'):
-        return jsonify({'error': 'nao autenticado'}), 401
-    return redirect(url_for('login'))
+    user = session.get('user')
+    if not user:
+        # API responde 401; navegador vai para tela de login
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'nao autenticado'}), 401
+        return redirect(url_for('login'))
+    # Se precisa trocar a senha, so libera as rotas de troca/logout
+    if user.get('must_change_password') and endpoint not in PASSWORD_CHANGE_ENDPOINTS:
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'troca de senha obrigatoria', 'must_change_password': True}), 403
+        return redirect(url_for('trocar_senha_page'))
+    return None
 
 
 def admin_required(f):
@@ -100,6 +108,17 @@ def login():
     return render_template('login.html')
 
 
+@app.route('/trocar-senha', methods=['GET'])
+def trocar_senha_page():
+    """Tela de troca de senha obrigatoria (primeiro acesso)"""
+    user = session.get('user')
+    if not user:
+        return redirect(url_for('login'))
+    if not user.get('must_change_password'):
+        return redirect(url_for('index'))
+    return render_template('trocar_senha.html', usuario=user.get('username', ''))
+
+
 @app.route('/api/login', methods=['POST'])
 def do_login():
     """Autentica o usuario e cria a sessao"""
@@ -110,7 +129,32 @@ def do_login():
     if not user:
         return jsonify({'error': 'Usuario ou senha invalidos'}), 401
     session['user'] = user
-    return jsonify({'ok': True, 'username': user['username'], 'role': user['role']})
+    return jsonify({
+        'ok': True,
+        'username': user['username'],
+        'role': user['role'],
+        'must_change_password': user.get('must_change_password', False),
+    })
+
+
+@app.route('/api/trocar-senha', methods=['POST'])
+def trocar_senha():
+    """O proprio usuario logado troca a senha (usado no primeiro acesso)."""
+    user = session.get('user')
+    if not user:
+        return jsonify({'error': 'nao autenticado'}), 401
+    data = request.json or {}
+    try:
+        auth_mod.change_own_password(
+            user['username'],
+            data.get('senha_atual', ''),
+            data.get('nova_senha', ''),
+        )
+        # limpa a flag na sessao
+        session['user'] = {**user, 'must_change_password': False}
+        return jsonify({'ok': True})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 
 @app.route('/api/logout', methods=['POST'])

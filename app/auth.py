@@ -78,6 +78,7 @@ def init_auth() -> None:
             'role': 'admin',
             'criado_em': datetime.now().isoformat(timespec='seconds'),
             'criado_por': 'sistema',
+            'must_change_password': True,
         }
         _save(users)
 
@@ -92,7 +93,11 @@ def verify_login(username: str, senha: str):
     if not u:
         return None
     if _check_password(senha or '', u['salt'], u['hash']):
-        return {'username': u['username'], 'role': u['role']}
+        return {
+            'username': u['username'],
+            'role': u['role'],
+            'must_change_password': bool(u.get('must_change_password', False)),
+        }
     return None
 
 
@@ -131,6 +136,7 @@ def create_user(username: str, senha: str, role: str = 'user', criado_por: str =
         'role': role,
         'criado_em': datetime.now().isoformat(timespec='seconds'),
         'criado_por': criado_por or 'admin',
+        'must_change_password': True,
     }
     _save(users)
     return {'username': username, 'role': role}
@@ -150,7 +156,9 @@ def delete_user(username: str) -> None:
     _save(users)
 
 
-def set_password(username: str, nova_senha: str) -> None:
+def set_password(username: str, nova_senha: str, forcar_troca: bool = True) -> None:
+    """Redefine a senha (uso do admin). Por padrao marca must_change_password
+    para o usuario trocar no proximo login."""
     username = (username or '').strip()
     if len(nova_senha or '') < 6:
         raise ValueError('A senha deve ter no minimo 6 caracteres.')
@@ -160,4 +168,26 @@ def set_password(username: str, nova_senha: str) -> None:
     salt, h = _hash_password(nova_senha)
     users[username]['salt'] = salt
     users[username]['hash'] = h
+    users[username]['must_change_password'] = forcar_troca
+    _save(users)
+
+
+def change_own_password(username: str, senha_atual: str, nova_senha: str) -> None:
+    """O proprio usuario troca a senha, validando a senha atual.
+    Limpa a flag must_change_password."""
+    username = (username or '').strip()
+    users = _load()
+    u = users.get(username)
+    if not u:
+        raise ValueError('Usuario nao encontrado.')
+    if not _check_password(senha_atual or '', u['salt'], u['hash']):
+        raise ValueError('Senha atual incorreta.')
+    if len(nova_senha or '') < 6:
+        raise ValueError('A nova senha deve ter no minimo 6 caracteres.')
+    if nova_senha == senha_atual:
+        raise ValueError('A nova senha deve ser diferente da atual.')
+    salt, h = _hash_password(nova_senha)
+    u['salt'] = salt
+    u['hash'] = h
+    u['must_change_password'] = False
     _save(users)

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COBOL Tester - Trocar Senha</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #FAFAFA; --card: #FFFFFF; --text: #1A1A1A; --text-3: #666;
+            --text-muted: #888; --border: #E5E7EB; --green: #00C853; --danger: #E53935;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+               min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+                padding: 40px; width: 100%; max-width: 400px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+        .header { text-align: center; margin-bottom: 24px; }
+        .header img { height: 32px; margin-bottom: 14px; }
+        .header h1 { font-size: 19px; font-weight: 700; }
+        .header .sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .aviso { background: #FFF7ED; border: 1px solid #F57C00; color: #9A3412; padding: 10px 12px;
+                 border-radius: 6px; font-size: 12px; margin-bottom: 20px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: var(--text-3);
+                margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        input { width: 100%; padding: 11px 14px; border: 1px solid var(--border); border-radius: 6px;
+                font-size: 14px; font-family: inherit; margin-bottom: 16px; }
+        input:focus { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px rgba(0,200,83,0.1); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; background: #1A1A1A;
+               color: #fff; font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
+        .btn:hover { background: #333; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .msg { padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; display: none; }
+        .msg.erro { background: #FEF2F2; border: 1px solid var(--danger); color: #991B1B; }
+        .link { text-align: center; margin-top: 16px; font-size: 12px; }
+        .link a { color: var(--text-muted); text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="header">
+            <img src="/static/logobrq.png" alt="BRQ">
+            <h1>Definir nova senha</h1>
+            <div class="sub">Ola, {{ usuario }}</div>
+        </div>
+        <div class="aviso">Por seguranca, e obrigatorio trocar a senha no primeiro acesso.</div>
+        <div class="msg" id="msg"></div>
+        <form id="form" onsubmit="return trocar(event)">
+            <label for="atual">Senha atual</label>
+            <input type="password" id="atual" autocomplete="current-password" required>
+            <label for="nova">Nova senha (min. 6)</label>
+            <input type="password" id="nova" autocomplete="new-password" required>
+            <label for="conf">Confirmar nova senha</label>
+            <input type="password" id="conf" autocomplete="new-password" required>
+            <button class="btn" type="submit" id="btn">Salvar e continuar</button>
+        </form>
+        <div class="link"><a href="#" onclick="sair();return false">Sair</a></div>
+    </div>
+    <script>
+        async function sair() { try { await fetch('/api/logout', {method:'POST'}); } catch(e){} window.location.href='/login'; }
+        async function trocar(e) {
+            e.preventDefault();
+            const msg = document.getElementById('msg');
+            const btn = document.getElementById('btn');
+            msg.style.display = 'none';
+            const atual = document.getElementById('atual').value;
+            const nova = document.getElementById('nova').value;
+            const conf = document.getElementById('conf').value;
+            if (nova !== conf) {
+                msg.className = 'msg erro'; msg.textContent = 'A confirmacao nao confere com a nova senha.'; msg.style.display = 'block';
+                return false;
+            }
+            btn.disabled = true; btn.textContent = 'Salvando...';
+            try {
+                const r = await fetch('/api/trocar-senha', {
+                    method: 'POST', headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({senha_atual: atual, nova_senha: nova})
+                });
+                const d = await r.json();
+                if (r.ok && d.ok) { window.location.href = '/'; }
+                else { msg.className = 'msg erro'; msg.textContent = d.error || 'Erro ao trocar senha'; msg.style.display = 'block'; }
+            } catch(err) {
+                msg.className = 'msg erro'; msg.textContent = 'Erro: ' + err.message; msg.style.display = 'block';
+            } finally { btn.disabled = false; btn.textContent = 'Salvar e continuar'; }
+            return false;
+        }
+    </script>
+</body>
+</html>

@@ -68,7 +68,7 @@
                 });
                 const d = await r.json();
                 if (r.ok && d.ok) {
-                    window.location.href = '/';
+                    window.location.href = d.must_change_password ? '/trocar-senha' : '/';
                 } else {
                     erro.textContent = d.error || 'Falha no login';
                     erro.style.display = 'block';
