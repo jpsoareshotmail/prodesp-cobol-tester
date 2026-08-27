@@ -57,6 +57,43 @@ def main():
     info.alignment = WD_ALIGN_PARAGRAPH.CENTER
     info.add_run('Prodesp / DETRAN-SP  |  BRQ Digital Solutions').font.color.rgb = CINZA
 
+    # ---- Melhorias aplicadas nesta revisao ----
+    add_titulo(doc, 'Melhorias aplicadas nesta revisao', size=13)
+    doc.add_paragraph(
+        'Este roteiro parte dos documentos originais entregues pela Prodesp '
+        '(descricao do fluxo com prints de tela) e foi revisado para o formato '
+        'de roteiro de teste executavel. As melhorias abaixo foram aplicadas:'
+    )
+    melhorias = [
+        ('Resultado esperado por passo',
+         'Cada passo agora tem um criterio verificavel de aprovacao (antes o original '
+         'apenas descrevia o que acontecia, sem formalizar o esperado).'),
+        ('Separacao por camada',
+         'Coluna "Camada" distingue acao no eCRV (portal web), transacao no mainframe '
+         'ou dependencia externa (BIN/Serpro) - o original misturava as camadas.'),
+        ('Correcao de fidelidade (aprovacao x situacao)',
+         'A aprovacao da ficha (SALVAR) foi separada da confirmacao da mudanca de situacao '
+         '1->5 (PGER); no original apareciam fundidas em um unico passo.'),
+        ('Passo de excecao isolado',
+         'O cancelamento de estampagem (PEST/CEST) foi destacado como caminho alternativo.'),
+        ('Detalhamento do CNPJ oficial',
+         'A transacao "PJOF" foi detalhada como duas telas reais (PJO1 menu e PJO2 inclusao), '
+         'com categoria M/E/U, conforme observado nos prints.'),
+        ('Rastreabilidade e dados reais',
+         'Telas mainframe identificadas (PER1, TXUT, CAV2, PGE4, DUT1, CDAV) e dados '
+         'confirmados nos prints (STATUS REG 05, placas, RENAVAM, CRV).'),
+    ]
+    for titulo_m, desc_m in melhorias:
+        p = doc.add_paragraph(style='List Bullet')
+        r = p.add_run(titulo_m + ': ')
+        r.bold = True
+        p.add_run(desc_m)
+    nota = doc.add_paragraph()
+    rn = nota.add_run('Observacao: os itens marcados com [NOVO] nas tabelas de passos '
+                      '(colunas Camada e Resultado esperado) sao adicoes desta revisao.')
+    rn.italic = True
+    rn.font.color.rgb = CINZA
+
     # ---- Ambiente ----
     add_titulo(doc, 'Ambiente de execucao', size=13)
     p = doc.add_paragraph()
@@ -105,8 +142,8 @@ def main():
         tab = doc.add_table(rows=1, cols=5)
         tab.style = 'Light Grid Accent 1'
         h = tab.rows[0].cells
-        h[0].text = '#'; h[1].text = 'Acao'; h[2].text = 'Camada'
-        h[3].text = 'Transacao'; h[4].text = 'Resultado esperado'
+        h[0].text = '#'; h[1].text = 'Acao'; h[2].text = 'Camada [NOVO]'
+        h[3].text = 'Transacao'; h[4].text = 'Resultado esperado [NOVO]'
         for passo in rot['passos']:
             c = tab.add_row().cells
             c[0].text = str(passo['ordem'])
