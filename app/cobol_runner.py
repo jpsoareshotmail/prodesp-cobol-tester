@@ -18,12 +18,46 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, List
 
 # Paths relativos ao projeto
+import sys
+import shutil
+
 PROJECT_ROOT = Path(__file__).parent.parent
 GNUCOBOL_DIR = PROJECT_ROOT / "gnucobol-bin" / "gnucobol-3.1.2-windows-mingw-x64"
 COBOL_BIN = GNUCOBOL_DIR / "bin"
 COBOL_CONFIG = GNUCOBOL_DIR / "share" / "gnucobol" / "config"
 COBOL_COPY_SYSTEM = GNUCOBOL_DIR / "share" / "gnucobol" / "copy"
 BUILD_DIR = PROJECT_ROOT / "cobol_build"
+
+# Deteccao multiplataforma do compilador cobc:
+#  - Windows: usa o GnuCOBOL empacotado no projeto (gnucobol-bin/.../cobc.exe)
+#  - Linux/EC2: usa o cobc instalado no sistema (via 'dnf install gnucobol' etc.)
+_IS_WINDOWS = sys.platform.startswith("win")
+_COBC_WIN = COBOL_BIN / "cobc.exe"
+
+
+def _resolver_cobc():
+    """Descobre o caminho do compilador cobc conforme o SO/ambiente."""
+    if _IS_WINDOWS and _COBC_WIN.exists():
+        return str(_COBC_WIN)
+    # Linux/macOS ou Windows sem o pacote local: procura no PATH do sistema
+    sistema = shutil.which("cobc")
+    if sistema:
+        return sistema
+    # fallback: retorna o caminho Windows (usado so para mensagens de status)
+    return str(_COBC_WIN)
+
+
+def _cobol_disponivel() -> bool:
+    if _IS_WINDOWS and _COBC_WIN.exists():
+        return True
+    return shutil.which("cobc") is not None
+
+
+# Extensoes dependentes de plataforma:
+#  - executavel: '.exe' no Windows, '' no Linux
+#  - modulo dinamico: '.dll' no Windows, '.so' no Linux
+EXE_EXT = ".exe" if _IS_WINDOWS else ""
+MOD_EXT = ".dll" if _IS_WINDOWS else ".so"
 COPY_DIR = BUILD_DIR / "copy"
 FONTES_DIR = PROJECT_ROOT / "fontes_convertidos"
 ORIGINAIS_DIR = FONTES_DIR / "Originais"
@@ -74,16 +108,20 @@ class ResultadoComparacao:
 def _get_env():
     """Retorna environment com PATH do GnuCOBOL configurado."""
     env = os.environ.copy()
-    env["PATH"] = str(COBOL_BIN) + os.pathsep + env.get("PATH", "")
-    env["COB_CONFIG_DIR"] = str(COBOL_CONFIG)
-    env["COB_COPY_DIR"] = str(COBOL_COPY_SYSTEM)
+    # COB_LIBRARY_PATH: onde o runtime procura os modulos (.dll/.so) - vale nos dois SOs
     env["COB_LIBRARY_PATH"] = str(BUILD_DIR)
+    if _IS_WINDOWS and _COBC_WIN.exists():
+        # GnuCOBOL empacotado (Windows): aponta PATH e dirs de config/copy do pacote
+        env["PATH"] = str(COBOL_BIN) + os.pathsep + env.get("PATH", "")
+        env["COB_CONFIG_DIR"] = str(COBOL_CONFIG)
+        env["COB_COPY_DIR"] = str(COBOL_COPY_SYSTEM)
+    # No Linux, o cobc do sistema ja conhece seus proprios diretorios de config/copy.
     return env
 
 
 def _cobc():
-    """Retorna caminho absoluto do compilador cobc."""
-    return str(COBOL_BIN / "cobc.exe")
+    """Retorna caminho do compilador cobc (Windows empacotado ou sistema Linux)."""
+    return _resolver_cobc()
 
 
 def _extrair_undefined(stderr: str) -> list:
@@ -140,9 +178,8 @@ def _adicionar_vars_ao_processed(source_path: Path, undefined: list):
 
 
 def is_gnucobol_available() -> bool:
-    """Verifica se o GnuCOBOL esta disponivel."""
-    cobc = COBOL_BIN / "cobc.exe"
-    return cobc.exists()
+    """Verifica se o GnuCOBOL esta disponivel (Windows empacotado ou Linux sistema)."""
+    return _cobol_disponivel()
 
 
 # =============================================================================
@@ -156,7 +193,7 @@ def compilar_standalone(nome: str) -> tuple:
     Retorna (sucesso, mensagem, path_exe).
     """
     source = STANDALONE_DIR / f"{nome}.cob"
-    exe = BUILD_DIR / f"{nome}.exe"
+    exe = BUILD_DIR / f"{nome}{EXE_EXT}"
 
     if not source.exists():
         # Verificar se existe o .C74 original (nao compilavel direto)
@@ -193,7 +230,7 @@ def compilar_modulo(nome_convertido: str) -> tuple:
     Retorna (sucesso, mensagem, path_dll).
     """
     source = CONVERTIDOS_DIR / nome_convertido
-    dll = BUILD_DIR / f"{nome_convertido}.dll"
+    dll = BUILD_DIR / f"{nome_convertido}{MOD_EXT}"
 
     if not source.exists():
         return False, f"Fonte convertido nao encontrado: {source}", None
@@ -311,7 +348,7 @@ def compilar_driver(nome_convertido: str) -> tuple:
     Retorna (sucesso, mensagem, path_exe).
     """
     driver_source = BUILD_DIR / f"DRIVER-{nome_convertido}.cob"
-    driver_exe = BUILD_DIR / f"DRIVER-{nome_convertido}.exe"
+    driver_exe = BUILD_DIR / f"DRIVER-{nome_convertido}{EXE_EXT}"
 
     # Gerar driver automaticamente se nao existir
     if not driver_source.exists():
@@ -520,16 +557,16 @@ def comparar_placa(placa: str) -> ResultadoComparacao:
 
 def get_status() -> Dict:
     """Retorna status do ambiente COBOL."""
-    cobc_exe = COBOL_BIN / "cobc.exe"
+    cobc_path = _cobc()
     standalone_cob = STANDALONE_DIR / "PF-GAA-L004.cob"
-    standalone_exe = BUILD_DIR / "PF-GAA-L004.exe"
+    standalone_exe = BUILD_DIR / f"PF-GAA-L004{EXE_EXT}"
     convertido_src = CONVERTIDOS_DIR / "FGAA004"
-    convertido_dll = BUILD_DIR / "FGAA004.dll"
-    driver_exe = BUILD_DIR / "DRIVER-FGAA004.exe"
+    convertido_dll = BUILD_DIR / f"FGAA004{MOD_EXT}"
+    driver_exe = BUILD_DIR / f"DRIVER-FGAA004{EXE_EXT}"
 
     return {
-        "gnucobol_disponivel": cobc_exe.exists(),
-        "compilador": str(cobc_exe),
+        "gnucobol_disponivel": _cobol_disponivel(),
+        "compilador": cobc_path,
         "fontes_originais": str(ORIGINAIS_DIR),
         "fontes_convertidos": str(CONVERTIDOS_DIR),
         "build_dir": str(BUILD_DIR),
