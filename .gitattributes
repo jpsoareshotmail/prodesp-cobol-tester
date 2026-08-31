@@ -1,0 +1,8 @@
+# Tratar arquivos binarios como binarios (evita conversao de fim de linha)
+*.pdf   binary
+*.docx  binary
+*.xlsx  binary
+*.png   binary
+*.jpg   binary
+*.7z    binary
+*.zip   binary
