@@ -3,10 +3,6 @@
 **Objetivo:** aprender os fundamentos de banco de dados relacional praticando
 operacoes CRUD (Create, Read, Update, Delete) em PostgreSQL.
 
-**Nivel:** iniciante
-**Tempo estimado:** 8 a 12 horas (pode ser dividido em varios dias)
-**Pre-requisitos:** nocoes basicas de logica; nenhum conhecimento previo de SQL necessario.
-
 ---
 
 ## Preparacao do ambiente
