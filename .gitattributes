@@ -6,3 +6,6 @@
 *.jpg   binary
 *.7z    binary
 *.zip   binary
+
+# Scripts shell devem ter fim de linha LF (rodam no Linux/EC2)
+*.sh    text eol=lf
