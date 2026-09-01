@@ -888,9 +888,10 @@ async function gerarEstrutura() {
 
         // previews de DDL e massa
         html += '<div class="card-title" style="font-size:13px;margin-top:20px">DDL (CREATE TABLE)</div>';
-        html += '<div class="code-block">' + escapeHtml(d.schema.substring(0, 8000)) + (d.schema.length > 8000 ? '\n\n... (baixe o arquivo para ver tudo)' : '') + '</div>';
+        html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">' + rs.tabelas + ' tabelas</div>';
+        html += '<div class="code-block">' + escapeHtml(d.schema) + '</div>';
         html += '<div class="card-title" style="font-size:13px;margin-top:20px">Massa de dados (INSERT)</div>';
-        html += '<div class="code-block">' + escapeHtml(d.massa.substring(0, 6000)) + (d.massa.length > 6000 ? '\n\n... (baixe o arquivo para ver tudo)' : '') + '</div>';
+        html += '<div class="code-block">' + escapeHtml(d.massa) + '</div>';
 
         window.__ddl = d.schema;
         window.__massa = d.massa;
