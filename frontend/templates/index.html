@@ -129,7 +129,6 @@
     <!-- Tabs -->
     <div class="tabs">
         <div class="tab active" onclick="switchTab('comparar')">Comparar Placas</div>
-        <div class="tab" onclick="switchTab('programas')">Programas</div>
         <div class="tab" onclick="switchTab('codigo')">Codigo Fonte</div>
         <div class="tab" onclick="switchTab('roteiros')">Roteiros de Teste</div>
         <div class="tab" onclick="switchTab('estrutura')">Estrutura de Dados</div>
@@ -167,13 +166,6 @@
         </div>
     </div>
 
-    <!-- Tab: Programas -->
-    <div class="tab-content" id="tab-programas">
-        <div class="card">
-            <div class="card-title">Mapeamento de Programas (Original → Convertido)</div>
-            <div class="prog-list" id="prog-list"><p style="padding:20px;color:var(--text-muted)">Carregando...</p></div>
-        </div>
-    </div>
 
     <!-- Tab: Codigo (layout IDE) -->
     <div class="tab-content" id="tab-codigo">
@@ -425,7 +417,6 @@ function switchTab(name) {
     document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
     document.getElementById('tab-' + name).classList.add('active');
     event.target.classList.add('active');
-    if (name === 'programas') carregarProgramas();
     if (name === 'usuarios') carregarUsuarios();
     if (name === 'roteiros') carregarRoteiros();
 }
