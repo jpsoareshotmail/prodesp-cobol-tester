@@ -64,7 +64,7 @@ echo "[6/6] Iniciando servidor (gunicorn) na porta $PORT..."
 [ -f /tmp/cobol-tester.pid ] && kill "$(cat /tmp/cobol-tester.pid)" 2>/dev/null || true
 cd "$APP_DIR"
 nohup "$HOME/.local/bin/gunicorn" web_app:app \
-    --bind "0.0.0.0:$PORT" --workers 2 --timeout 120 \
+    --bind "0.0.0.0:$PORT" --workers 1 --timeout 120 \
     > /tmp/cobol-tester.log 2>&1 &
 echo $! > /tmp/cobol-tester.pid
 

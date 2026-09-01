@@ -57,6 +57,36 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .code-block { background: #1A1A1A; color: #00E676; font-family: 'JetBrains Mono', monospace; font-size: 11px; padding: 16px; border-radius: 8px; overflow-x: auto; white-space: pre; max-height: 400px; overflow-y: auto; line-height: 1.5; }
+        /* ===== Layout IDE (aba Codigo Fonte) ===== */
+        .ide { display: flex; gap: 0; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; height: 640px; background: var(--card); box-shadow: var(--shadow); }
+        .ide-sidebar { width: 260px; min-width: 260px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: #FBFBFC; }
+        .ide-sidebar-header { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-3); border-bottom: 1px solid var(--border); }
+        .ide-count { background: var(--text); color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 11px; }
+        .ide-filter { margin: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; }
+        .ide-filter:focus { outline: none; border-color: var(--green); }
+        .ide-list { flex: 1; overflow-y: auto; }
+        .ide-cat { padding: 8px 14px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+        .ide-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; border-left: 2px solid transparent; color: var(--text-2); }
+        .ide-item:hover { background: var(--card-hover); }
+        .ide-item.active { background: #EEF6FF; border-left-color: var(--info); color: var(--text); font-weight: 600; }
+        .ide-item .ico { font-size: 11px; opacity: 0.6; }
+        .ide-item .arrow { margin-left: auto; font-size: 10px; color: var(--text-muted); }
+        .ide-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .ide-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; }
+        .ide-tabs { display: flex; border-bottom: 1px solid var(--border); background: #FBFBFC; }
+        .ide-tab { padding: 8px 16px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-right: 1px solid var(--border); border-bottom: 2px solid transparent; }
+        .ide-tab:hover { color: var(--text); }
+        .ide-tab.active { color: var(--text); background: var(--card); border-bottom-color: var(--text); }
+        .ide-editor-wrap { flex: 1; overflow: auto; }
+        .ide-split { display: grid; grid-template-columns: 1fr 1fr; height: 100%; }
+        .ide-pane { display: flex; flex-direction: column; overflow: hidden; border-right: 1px solid var(--border); }
+        .ide-pane:last-child { border-right: none; }
+        .ide-pane-head { padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--text-3); background: #FBFBFC; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; }
+        .ide-code { flex: 1; overflow: auto; background: #1A1A1A; color: #D4D4D4; font-family: 'JetBrains Mono','Consolas',monospace; font-size: 11px; line-height: 1.5; padding: 0; margin: 0; }
+        .ide-code table { border-collapse: collapse; width: 100%; }
+        .ide-code .ln { text-align: right; color: #6A6A6A; padding: 0 10px; user-select: none; width: 1%; white-space: nowrap; border-right: 1px solid #333; }
+        .ide-code .lc { padding: 0 12px; white-space: pre; color: #C8E6C9; }
+        @media (max-width: 900px) { .ide-split { grid-template-columns: 1fr; } .ide { height: auto; } }
         .prog-list { max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
         .prog-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
         .prog-item:last-child { border-bottom: none; }
@@ -142,18 +172,30 @@
         </div>
     </div>
 
-    <!-- Tab: Codigo -->
+    <!-- Tab: Codigo (layout IDE) -->
     <div class="tab-content" id="tab-codigo">
-        <div class="card">
-            <div class="card-title">Visualizar Codigo Fonte</div>
-            <div class="input-row">
-                <select id="code-prog" style="flex:1;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-family:inherit;color:var(--text);background:#fff;cursor:pointer">
-                    <option value="">-- Selecione um programa --</option>
-                </select>
-                <button class="btn btn-dark" onclick="carregarCodigo()">Carregar</button>
-            </div>
-            <div id="code-view"></div>
+        <div class="ide">
+            <!-- Sidebar: lista de programas -->
+            <aside class="ide-sidebar">
+                <div class="ide-sidebar-header">
+                    <span>Programas</span>
+                    <span id="ide-count" class="ide-count">--</span>
+                </div>
+                <input type="text" id="ide-filter" class="ide-filter" placeholder="Filtrar..." oninput="filtrarProgramas(this.value)">
+                <div id="ide-list" class="ide-list"><p style="padding:14px;color:var(--text-muted);font-size:12px">Carregando...</p></div>
+            </aside>
+            <!-- Editor: codigo original x convertido -->
+            <section class="ide-main">
+                <div id="ide-editor" class="ide-empty">
+                    <div style="text-align:center">
+                        <div style="font-size:40px;opacity:0.25">&lt;/&gt;</div>
+                        <p style="margin-top:8px">Selecione um programa na lista para ver o codigo Original e Convertido.</p>
+                    </div>
+                </div>
+            </section>
         </div>
+        <!-- hidden: guarda o programa selecionado para as funcoes de teste existentes -->
+        <input type="hidden" id="code-prog" value="">
     </div>
 
     <!-- Tab: Ambiente -->
@@ -623,57 +665,75 @@ async function carregarProgramas() {
     } catch(e) { div.innerHTML = '<p style="padding:20px;color:var(--danger)">Erro: ' + e.message + '</p>'; }
 }
 
-// Codigo fonte
+// guarda o codigo carregado para trocar de aba sem refazer fetch
+let IDE_CODE = { original: null, convertido: null, prog: '' };
+
+// numera as linhas do codigo em uma tabela
+function renderCodigoNumerado(codigo) {
+    const linhas = (codigo || '').split('\n');
+    let rows = '';
+    for (let i = 0; i < linhas.length; i++) {
+        rows += '<tr><td class="ln">' + (i + 1) + '</td><td class="lc">' + escapeHtml(linhas[i]) + '</td></tr>';
+    }
+    return '<table>' + rows + '</table>';
+}
+
+function ideMostrar(modo) {
+    document.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
+    const btn = document.getElementById('ide-tab-' + modo);
+    if (btn) btn.classList.add('active');
+    const wrap = document.getElementById('ide-editor-wrap');
+    const o = IDE_CODE.original, c = IDE_CODE.convertido;
+    const paneO = '<div class="ide-pane"><div class="ide-pane-head"><span>ORIGINAL</span><span>' +
+        (o ? escapeHtml(o.arquivo) + ' - ' + o.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
+        '<div class="ide-code">' + (o ? renderCodigoNumerado(o.codigo) : '<div style="padding:16px;color:#888">Fonte original nao encontrado.</div>') + '</div></div>';
+    const paneC = '<div class="ide-pane"><div class="ide-pane-head"><span>CONVERTIDO</span><span>' +
+        (c ? escapeHtml(c.arquivo) + ' - ' + c.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
+        '<div class="ide-code">' + (c ? renderCodigoNumerado(c.codigo) : '<div style="padding:16px;color:#888">Fonte convertido nao encontrado.</div>') + '</div></div>';
+    if (modo === 'original') wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + paneO + '</div>';
+    else if (modo === 'convertido') wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + paneC + '</div>';
+    else wrap.innerHTML = '<div class="ide-split">' + paneO + paneC + '</div>';
+}
+
+// Codigo fonte - renderiza no layout IDE
 async function carregarCodigo() {
     const prog = document.getElementById('code-prog').value.trim();
-    const div = document.getElementById('code-view');
-    if (!prog) { div.innerHTML = '<p style="color:var(--text-muted)">Informe o nome do programa</p>'; return; }
-    div.innerHTML = '<span class="spinner"></span> Carregando...';
+    const editor = document.getElementById('ide-editor');
+    if (!prog) return;
+    editor.className = '';
+    editor.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)"><span class="spinner"></span> Carregando ' + prog + '...</div>';
     try {
         const r = await fetch('/api/codigo-fonte/' + prog);
         const d = await r.json();
-        let html = '<div class="grid-2" style="margin-top:12px">';
-        if (d.original) {
-            html += '<div><h4 style="font-size:12px;color:var(--text-muted);margin-bottom:8px">ORIGINAL (' + d.original.arquivo + ' - ' + d.original.linhas + ' linhas)</h4><div class="code-block">' + escapeHtml(d.original.codigo) + '</div></div>';
-        } else { html += '<div><h4 style="font-size:12px;color:var(--text-muted)">ORIGINAL</h4><p style="color:var(--text-muted);padding:16px">Nao encontrado</p></div>'; }
-        if (d.convertido) {
-            html += '<div><h4 style="font-size:12px;color:var(--text-muted);margin-bottom:8px">CONVERTIDO (' + d.convertido.arquivo + ' - ' + d.convertido.linhas + ' linhas)</h4><div class="code-block">' + escapeHtml(d.convertido.codigo) + '</div></div>';
-        } else { html += '<div><h4 style="font-size:12px;color:var(--text-muted)">CONVERTIDO</h4><p style="color:var(--text-muted);padding:16px">Nao encontrado</p></div>'; }
+        IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog };
+
+        let html = '';
+        // barra de titulo + abas
+        html += '<div class="ide-tabs">';
+        html += '<div class="ide-tab active" id="ide-tab-split" onclick="ideMostrar(\'split\')">Lado a lado</div>';
+        html += '<div class="ide-tab" id="ide-tab-original" onclick="ideMostrar(\'original\')">Original</div>';
+        html += '<div class="ide-tab" id="ide-tab-convertido" onclick="ideMostrar(\'convertido\')">Convertido</div>';
+        html += '<div style="margin-left:auto;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text)">' + prog + '</div>';
         html += '</div>';
-
-        // Secao de teste com o programa
-        html += '<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">';
-        html += '<h4 style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:12px">Testar Programa</h4>';
-        html += '<p style="font-size:12px;color:var(--text-3);margin-bottom:12px">Execute o programa com dados de entrada e compare o resultado entre Original e Convertido.</p>';
-        html += '<div class="grid-2">';
-
-        // Box Original
-        html += '<div style="padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--card-hover)">';
-        html += '<h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">Executar Original</h4>';
-        html += '<div class="input-row"><input type="text" id="test-input-orig" placeholder="Entrada (ex: placa ABC1D23)" onkeypress="if(event.key===\'Enter\')executarTeste(\'original\')"><button class="btn btn-dark btn-sm" onclick="executarTeste(\'original\')">Executar</button></div>';
-        html += '<div id="test-result-orig"></div>';
+        html += '<div class="ide-editor-wrap" id="ide-editor-wrap"></div>';
+        // barra de teste no rodape do editor
+        html += '<div style="border-top:1px solid var(--border);padding:12px 14px;background:#FBFBFC">';
+        html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+        html += '<span style="font-size:12px;font-weight:700;color:var(--text-3)">Testar:</span>';
+        html += '<input type="text" id="test-input-both" placeholder="Entrada (ex: ABC1D23)" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
+        html += '<button class="btn btn-dark btn-sm" onclick="executarAmbos()">Executar Original x Convertido</button>';
         html += '</div>';
-
-        // Box Convertido
-        html += '<div style="padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--card-hover)">';
-        html += '<h4 style="font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">Executar Convertido</h4>';
-        html += '<div class="input-row"><input type="text" id="test-input-conv" placeholder="Entrada (ex: placa ABC1D23)" onkeypress="if(event.key===\'Enter\')executarTeste(\'convertido\')"><button class="btn btn-dark btn-sm" onclick="executarTeste(\'convertido\')">Executar</button></div>';
-        html += '<div id="test-result-conv"></div>';
+        html += '<div id="test-result-both" style="margin-top:10px"></div>';
+        // campos ocultos usados pelas funcoes de execucao individuais
+        html += '<input type="hidden" id="test-input-orig"><input type="hidden" id="test-input-conv">';
+        html += '<div id="test-result-orig" style="display:none"></div><div id="test-result-conv" style="display:none"></div>';
         html += '</div>';
-
-        html += '</div>';
-
-        // Botao para executar ambos de uma vez
-        html += '<div style="margin-top:12px;display:flex;gap:8px;align-items:center">';
-        html += '<input type="text" id="test-input-both" placeholder="Entrada para ambos (ex: ABC1D23)" style="flex:1" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
-        html += '<button class="btn btn-dark" onclick="executarAmbos()">Executar Ambos e Comparar</button>';
-        html += '</div>';
-        html += '<div id="test-result-both" style="margin-top:12px"></div>';
-
-        html += '</div>';
-
-        div.innerHTML = html;
-    } catch(e) { div.innerHTML = '<p style="color:var(--danger)">Erro: ' + e.message + '</p>'; }
+        editor.innerHTML = html;
+        ideMostrar('split');
+    } catch(e) {
+        editor.className = 'ide-empty';
+        editor.innerHTML = '<p style="color:var(--danger)">Erro ao carregar: ' + e.message + '</p>';
+    }
 }
 
 // Executar teste individual (original ou convertido)
@@ -863,23 +923,58 @@ function escapeHtml(text) { const d = document.createElement('div'); d.textConte
 carregarStats();
 carregarListaProgramas();
 
-// Popula o select de programas na aba Codigo Fonte
+// ===== Aba Codigo Fonte: layout IDE =====
+let IDE_PROGRAMAS = [];   // [{original, convertido, categoria}]
+
+// Popula a sidebar de programas
 async function carregarListaProgramas() {
-    const select = document.getElementById('code-prog');
+    const list = document.getElementById('ide-list');
     try {
         const r = await fetch('/api/programas-dual');
         const d = await r.json();
-        let html = '<option value="">-- Selecione um programa --</option>';
+        IDE_PROGRAMAS = [];
         Object.entries(d.categorias).forEach(([cat, progs]) => {
-            html += '<optgroup label="' + cat + '">';
-            progs.forEach(p => {
-                html += '<option value="' + p.original + '">' + p.original + ' → ' + p.convertido + '</option>';
-            });
-            html += '</optgroup>';
+            progs.forEach(p => IDE_PROGRAMAS.push({ original: p.original, convertido: p.convertido, categoria: cat }));
         });
-        select.innerHTML = html;
-        select.onchange = function() { if (this.value) carregarCodigo(); };
-    } catch(e) { console.error('Erro ao carregar lista:', e); }
+        document.getElementById('ide-count').textContent = IDE_PROGRAMAS.length;
+        renderListaProgramas(IDE_PROGRAMAS);
+    } catch(e) {
+        if (list) list.innerHTML = '<p style="padding:14px;color:var(--danger);font-size:12px">Erro: ' + e.message + '</p>';
+    }
+}
+
+function renderListaProgramas(items) {
+    const list = document.getElementById('ide-list');
+    if (!list) return;
+    if (!items.length) { list.innerHTML = '<p style="padding:14px;color:var(--text-muted);font-size:12px">Nenhum programa.</p>'; return; }
+    // agrupar por categoria
+    const cats = {};
+    items.forEach(p => { (cats[p.categoria] = cats[p.categoria] || []).push(p); });
+    let html = '';
+    Object.entries(cats).forEach(([cat, progs]) => {
+        html += '<div class="ide-cat">' + escapeHtml(cat) + '</div>';
+        progs.forEach(p => {
+            html += '<div class="ide-item" data-prog="' + p.original + '" onclick="selecionarPrograma(this,\'' + p.original + '\')">' +
+                '<span class="ico">&lt;/&gt;</span>' +
+                '<span>' + p.original + '</span>' +
+                '<span class="arrow">' + p.convertido + '</span></div>';
+        });
+    });
+    list.innerHTML = html;
+}
+
+function filtrarProgramas(termo) {
+    const t = (termo || '').trim().toUpperCase();
+    if (!t) { renderListaProgramas(IDE_PROGRAMAS); return; }
+    renderListaProgramas(IDE_PROGRAMAS.filter(p =>
+        p.original.toUpperCase().includes(t) || p.convertido.toUpperCase().includes(t)));
+}
+
+function selecionarPrograma(el, prog) {
+    document.querySelectorAll('.ide-item').forEach(i => i.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.getElementById('code-prog').value = prog;
+    carregarCodigo();
 }
 </script>
 </body>
