@@ -628,6 +628,17 @@ function ideMostrar(modo) {
     const btn = document.getElementById('ide-tab-' + modo);
     if (btn) btn.classList.add('active');
     const wrap = document.getElementById('ide-editor-wrap');
+    const testes = document.getElementById('ide-testes');
+
+    // aba Testes: esconde o editor de codigo e mostra o painel de testes
+    if (modo === 'testes') {
+        if (wrap) wrap.style.display = 'none';
+        if (testes) testes.style.display = 'flex', testes.style.flexDirection = 'column';
+        return;
+    }
+    if (wrap) wrap.style.display = '';
+    if (testes) testes.style.display = 'none';
+
     const o = IDE_CODE.original, c = IDE_CODE.convertido;
     const paneO = '<div class="ide-pane"><div class="ide-pane-head"><span>ORIGINAL</span><span>' +
         (o ? escapeHtml(o.arquivo) + ' - ' + o.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
@@ -653,24 +664,24 @@ async function carregarCodigo() {
         IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog };
 
         let html = '';
-        // barra de titulo + abas
+        // barra de titulo + abas (codigo + testes)
         html += '<div class="ide-tabs">';
         html += '<div class="ide-tab active" id="ide-tab-split" onclick="ideMostrar(\'split\')">Lado a lado</div>';
         html += '<div class="ide-tab" id="ide-tab-original" onclick="ideMostrar(\'original\')">Original</div>';
         html += '<div class="ide-tab" id="ide-tab-convertido" onclick="ideMostrar(\'convertido\')">Convertido</div>';
+        html += '<div class="ide-tab" id="ide-tab-testes" onclick="ideMostrar(\'testes\')">Testes</div>';
         html += '<div style="margin-left:auto;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text)">' + prog + '</div>';
         html += '</div>';
         html += '<div class="ide-editor-wrap" id="ide-editor-wrap"></div>';
-        // barra de teste no rodape do editor
-        html += '<div class="ide-testbar" style="border-top:1px solid var(--border);padding:12px 14px;background:#FBFBFC">';
-        html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
-        html += '<span style="font-size:12px;font-weight:700;color:var(--text-3)">Testar:</span>';
-        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="Entrada manual (ex: ABC1D23)" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
-        html += '<button class="btn btn-outline btn-sm" onclick="executarAmbos()">Teste manual</button>';
+        // painel de Testes (exibido quando a aba Testes esta ativa)
+        html += '<div id="ide-testes" style="display:none;flex:1;overflow:auto;padding:16px">';
+        html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
+        html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">Entrada manual:</span>';
+        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="ex: ABC1D23" style="min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
+        html += '<button class="btn btn-outline btn-sm" onclick="executarAmbos()">Executar teste manual</button>';
         html += '<button class="btn btn-dark btn-sm" onclick="validarRoteiro(\'' + prog + '\')">Validar com roteiro de teste</button>';
         html += '</div>';
-        html += '<div id="test-result-both" style="margin-top:10px"></div>';
-        // campos ocultos usados pelas funcoes de execucao individuais
+        html += '<div id="test-result-both"></div>';
         html += '<input type="hidden" id="test-input-orig"><input type="hidden" id="test-input-conv">';
         html += '<div id="test-result-orig" style="display:none"></div><div id="test-result-conv" style="display:none"></div>';
         html += '</div>';
