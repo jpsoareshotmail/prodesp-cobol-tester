@@ -166,14 +166,14 @@
     <div class="tab-content" id="tab-ambiente">
         <div class="card">
             <div class="card-title">Ambiente de Teste vs Ambiente Alvo</div>
-            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">Este sistema usa <strong>GnuCOBOL 3.1.2</strong> para validacao de logica. O ambiente de producao alvo e <strong>IBM z/OS Enterprise COBOL 6.5 com DB2</strong>. Abaixo as diferencas relevantes.</p>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">Este sistema usa <strong>GnuCOBOL 3.2.0</strong> para validacao de logica, publicado em <strong>AWS EC2 (Amazon Linux)</strong>. O ambiente de producao alvo e <strong>IBM z/OS Enterprise COBOL 6.5 com DB2</strong>. Abaixo as diferencas relevantes.</p>
 
             <div style="overflow-x:auto">
             <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:20px">
                 <thead>
                     <tr style="background:var(--card-hover)">
                         <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700">Caracteristica</th>
-                        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-weight:700;background:#F0FDF4">GnuCOBOL 3.1.2<br><span style="font-weight:400;color:var(--text-muted)">(Este ambiente)</span></th>
+                        <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-weight:700;background:#F0FDF4">GnuCOBOL 3.2.0<br><span style="font-weight:400;color:var(--text-muted)">(Este ambiente - AWS EC2)</span></th>
                         <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-weight:700;background:#EFF6FF">IBM z/OS COBOL 6.5<br><span style="font-weight:400;color:var(--text-muted)">(Ambiente alvo)</span></th>
                         <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-weight:700">Impacto</th>
                     </tr>
@@ -235,15 +235,15 @@
                     </tr>
                     <tr style="border-bottom:1px solid var(--border);background:var(--card-hover)">
                         <td style="padding:8px 12px;font-weight:600">Copybooks</td>
-                        <td style="padding:8px 12px;text-align:center"><span style="color:var(--warning);font-weight:600">Inferidos (2071 campos)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span style="color:var(--warning);font-weight:600">Inferidos + 14 de tela reais</span></td>
                         <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">Originais (PDS)</span></td>
-                        <td style="padding:8px 12px;color:var(--text-3)">PICs inferidos podem ter tamanho diferente do real</td>
+                        <td style="padding:8px 12px;color:var(--text-3)">215 copybooks de dados pendentes de entrega (ver aba Estrutura de Dados)</td>
                     </tr>
                     <tr>
                         <td style="padding:8px 12px;font-weight:600">Banco de dados</td>
-                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-red">Sem banco (stubs)</span></td>
+                        <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">SQLite local (99 tabelas)</span></td>
                         <td style="padding:8px 12px;text-align:center"><span class="badge badge-green">DB2 real</span></td>
-                        <td style="padding:8px 12px;color:var(--text-3)">Nenhuma query e executada neste ambiente</td>
+                        <td style="padding:8px 12px;color:var(--text-3)">Estrutura e massa geradas do codigo-fonte; DDL no dialeto DB2</td>
                     </tr>
                 </tbody>
             </table>
@@ -262,6 +262,7 @@
                         <li>Comparacao de resultados Original vs Convertido</li>
                         <li>Compilabilidade do fonte convertido</li>
                         <li>Estrutura do programa (DIVISION, SECTION, COPY)</li>
+                        <li>Estrutura de dados: DDL DB2 + massa de teste (banco SQLite local)</li>
                     </ul>
                 </div>
                 <div style="padding:16px;border:1px solid var(--danger);border-radius:8px;background:#FEF2F2">
@@ -283,9 +284,9 @@
             <div style="display:flex;gap:12px;flex-wrap:wrap">
                 <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid var(--green);text-align:center">
                     <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 1</div>
-                    <div style="font-size:13px;font-weight:600;margin-top:4px">GnuCOBOL</div>
-                    <div style="font-size:11px;color:var(--text-3)">Validacao logica</div>
-                    <div style="font-size:10px;color:var(--green);margin-top:4px">ATUAL</div>
+                    <div style="font-size:13px;font-weight:600;margin-top:4px">GnuCOBOL (AWS)</div>
+                    <div style="font-size:11px;color:var(--text-3)">Logica + estrutura de dados</div>
+                    <div style="font-size:10px;color:var(--green);margin-top:4px">ATUAL - PUBLICADO</div>
                 </div>
                 <div style="flex:1;min-width:150px;padding:12px;background:var(--card-hover);border-radius:8px;border-left:3px solid var(--info);text-align:center">
                     <div style="font-size:11px;color:var(--text-muted);text-transform:uppercase">Fase 2</div>
@@ -323,8 +324,10 @@
     <!-- Tab: Estrutura de Dados -->
     <div class="tab-content" id="tab-estrutura">
         <div class="card">
-            <div class="card-title">Estrutura de Dados</div>
-
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                <div class="card-title" style="margin-bottom:0">Estrutura de Dados</div>
+                <button class="btn btn-outline btn-sm" onclick="gerarEstrutura(true)">Regerar estrutura</button>
+            </div>
             <div id="estrutura-view"><p style="color:var(--text-muted);font-size:13px"><span class="spinner"></span> Carregando estrutura de dados...</p></div>
         </div>
     </div>
@@ -883,12 +886,12 @@ async function abrirTabela(nome) {
 }
 
 // Estrutura de Dados (DDL + massa)
-async function gerarEstrutura() {
+async function gerarEstrutura(forcar) {
     const div = document.getElementById('estrutura-view');
     const n = 10;  // massa fixa por tabela
-    div.innerHTML = '<span class="spinner"></span> Gerando estrutura a partir do codigo-fonte...';
+    div.innerHTML = '<span class="spinner"></span> ' + (forcar ? 'Regerando' : 'Carregando') + ' estrutura a partir do codigo-fonte...';
     try {
-        const r = await fetch('/api/estrutura/gerar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({massa: parseInt(n)}) });
+        const r = await fetch('/api/estrutura/gerar', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({massa: parseInt(n), forcar: !!forcar}) });
         const d = await r.json();
         if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
         const rs = d.resumo;

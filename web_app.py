@@ -909,12 +909,18 @@ def get_stats():
         "taxa_sucesso": taxa_sucesso,
     })
 
+# Cache em memoria da estrutura gerada (evita recalcular a cada acesso).
+# Os fontes nao mudam entre requisicoes, entao guardamos o resultado.
+_estrutura_cache = {}
+
+
 @app.route('/api/estrutura/gerar', methods=['POST'])
 def gerar_estrutura():
     """Gera DDL + massa de dados a partir dos programas COBOL + copybooks.
 
     Usa a ferramenta tooling/ para inferir a estrutura das tabelas DB2 a partir
     dos EXEC SQL dos programas, tipando as colunas pelos copybooks disponiveis.
+    O resultado e cacheado em memoria; envie {"forcar": true} para regerar.
     """
     try:
         data = request.json or {}
@@ -923,6 +929,12 @@ def gerar_estrutura():
             n_massa = 1
         if n_massa > 50:
             n_massa = 50
+        forcar = bool(data.get('forcar', False))
+
+        # cache por quantidade de massa; retorna imediatamente se ja calculado
+        chave = f'massa_{n_massa}'
+        if not forcar and chave in _estrutura_cache:
+            return jsonify(_estrutura_cache[chave])
 
         from tooling.orchestrator import gerar_para_web
 
@@ -937,6 +949,7 @@ def gerar_estrutura():
             pastas_copy,
             n_massa=n_massa,
         )
+        _estrutura_cache[chave] = resultado
         return jsonify(resultado)
     except Exception as e:
         import traceback
