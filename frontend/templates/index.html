@@ -665,8 +665,9 @@ async function carregarCodigo() {
         html += '<div class="ide-testbar" style="border-top:1px solid var(--border);padding:12px 14px;background:#FBFBFC">';
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
         html += '<span style="font-size:12px;font-weight:700;color:var(--text-3)">Testar:</span>';
-        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="Entrada (ex: ABC1D23)" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
-        html += '<button class="btn btn-dark btn-sm" onclick="executarAmbos()">Executar teste</button>';
+        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="Entrada manual (ex: ABC1D23)" style="flex:1;min-width:140px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
+        html += '<button class="btn btn-outline btn-sm" onclick="executarAmbos()">Teste manual</button>';
+        html += '<button class="btn btn-dark btn-sm" onclick="validarRoteiro(\'' + prog + '\')">Validar com roteiro de teste</button>';
         html += '</div>';
         html += '<div id="test-result-both" style="margin-top:10px"></div>';
         // campos ocultos usados pelas funcoes de execucao individuais
@@ -730,6 +731,39 @@ async function executarTeste(fluxo) {
     } catch(e) {
         div.innerHTML = '<div style="padding:12px;background:#FEF2F2;border:1px solid var(--danger);border-radius:6px;color:var(--danger)">Erro: ' + e.message + '</div>';
     }
+}
+
+// Validar o programa com os dados de teste do roteiro (3 cenarios)
+async function validarRoteiro(prog) {
+    const div = document.getElementById('test-result-both');
+    div.innerHTML = '<span class="spinner"></span> Executando validacao com os cenarios do roteiro de teste...';
+    try {
+        const r = await fetch('/api/testar-roteiro/' + encodeURIComponent(prog));
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
+        let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Validacao com o roteiro <strong>Primeiro Emplacamento</strong> (' + d.casos.length + ' cenarios)</div>';
+        html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Cenario</th><th>Entrada (chassi)</th><th>Original</th><th>Convertido</th><th>Status</th></tr>';
+        d.casos.forEach(c => {
+            const o = c.original || {}; const cv = c.convertido || {};
+            const oTxt = c.erro ? 'erro' : ((o.codigo != null ? o.codigo : '-') + (o.descricao ? ' ' + o.descricao : ''));
+            const cTxt = c.erro ? 'erro' : ((cv.codigo != null ? cv.codigo : '-') + (cv.descricao ? ' ' + cv.descricao : ''));
+            const ok = c.iguais;
+            const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
+                        : (ok ? '<span class="badge badge-green">IGUAL</span>' : '<span class="badge badge-red">DIVERGENTE</span>');
+            html += '<tr style="border-bottom:1px solid var(--border)">' +
+                '<td style="padding:6px 8px"><strong>' + escapeHtml(c.cenario) + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria) + '</div></td>' +
+                '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(c.chassi || '-') + '</td>' +
+                '<td style="text-align:center">' + escapeHtml(String(oTxt)) + '</td>' +
+                '<td style="text-align:center">' + escapeHtml(String(cTxt)) + '</td>' +
+                '<td style="text-align:center">' + badge + '</td></tr>';
+            if (c.erro) {
+                html += '<tr><td colspan="5" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
+            }
+        });
+        html += '</table>';
+        div.innerHTML = html;
+    } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
 }
 
 // Executar ambos e comparar

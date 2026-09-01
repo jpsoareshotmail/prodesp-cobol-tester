@@ -1010,6 +1010,70 @@ def get_registros_tabela(tabela):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/testar-roteiro/<programa>', methods=['GET'])
+def testar_com_roteiro(programa):
+    """Executa o programa (original e convertido) usando os dados de teste de
+    cada cenario do roteiro de Primeiro Emplacamento, para validacao."""
+    try:
+        from data.roteiros_teste import get_roteiros
+        from cobol_runner import comparar_placa, executar_original, executar_convertido
+        from data.program_mapping import get_converted_name
+
+        is_placa = ('L004' in programa.upper() or programa.upper() == 'FGAA004'
+                    or 'PF-GAA-L004' in programa.upper())
+
+        casos = []
+        for rot in get_roteiros():
+            dt = rot.get('dados_teste', {})
+            # entrada de teste: para validador de placa nao ha placa no roteiro (usa chassi
+            # apenas como identificador); para os demais, usamos o chassi como entrada.
+            entrada = dt.get('chassi', '')
+            ident = dt.get('cpf') or dt.get('cnpj') or ''
+
+            caso = {
+                'cenario': rot['cenario'],
+                'categoria': rot['categoria'],
+                'chassi': dt.get('chassi', ''),
+                'identificador': ident,
+                'entrada': entrada,
+            }
+
+            try:
+                if is_placa:
+                    # o validador de placa espera uma placa; o roteiro nao tem placa,
+                    # entao rodamos com o chassi so para exercitar (resultado indicativo)
+                    comp = comparar_placa(entrada[:7] if entrada else '')
+                    caso['original'] = {
+                        'codigo': comp.resultado_original.codigo if comp.resultado_original else None,
+                        'descricao': comp.resultado_original.descricao if comp.resultado_original else '',
+                    }
+                    caso['convertido'] = {
+                        'codigo': comp.resultado_convertido.codigo if comp.resultado_convertido else None,
+                        'descricao': comp.resultado_convertido.descricao if comp.resultado_convertido else '',
+                    }
+                    caso['iguais'] = comp.resultados_iguais
+                else:
+                    env = {'COB_PLACA': entrada, 'COB_CHASSI': entrada}
+                    ro = executar_original(programa, env)
+                    nome_conv = get_converted_name(programa) or programa
+                    rc = executar_convertido(nome_conv, env)
+                    caso['original'] = {'codigo': ro.codigo, 'descricao': ro.descricao or ro.output,
+                                        'sucesso': ro.sucesso, 'erro': ro.erro}
+                    caso['convertido'] = {'codigo': rc.codigo, 'descricao': rc.descricao or rc.output,
+                                          'sucesso': rc.sucesso, 'erro': rc.erro}
+                    caso['iguais'] = (ro.output == rc.output) and ro.sucesso and rc.sucesso
+            except Exception as ex:
+                caso['erro'] = str(ex)
+
+            casos.append(caso)
+
+        return jsonify({'programa': programa, 'is_placa': is_placa, 'casos': casos})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/roteiros', methods=['GET'])
 def get_roteiros_endpoint():
     """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
