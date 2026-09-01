@@ -358,3 +358,47 @@ def gerar_banco_local(pasta_programas, pastas_copybooks: list, db_path,
         'contagem': contagem,
         'tabelas': dados['tabelas'],
     }
+
+
+def ler_registros_tabela(db_path, tabela: str, limite: int = 100) -> dict:
+    """Le os registros de uma tabela do banco SQLite (colunas + linhas).
+
+    Se o banco nao existir, gera-o antes (com massa padrao) para ter os dados.
+    O nome da tabela vem no formato SCHEMA.TABELA ou SCHEMA_TABELA.
+    """
+    import sqlite3
+    import re as _re
+
+    db_path = Path(db_path)
+    # nome fisico no SQLite usa underscore no lugar do ponto
+    nome_fisico = tabela.replace('.', '_')
+    # validacao simples do nome (evita injecao)
+    if not _re.match(r'^[A-Za-z0-9_]+$', nome_fisico):
+        raise ValueError('Nome de tabela invalido.')
+
+    if not db_path.exists():
+        raise FileNotFoundError('Banco ainda nao gerado. Gere o banco local primeiro.')
+
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+    # confere se a tabela existe
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (nome_fisico,))
+    if not cur.fetchone():
+        con.close()
+        raise ValueError(f'Tabela {nome_fisico} nao encontrada no banco.')
+
+    cur.execute(f'SELECT * FROM "{nome_fisico}" LIMIT {int(limite)}')
+    colunas = [d[0] for d in cur.description]
+    linhas = [list(r) for r in cur.fetchall()]
+    cur.execute(f'SELECT COUNT(*) FROM "{nome_fisico}"')
+    total = cur.fetchone()[0]
+    con.close()
+
+    return {
+        'tabela': tabela,
+        'tabela_fisica': nome_fisico,
+        'colunas': colunas,
+        'linhas': linhas,
+        'total': total,
+        'exibindo': len(linhas),
+    }

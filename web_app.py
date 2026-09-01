@@ -972,6 +972,31 @@ def gerar_banco_endpoint():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/estrutura/tabela/<tabela>', methods=['GET'])
+def get_registros_tabela(tabela):
+    """Retorna os registros de teste de uma tabela do banco SQLite (para o modal)."""
+    try:
+        from tooling.orchestrator import ler_registros_tabela, gerar_banco_local
+        db = 'saida_estrutura/prodesp_teste.db'
+        # se o banco ainda nao foi materializado, gera agora
+        if not Path(db).exists():
+            pastas_copy = ['cobol_build/copy']
+            amostra = Path('entregas/copybook-Amostragem POC  - Fontes Convertidos/Originais')
+            if amostra.exists():
+                pastas_copy.append(str(amostra))
+            gerar_banco_local('fontes_convertidos/Convertidos', pastas_copy, db_path=db, n_massa=10)
+        resultado = ler_registros_tabela(db, tabela, limite=100)
+        return jsonify(resultado)
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/roteiros', methods=['GET'])
 def get_roteiros_endpoint():
     """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
