@@ -132,7 +132,6 @@
         <div class="tab" onclick="switchTab('roteiros')">Roteiros de Teste</div>
         <div class="tab" onclick="switchTab('estrutura')">Estrutura de Dados</div>
         <div class="tab" onclick="switchTab('ambiente')">Ambiente</div>
-        <div class="tab" onclick="switchTab('status')">Status COBOL</div>
         {% if papel == 'admin' %}<div class="tab" onclick="switchTab('usuarios')">Usuarios</div>{% endif %}
     </div>
 
@@ -330,14 +329,7 @@
         </div>
     </div>
 
-    <!-- Tab: Status -->
-    <div class="tab-content" id="tab-status">
-        <div class="card">
-            <div class="card-title">Diagnostico do Ambiente COBOL</div>
-            <div id="status-view"><p style="color:var(--text-muted)">Clique em "Verificar" para carregar.</p></div>
-            <button class="btn btn-dark" onclick="carregarStatus()" style="margin-top:12px">Verificar</button>
-        </div>
-    </div>
+
 
     {% if papel == 'admin' %}
     <!-- Tab: Usuarios (admin) -->
