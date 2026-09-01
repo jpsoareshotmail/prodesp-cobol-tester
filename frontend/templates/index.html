@@ -128,8 +128,7 @@
 
     <!-- Tabs -->
     <div class="tabs">
-        <div class="tab active" onclick="switchTab('comparar')">Comparar Placas</div>
-        <div class="tab" onclick="switchTab('codigo')">Codigo Fonte</div>
+        <div class="tab active" onclick="switchTab('codigo')">Codigo Fonte</div>
         <div class="tab" onclick="switchTab('roteiros')">Roteiros de Teste</div>
         <div class="tab" onclick="switchTab('estrutura')">Estrutura de Dados</div>
         <div class="tab" onclick="switchTab('ambiente')">Ambiente</div>
@@ -137,38 +136,9 @@
         {% if papel == 'admin' %}<div class="tab" onclick="switchTab('usuarios')">Usuarios</div>{% endif %}
     </div>
 
-    <!-- Tab: Comparar -->
-    <div class="tab-content active" id="tab-comparar">
-        <div class="card">
-            <div class="card-title">Comparar Validacao de Placa</div>
-            <p style="font-size:13px;color:var(--text-3);margin-bottom:12px">Executa a mesma placa no programa <strong>Original</strong> (PF-GAA-L004) e no <strong>Convertido</strong> (FGAA004) e mostra diferencas.</p>
-            <div class="input-row">
-                <input type="text" id="placa-input" placeholder="Digite a placa (ex: ABC1D23)" maxlength="10" onkeypress="if(event.key==='Enter')compararPlaca()">
-                <button class="btn btn-dark" onclick="compararPlaca()">Comparar</button>
-            </div>
-            <div id="compare-result"></div>
-        </div>
-
-        <div class="card">
-            <div class="card-title">Teste em Lote</div>
-            <p style="font-size:13px;color:var(--text-3);margin-bottom:12px">Placas de teste predefinidas para validacao rapida.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('ABC1D23')">ABC1D23</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('ABC1234')">ABC1234</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('BFA5B67')">BFA5B67</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('QSN3A45')">QSN3A45</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('AB12345')">AB12345</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('AB1234')">AB1234</button>
-                <button class="btn btn-outline btn-sm" onclick="compararPlaca('')">(vazio)</button>
-                <button class="btn btn-dark btn-sm" onclick="testarTodas()">Testar Todas</button>
-            </div>
-            <div id="batch-result"></div>
-        </div>
-    </div>
-
 
     <!-- Tab: Codigo (layout IDE) -->
-    <div class="tab-content" id="tab-codigo">
+    <div class="tab-content active" id="tab-codigo">
         <div class="ide">
             <!-- Sidebar: lista de programas -->
             <aside class="ide-sidebar">
