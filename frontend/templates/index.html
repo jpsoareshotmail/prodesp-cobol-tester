@@ -668,6 +668,17 @@ async function carregarProgramas() {
     } catch(e) { div.innerHTML = '<p style="padding:20px;color:var(--danger)">Erro: ' + e.message + '</p>'; }
 }
 
+// Sugere um valor de teste conforme o programa selecionado.
+// Placa para validadores de placa; chassi para programas de veiculo.
+function valorExemplo(prog) {
+    const p = (prog || '').toUpperCase();
+    // validadores de placa (GAA Leitura) - usam placa
+    if (p.indexOf('L004') >= 0 || p.indexOf('FGAA004') >= 0) return 'ABC1D23';
+    if (p.startsWith('PF-GAA-L') || p.startsWith('FGAA')) return 'ABC1D23';
+    // demais programas (veiculo) - chassi de teste dos roteiros
+    return '9C2GAA1SNSP772009';
+}
+
 // guarda o codigo carregado para trocar de aba sem refazer fetch
 let IDE_CODE = { original: null, convertido: null, prog: '' };
 
@@ -723,7 +734,7 @@ async function carregarCodigo() {
         html += '<div class="ide-testbar" style="border-top:1px solid var(--border);padding:12px 14px;background:#FBFBFC">';
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
         html += '<span style="font-size:12px;font-weight:700;color:var(--text-3)">Testar:</span>';
-        html += '<input type="text" id="test-input-both" placeholder="Entrada (ex: ABC1D23)" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
+        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="Entrada (ex: ABC1D23)" style="flex:1;min-width:160px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
         html += '<button class="btn btn-dark btn-sm" onclick="executarAmbos()">Executar Original x Convertido</button>';
         html += '</div>';
         html += '<div id="test-result-both" style="margin-top:10px"></div>';
