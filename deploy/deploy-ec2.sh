@@ -31,9 +31,17 @@ if ! command -v cobc >/dev/null 2>&1; then
         cd /tmp
         wget -q "https://sourceforge.net/projects/gnucobol/files/gnucobol/3.2/gnucobol-3.2.tar.gz/download" -O gnucobol-3.2.tar.gz
         tar xzf gnucobol-3.2.tar.gz && cd gnucobol-3.2
-        ./configure --prefix=/usr/local && make -j"$(nproc)" && sudo make install && sudo ldconfig
+        ./configure --prefix=/usr/local && make -j"$(nproc)" && sudo make install
+        # registra /usr/local/lib no linker (senao libcob.so.4 nao e encontrada em runtime)
+        echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/gnucobol.conf
+        sudo ldconfig
         cd "$HOME"
     }
+fi
+# garante que a libcob esteja no path do linker (idempotente)
+if ! ldconfig -p | grep -q libcob; then
+    echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/gnucobol.conf
+    sudo ldconfig
 fi
 cobc --version >/dev/null 2>&1 && echo "  GnuCOBOL OK: $(cobc --version | head -1)" || echo "  AVISO: cobc indisponivel (app rodara em modo simulacao)"
 

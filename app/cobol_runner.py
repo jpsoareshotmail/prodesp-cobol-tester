@@ -124,6 +124,32 @@ def _cobc():
     return _resolver_cobc()
 
 
+_LARGER_REDEF_FLAG = None
+
+
+def _flag_larger_redefines():
+    """Retorna a flag correta para 'larger redefines' conforme a versao do cobc.
+    - GnuCOBOL 3.1.x: -flarger-redefines-ok
+    - GnuCOBOL 3.2.x: -flarger-redefines=ok
+    Detecta uma vez consultando o --help do compilador.
+    """
+    global _LARGER_REDEF_FLAG
+    if _LARGER_REDEF_FLAG is not None:
+        return _LARGER_REDEF_FLAG
+    try:
+        result = subprocess.run([_cobc(), "--help"], capture_output=True, text=True, timeout=10)
+        ajuda = (result.stdout or '') + (result.stderr or '')
+        if '-flarger-redefines=' in ajuda:
+            _LARGER_REDEF_FLAG = ["-flarger-redefines=ok"]      # 3.2+
+        elif '-flarger-redefines-ok' in ajuda:
+            _LARGER_REDEF_FLAG = ["-flarger-redefines-ok"]      # 3.1
+        else:
+            _LARGER_REDEF_FLAG = []                              # nao suportado -> omite
+    except Exception:
+        _LARGER_REDEF_FLAG = []
+    return _LARGER_REDEF_FLAG
+
+
 def _extrair_undefined(stderr: str) -> list:
     """Extrai nomes de variaveis/paragrafos 'not defined' do stderr do cobc."""
     import re
@@ -252,7 +278,7 @@ def compilar_modulo(nome_convertido: str) -> tuple:
         result = subprocess.run(
             [_cobc(), "-m", str(compile_source), "-o", str(dll),
              "-I", str(COPY_DIR), "-w", "-frelax-syntax-checks",
-             "-frelax-level-hierarchy", "-flarger-redefines-ok"],
+             "-frelax-level-hierarchy"] + _flag_larger_redefines(),
             capture_output=True, text=True, env=env, timeout=30,
             cwd=str(PROJECT_ROOT),
         )
