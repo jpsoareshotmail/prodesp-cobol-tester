@@ -119,13 +119,6 @@
         </div>
     </header>
 
-    <!-- Status -->
-    <div class="grid-3" id="stats-grid">
-        <div class="stat"><div class="stat-value" id="s-total">--</div><div class="stat-label">Programas</div></div>
-        <div class="stat"><div class="stat-value" id="s-originais">--</div><div class="stat-label">Originais</div></div>
-        <div class="stat"><div class="stat-value" id="s-convertidos">--</div><div class="stat-label">Convertidos</div></div>
-    </div>
-
     <!-- Tabs -->
     <div class="tabs">
         <div class="tab active" onclick="switchTab('codigo')">Codigo Fonte</div>
@@ -534,20 +527,8 @@ async function redefinirSenha(username) {
     } catch(e) { alert('Erro: ' + e.message); }
 }
 
-// Stats
-async function carregarStats() {
-    try {
-        const r = await fetch('/api/programas-dual');
-        const d = await r.json();
-        document.getElementById('s-total').textContent = d.total_programas;
-        let orig = 0, conv = 0;
-        Object.values(d.categorias).forEach(progs => {
-            progs.forEach(p => { if (p.original_existe) orig++; if (p.convertido_existe) conv++; });
-        });
-        document.getElementById('s-originais').textContent = orig;
-        document.getElementById('s-convertidos').textContent = conv;
-    } catch(e) { console.error(e); }
-}
+// Stats (bloco removido do topo)
+async function carregarStats() { /* no-op */ }
 
 // Comparar placa
 async function compararPlaca(placa) {
