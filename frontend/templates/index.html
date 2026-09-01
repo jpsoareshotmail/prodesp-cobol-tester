@@ -332,8 +332,9 @@
                 <label style="font-size:13px;color:var(--text-3)">Linhas de massa por tabela:</label>
                 <input type="number" id="estrutura-massa" value="10" min="1" max="50" style="width:80px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit">
                 <button class="btn btn-dark" onclick="gerarEstrutura()">Gerar DDL + Massa</button>
+                <button class="btn btn-outline" onclick="gerarBanco()">Gerar Banco Local + Dados</button>
             </div>
-            <div id="estrutura-view"><p style="color:var(--text-muted);font-size:13px">Clique em "Gerar" para produzir a estrutura de dados.</p></div>
+            <div id="estrutura-view"><p style="color:var(--text-muted);font-size:13px">Clique em "Gerar" para produzir a estrutura de dados, ou "Gerar Banco Local" para criar o banco SQLite populado com dados de teste.</p></div>
         </div>
     </div>
 
@@ -897,6 +898,41 @@ async function gerarEstrutura() {
 
         window.__ddl = d.schema;
         window.__massa = d.massa;
+        div.innerHTML = html;
+    } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
+}
+
+// Gera o banco SQLite local + massa de dados
+async function gerarBanco() {
+    const div = document.getElementById('estrutura-view');
+    const n = document.getElementById('estrutura-massa').value || 10;
+    div.innerHTML = '<span class="spinner"></span> Gerando estrutura, criando banco local e populando com dados de teste...';
+    try {
+        const r = await fetch('/api/estrutura/gerar-banco', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({massa: parseInt(n)}) });
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
+        const rs = d.resumo, b = d.banco;
+        let html = '';
+        html += '<div class="grid-3" style="margin:16px 0">';
+        html += '<div class="stat"><div class="stat-value">' + b.tabelas_criadas + '</div><div class="stat-label">Tabelas criadas</div></div>';
+        html += '<div class="stat"><div class="stat-value">' + b.total_linhas + '</div><div class="stat-label">Registros inseridos</div></div>';
+        html += '<div class="stat"><div class="stat-value">' + rs.fidelidade + '%</div><div class="stat-label">Fidelidade (copybook)</div></div>';
+        html += '</div>';
+        html += '<div style="padding:12px;background:#F0FDF4;border:1px solid var(--green);border-radius:8px;margin-bottom:16px">';
+        html += '<div style="font-weight:700;color:var(--green-dark)">Banco de dados local criado com sucesso</div>';
+        html += '<div style="font-size:12px;color:var(--text-3);margin-top:4px">Arquivo: <code>' + escapeHtml(b.arquivo) + '</code> (SQLite)</div>';
+        html += '<div style="font-size:12px;color:var(--text-3)">' + b.tabelas_criadas + ' tabelas, ' + b.total_linhas + ' registros de teste' +
+                (b.erros_ddl || b.erros_insert ? ' &nbsp;|&nbsp; <span style="color:var(--warning)">' + b.erros_ddl + ' erros DDL, ' + b.erros_insert + ' erros insert</span>' : '') + '</div>';
+        html += '</div>';
+        // tabela de contagem por tabela
+        html += '<div class="card-title" style="font-size:13px">Registros por tabela</div>';
+        html += '<div style="overflow-x:auto;max-height:340px;overflow-y:auto"><table style="width:100%;font-size:12px;border-collapse:collapse">';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:8px;text-align:left">Tabela</th><th>Registros</th></tr>';
+        d.contagem.forEach(t => {
+            html += '<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px;font-family:monospace">' + t.tabela + '</td>' +
+                '<td style="text-align:center">' + t.linhas + '</td></tr>';
+        });
+        html += '</table></div>';
         div.innerHTML = html;
     } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
 }

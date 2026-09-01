@@ -271,3 +271,90 @@ def gerar_para_web(pasta_programas, pastas_copybooks: list, n_massa: int = 10) -
         'massa': '\n\n'.join(massa_all),
         'tabelas': tab_rows,
     }
+
+
+# ---------------------------------------------------------------------------
+# Materializacao do banco de dados local (SQLite)
+# ---------------------------------------------------------------------------
+def _db2_para_sqlite(sql: str) -> str:
+    """Converte a DDL/DML DB2 para dialeto SQLite (para o banco local)."""
+    s = re.sub(r'\bDECIMAL\(\d+(,\d+)?\)', 'NUMERIC', sql)
+    s = re.sub(r'\b(CHAR|VARCHAR)\(\d+\)', 'TEXT', s)
+    s = s.replace('SMALLINT', 'INTEGER').replace('BIGINT', 'INTEGER')
+    # SQLite nao usa schema.tabela -> troca ponto por underscore no nome da tabela
+    s = re.sub(r'CREATE TABLE\s+([A-Z0-9_]+)\.([A-Z0-9_]+)', r'CREATE TABLE \1_\2', s)
+    s = re.sub(r'INSERT INTO\s+([A-Z0-9_]+)\.([A-Z0-9_]+)', r'INSERT INTO \1_\2', s)
+    return s
+
+
+def gerar_banco_local(pasta_programas, pastas_copybooks: list, db_path,
+                      n_massa: int = 10) -> dict:
+    """Gera a estrutura, cria um banco SQLite fisico e popula com a massa.
+
+    Retorna estatisticas: tabelas criadas, linhas inseridas, erros e caminho do .db.
+    """
+    import sqlite3
+
+    dados = gerar_para_web(pasta_programas, pastas_copybooks, n_massa=n_massa)
+
+    db_path = Path(db_path)
+    if db_path.exists():
+        db_path.unlink()  # recria do zero
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+
+    con = sqlite3.connect(str(db_path))
+    cur = con.cursor()
+
+    # 1. cria as tabelas
+    tabelas_ok = 0
+    erros_ddl = []
+    for stmt in dados['schema'].split(';'):
+        s = stmt.strip()
+        if not s.upper().startswith('CREATE TABLE'):
+            continue
+        try:
+            cur.execute(_db2_para_sqlite(s) + ';')
+            tabelas_ok += 1
+        except Exception as e:
+            erros_ddl.append(str(e))
+
+    # 2. popula com a massa
+    linhas_ok = 0
+    erros_ins = []
+    for stmt in dados['massa'].splitlines():
+        s = stmt.strip()
+        if not s.upper().startswith('INSERT'):
+            continue
+        try:
+            cur.execute(_db2_para_sqlite(s))
+            linhas_ok += 1
+        except Exception as e:
+            if len(erros_ins) < 10:
+                erros_ins.append(str(e))
+    con.commit()
+
+    # 3. contagem por tabela
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
+    nomes = [r[0] for r in cur.fetchall()]
+    contagem = []
+    total_linhas = 0
+    for t in nomes:
+        cur.execute(f'SELECT COUNT(*) FROM "{t}"')
+        n = cur.fetchone()[0]
+        total_linhas += n
+        contagem.append({'tabela': t, 'linhas': n})
+    con.close()
+
+    return {
+        'resumo': dados['resumo'],
+        'banco': {
+            'arquivo': str(db_path),
+            'tabelas_criadas': tabelas_ok,
+            'linhas_inseridas': linhas_ok,
+            'total_linhas': total_linhas,
+            'erros_ddl': len(erros_ddl),
+            'erros_insert': len(erros_ins),
+        },
+        'contagem': contagem,
+        'tabelas': dados['tabelas'],
+    }

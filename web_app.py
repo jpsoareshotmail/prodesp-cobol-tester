@@ -944,6 +944,34 @@ def gerar_estrutura():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route('/api/estrutura/gerar-banco', methods=['POST'])
+def gerar_banco_endpoint():
+    """Gera a estrutura, cria o banco SQLite local e popula com massa de teste."""
+    try:
+        data = request.json or {}
+        n_massa = int(data.get('massa', 10))
+        n_massa = max(1, min(n_massa, 50))
+
+        from tooling.orchestrator import gerar_banco_local
+
+        pastas_copy = ['cobol_build/copy']
+        amostra = Path('entregas/copybook-Amostragem POC  - Fontes Convertidos/Originais')
+        if amostra.exists():
+            pastas_copy.append(str(amostra))
+
+        resultado = gerar_banco_local(
+            'fontes_convertidos/Convertidos',
+            pastas_copy,
+            db_path='saida_estrutura/prodesp_teste.db',
+            n_massa=n_massa,
+        )
+        return jsonify(resultado)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/roteiros', methods=['GET'])
 def get_roteiros_endpoint():
     """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
