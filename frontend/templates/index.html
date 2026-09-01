@@ -781,29 +781,47 @@ async function executarAmbos() {
             body: JSON.stringify({ placa: entrada })
         });
         const d = await r.json();
-        if (d.error) { div.innerHTML = '<div class="result-box diff">' + d.error + '</div>'; return; }
+        if (d.error) {
+            div.innerHTML = '<div class="result-box diff">' +
+                '<div style="font-weight:700;color:var(--danger);margin-bottom:4px">ERRO</div>' +
+                '<div style="font-size:12px">Entrada: <strong>' + (entrada || '(vazio)') + '</strong></div>' +
+                '<div style="font-size:12px;color:var(--text-3);margin-top:4px">' + d.error + '</div></div>';
+            return;
+        }
 
+        // interpreta a saida de cada fluxo como "resultado esperado" ou "erro"
+        function saida(res) {
+            if (!res || res.codigo === null || res.codigo === undefined) {
+                return { ok: false, texto: (res && res.erro) ? res.erro : 'Sem retorno / erro na execucao' };
+            }
+            return { ok: true, codigo: res.codigo, descricao: res.descricao || '', tempo: res.tempo_ms };
+        }
+        const so = saida(d.original);
+        const sc = saida(d.convertido);
         const match = d.resultados_iguais;
-        div.innerHTML = '<div class="result-box ' + (match ? 'match' : 'diff') + '">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
-            '<strong>Entrada: ' + (entrada || '(vazio)') + '</strong>' +
-            '<span class="badge ' + (match ? 'badge-green' : 'badge-red') + '">' + (match ? 'RESULTADOS IGUAIS' : 'RESULTADOS DIFERENTES') + '</span></div>' +
-            '<div class="compare-grid"><div class="compare-col"><h4>Original</h4>' +
-            '<div class="code-val">' + d.original.codigo + '</div><div class="desc">' + d.original.descricao + '</div>' +
-            '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + d.original.tempo_ms.toFixed(0) + 'ms</div></div>' +
-            '<div class="compare-col"><h4>Convertido</h4>' +
-            '<div class="code-val">' + d.convertido.codigo + '</div><div class="desc">' + d.convertido.descricao + '</div>' +
-            '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + d.convertido.tempo_ms.toFixed(0) + 'ms</div></div></div>' +
-            (d.diferencas.length ? '<div class="diff-list">' + d.diferencas.map(x => '<div class="diff-item">' + x + '</div>').join('') + '</div>' : '') +
-            '</div>';
 
-        // Atualizar resultados individuais tambem
-        if (document.getElementById('test-result-orig')) {
-            document.getElementById('test-result-orig').innerHTML = '<div style="padding:12px;background:#F0FDF4;border:1px solid var(--green);border-radius:6px"><div style="font-weight:700;color:var(--green)">Codigo: ' + d.original.codigo + '</div><div style="font-size:12px;color:var(--text-3)">' + d.original.descricao + '</div></div>';
+        function painel(titulo, s) {
+            if (s.ok) {
+                return '<div class="compare-col" style="border-color:var(--green)">' +
+                    '<h4>' + titulo + '</h4>' +
+                    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado esperado</div>' +
+                    '<div class="code-val" style="color:var(--green-dark)">' + s.codigo + '</div>' +
+                    '<div class="desc">' + s.descricao + '</div>' +
+                    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + (s.tempo != null ? s.tempo.toFixed(0) + 'ms' : '') + '</div></div>';
+            }
+            return '<div class="compare-col" style="border-color:var(--danger)">' +
+                '<h4>' + titulo + '</h4>' +
+                '<div style="font-size:11px;color:var(--danger);margin-bottom:2px">Erro</div>' +
+                '<div class="desc" style="color:var(--danger)">' + s.texto + '</div></div>';
         }
-        if (document.getElementById('test-result-conv')) {
-            document.getElementById('test-result-conv').innerHTML = '<div style="padding:12px;background:#F0FDF4;border:1px solid var(--green);border-radius:6px"><div style="font-weight:700;color:var(--green)">Codigo: ' + d.convertido.codigo + '</div><div style="font-size:12px;color:var(--text-3)">' + d.convertido.descricao + '</div></div>';
-        }
+
+        div.innerHTML = '<div class="result-box ' + (match ? 'match' : 'diff') + '">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
+            '<span style="font-size:14px">Entrada: <strong>' + (entrada || '(vazio)') + '</strong></span>' +
+            '<span class="badge ' + (match ? 'badge-green' : 'badge-red') + '">' + (match ? 'RESULTADOS IGUAIS' : 'RESULTADOS DIFERENTES') + '</span></div>' +
+            '<div class="compare-grid">' + painel('Original', so) + painel('Convertido', sc) + '</div>' +
+            (d.diferencas && d.diferencas.length ? '<div class="diff-list">' + d.diferencas.map(x => '<div class="diff-item">' + x + '</div>').join('') + '</div>' : '') +
+            '</div>';
     } catch(e) {
         div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>';
     }
