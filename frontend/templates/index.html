@@ -412,20 +412,13 @@ async function carregarRoteiros() {
             if (ident) html += ' &nbsp;|&nbsp; ' + ident;
             html += '</div></div>';
             html += '<div style="padding:8px 16px">';
-            html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
-            html += '<tr style="color:var(--text-muted);text-align:left"><th style="padding:6px 4px;width:28px">#</th><th style="width:34%">Passo</th><th style="width:90px">Camada</th><th style="width:70px">Trans.</th><th>Resultado esperado</th></tr>';
+            html += '<ol style="margin:0;padding-left:20px;font-size:13px;line-height:1.9">';
             rot.passos.forEach(p => {
                 const t = p.transacao;
-                const tinfo = t && trans[t] ? trans[t].descricao : '';
-                const tbadge = t ? '<span class="badge badge-green" title="' + escapeHtml(tinfo) + '">' + t + '</span>' : '<span style="color:var(--text-muted)">-</span>';
-                html += '<tr style="border-top:1px solid var(--border)">' +
-                    '<td style="padding:6px 4px;color:var(--text-muted)">' + p.ordem + '</td>' +
-                    '<td style="padding:6px 4px"><strong>' + escapeHtml(p.titulo) + '</strong><div style="color:var(--text-3);font-size:11px;margin-top:2px">' + escapeHtml(p.descricao) + '</div></td>' +
-                    '<td style="padding:6px 4px;color:var(--text-3)">' + escapeHtml(p.camada || '-') + '</td>' +
-                    '<td style="padding:6px 4px">' + tbadge + '</td>' +
-                    '<td style="padding:6px 4px;color:var(--text-3);font-size:11px">' + escapeHtml(p.resultado_esperado || '') + '</td></tr>';
+                const tbadge = t ? ' <span class="badge badge-green" style="font-size:10px">' + t + '</span>' : '';
+                html += '<li><strong>' + escapeHtml(p.titulo) + '</strong>' + tbadge + '</li>';
             });
-            html += '</table>';
+            html += '</ol>';
             // galeria de prints de tela do cenario
             const imgs = imagens[rot.id] || [];
             if (imgs.length) {
