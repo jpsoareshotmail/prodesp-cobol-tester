@@ -50,6 +50,19 @@
         .badge-green { background: #ECFDF5; color: #065F46; }
         .badge-red { background: #FEF2F2; color: #991B1B; }
         .badge-blue { background: #EFF6FF; color: #1E40AF; }
+        /* Impressao/PDF do relatorio de roteiro: esconde tudo, exceto o modal */
+        @media print {
+            body.printing-roteiro > *:not(#roteiro-relatorio-modal) { display: none !important; }
+            body.printing-roteiro #roteiro-relatorio-modal {
+                position: static !important; background: none !important; display: block !important; padding: 0 !important;
+            }
+            body.printing-roteiro #roteiro-relatorio-box {
+                max-width: none !important; max-height: none !important; width: 100% !important;
+                box-shadow: none !important; border-radius: 0 !important; overflow: visible !important;
+            }
+            body.printing-roteiro #roteiro-relatorio-scroll { overflow: visible !important; flex: none !important; }
+            body.printing-roteiro .no-print { display: none !important; }
+        }
         .tabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
         .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
         .tab:hover { color: var(--text); }
@@ -65,12 +78,33 @@
         .ide-filter { margin: 10px; padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-family: inherit; }
         .ide-filter:focus { outline: none; border-color: var(--green); }
         .ide-list { flex: 1; overflow-y: auto; }
+        .ide-toolbar { border-top: 1px solid var(--border); padding: 10px; display: flex; flex-direction: column; gap: 6px; background: #F5F6F8; }
+        .ide-btn { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 10px; font-size: 12px; font-weight: 600; font-family: inherit; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; background: #fff; color: var(--text-2); }
+        .ide-btn:hover { border-color: var(--green); }
+        .ide-btn-clean:hover { border-color: var(--danger); color: var(--danger); }
+        .ide-btn:disabled { opacity: 0.5; cursor: default; }
+        .ide-toolbar-msg { font-size: 11px; color: var(--text-muted); min-height: 14px; text-align: center; }
         .ide-cat { padding: 8px 14px 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
         .ide-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 13px; cursor: pointer; border-left: 2px solid transparent; color: var(--text-2); }
         .ide-item:hover { background: var(--card-hover); }
         .ide-item.active { background: #EEF6FF; border-left-color: var(--info); color: var(--text); font-weight: 600; }
         .ide-item .ico { font-size: 11px; opacity: 0.6; }
         .ide-item .arrow { margin-left: auto; font-size: 10px; color: var(--text-muted); }
+        /* Arvore de arquivos (explorador estilo IDE) */
+        .ide-tree { padding: 4px 0; user-select: none; }
+        .ide-node { display: flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; padding: 4px 8px; border-left: 2px solid transparent; color: var(--text-2); white-space: nowrap; }
+        .ide-node:hover { background: var(--card-hover); }
+        .ide-node .twisty { width: 12px; display: inline-block; text-align: center; font-size: 10px; color: var(--text-muted); transition: transform 0.12s; flex: 0 0 12px; }
+        .ide-node.collapsed .twisty { transform: rotate(-90deg); }
+        .ide-node .n-ico { font-size: 12px; flex: 0 0 auto; }
+        .ide-node .n-label { overflow: hidden; text-overflow: ellipsis; }
+        .ide-node .n-badge { margin-left: auto; font-size: 10px; color: var(--text-muted); background: var(--card-hover); border-radius: 8px; padding: 0 6px; }
+        .ide-file { display: flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; padding: 4px 8px; border-left: 2px solid transparent; color: var(--text-2); }
+        .ide-file:hover { background: var(--card-hover); }
+        .ide-file.active { background: #EEF6FF; border-left-color: var(--info); color: var(--text); font-weight: 600; }
+        .ide-file .f-ico { font-size: 11px; color: var(--info); flex: 0 0 auto; }
+        .ide-file .f-conv { margin-left: auto; font-size: 10px; color: var(--text-muted); font-family: monospace; }
+        .ide-children.hidden { display: none; }
         .ide-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; min-height: 0; }
         .ide-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; }
         #ide-editor { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
@@ -140,13 +174,23 @@
                 </div>
                 <input type="text" id="ide-filter" class="ide-filter" placeholder="Filtrar..." oninput="filtrarProgramas(this.value)">
                 <div id="ide-list" class="ide-list"><p style="padding:14px;color:var(--text-muted);font-size:12px">Carregando...</p></div>
+                <div class="ide-toolbar">
+                    <button type="button" class="ide-btn ide-btn-import" onclick="document.getElementById('import-input').click()" title="Importar fontes COBOL (.C74, .cob, .cpy ou convertidos sem extensao)">
+                        &#8593; Importar fontes
+                    </button>
+                    <button type="button" class="ide-btn ide-btn-clean" onclick="limparProjeto()" title="Apaga TODO o projeto: fontes (originais e convertidos), arquivos importados, artefatos compilados e banco/estrutura">
+                        &#128465; Limpar projeto
+                    </button>
+                    <input type="file" id="import-input" multiple style="display:none" onchange="importarFontes(this.files)">
+                    <div id="ide-toolbar-msg" class="ide-toolbar-msg"></div>
+                </div>
             </aside>
             <!-- Editor: codigo original x convertido -->
             <section class="ide-main">
                 <div id="ide-editor" class="ide-empty">
                     <div style="text-align:center">
                         <div style="font-size:40px;opacity:0.25">&lt;/&gt;</div>
-                        <p style="margin-top:8px">Selecione um programa na lista para ver o codigo Original e Convertido.</p>
+                        <p style="margin-top:8px">Selecione um programa na lista para ver o codigo fonte.</p>
                     </div>
                 </div>
             </section>
@@ -306,6 +350,26 @@
     <!-- Tab: Roteiros de Teste -->
     <div class="tab-content" id="tab-roteiros">
         <div class="card">
+            <div class="card-title">Executar Roteiro de Testes</div>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">
+                Executa os 3 cenarios do roteiro de Primeiro Emplacamento contra o(s) programa(s) escolhido(s) e gera um relatorio final.
+            </p>
+            <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+                <div style="flex:1;min-width:220px">
+                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Alvo</label>
+                    <select id="roteiro-alvo-select" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#fff">
+                        <option value="__TODOS__">Todos os programas</option>
+                    </select>
+                </div>
+                <button class="btn btn-dark" id="roteiro-exec-btn" onclick="executarRoteiroSuite()">Executar Roteiro</button>
+            </div>
+            <div id="roteiro-exec-progress" style="margin-top:16px"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Ultimos Testes Salvos</div>
+            <div id="roteiro-historico-view"><p style="color:var(--text-muted);font-size:13px">Carregando...</p></div>
+        </div>
+        <div class="card">
             <div class="card-title">Roteiros de Teste - Primeiro Emplacamento</div>
             <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">
                 Roteiros funcionais extraidos dos documentos da Prodesp. Cada cenario descreve o passo a passo do primeiro emplacamento de um veiculo zero-km e as transacoes do mainframe envolvidas.
@@ -369,7 +433,7 @@ function switchTab(name) {
     document.getElementById('tab-' + name).classList.add('active');
     event.target.classList.add('active');
     if (name === 'usuarios') carregarUsuarios();
-    if (name === 'roteiros') carregarRoteiros();
+    if (name === 'roteiros') { carregarRoteiros(); popularSelectRoteiroAlvo(); carregarHistoricoRoteiro(); }
     if (name === 'estrutura' && !window.__estruturaCarregada) { window.__estruturaCarregada = true; gerarEstrutura(); }
 }
 
@@ -446,6 +510,207 @@ async function carregarRoteiros() {
         html += '</table>';
         div.innerHTML = html;
     } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
+}
+
+// ===== Executar Roteiro de Testes (todos os programas ou 1 selecionado) =====
+function popularSelectRoteiroAlvo() {
+    const sel = document.getElementById('roteiro-alvo-select');
+    if (!sel) return;
+    const atual = sel.value;
+    let html = '<option value="__TODOS__">Todos os programas (' + IDE_PROGRAMAS.length + ')</option>';
+    IDE_PROGRAMAS.forEach(p => {
+        if (!p.original) return;
+        html += '<option value="' + escapeHtml(p.original) + '">' + escapeHtml(p.original) +
+            (p.convertido ? ' → ' + escapeHtml(p.convertido) : '') + '</option>';
+    });
+    sel.innerHTML = html;
+    if (atual && Array.from(sel.options).some(o => o.value === atual)) sel.value = atual;
+}
+
+async function executarRoteiroSuite() {
+    const sel = document.getElementById('roteiro-alvo-select');
+    const alvoVal = sel ? sel.value : '__TODOS__';
+    const alvos = (alvoVal === '__TODOS__')
+        ? IDE_PROGRAMAS.filter(p => p.original)
+        : IDE_PROGRAMAS.filter(p => p.original === alvoVal);
+    if (!alvos.length) { alert('Nenhum programa disponivel para testar.'); return; }
+
+    const btn = document.getElementById('roteiro-exec-btn');
+    const prog = document.getElementById('roteiro-exec-progress');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+
+    const resultados = [];
+    for (let i = 0; i < alvos.length; i++) {
+        const p = alvos[i];
+        const pct = Math.round((i / alvos.length) * 100);
+        prog.innerHTML =
+            '<div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Testando ' + (i + 1) + '/' + alvos.length +
+            ': <strong>' + escapeHtml(p.original) + '</strong></div>' +
+            '<div style="height:8px;border-radius:4px;background:var(--bg-subtle,#eee);overflow:hidden">' +
+            '<div style="height:100%;width:' + pct + '%;background:var(--green);transition:width .3s"></div></div>';
+        try {
+            const r = await fetch('/api/testar-roteiro/' + encodeURIComponent(p.original));
+            const d = await r.json();
+            if (d.error) {
+                resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: d.error });
+            } else {
+                resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: d.casos || [], isPlaca: d.is_placa });
+            }
+        } catch (e) {
+            resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: e.message });
+        }
+    }
+
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    prog.innerHTML = '<div style="font-size:12px;color:var(--green-dark)">Concluido - ' + alvos.length + ' programa(s) testado(s).</div>';
+
+    // salva esta execucao no historico (ultimos 3) para poder reabrir/baixar depois
+    try {
+        await fetch('/api/roteiro-historico', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alvo: alvoVal === '__TODOS__' ? 'Todos os programas' : alvoVal, resultados })
+        });
+        carregarHistoricoRoteiro();
+    } catch (e) { /* nao bloqueia a exibicao do relatorio se o salvamento falhar */ }
+
+    abrirRelatorioRoteiro(resultados);
+}
+
+// Historico das ultimas execucoes salvas do roteiro (permite reabrir e baixar o PDF depois)
+let ROTEIRO_HISTORICO_CACHE = [];
+
+async function carregarHistoricoRoteiro() {
+    const div = document.getElementById('roteiro-historico-view');
+    if (!div) return;
+    try {
+        const r = await fetch('/api/roteiro-historico');
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<p style="font-size:12px;color:var(--danger)">' + escapeHtml(d.error) + '</p>'; return; }
+        ROTEIRO_HISTORICO_CACHE = d.historico || [];
+        if (!ROTEIRO_HISTORICO_CACHE.length) {
+            div.innerHTML = '<p style="color:var(--text-muted);font-size:13px">Nenhum teste salvo ainda. Execute o roteiro acima para gerar o primeiro.</p>';
+            return;
+        }
+        div.innerHTML = ROTEIRO_HISTORICO_CACHE.map(h => {
+            let totalCasos = 0, casosOk = 0;
+            (h.resultados || []).forEach(res => (res.casos || []).forEach(c => {
+                const rr = c.convertido || c.original || {};
+                totalCasos++;
+                if (!c.erro && rr.sucesso && rr.codigo != null) casosOk++;
+            }));
+            const quando = h.quando ? new Date(h.quando).toLocaleString('pt-BR') : '-';
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;gap:8px">' +
+                '<div><strong style="font-size:13px">' + escapeHtml(h.alvo || '-') + '</strong>' +
+                '<div style="font-size:11px;color:var(--text-muted)">' + quando + (h.usuario ? ' · ' + escapeHtml(h.usuario) : '') + ' · ' +
+                (h.resultados || []).length + ' programa(s) · ' + casosOk + '/' + totalCasos + ' cenarios OK</div></div>' +
+                '<button class="btn btn-outline btn-sm" onclick="verHistoricoRoteiro(\'' + h.id + '\')">Ver relatorio</button></div>';
+        }).join('');
+    } catch (e) { div.innerHTML = '<p style="font-size:12px;color:var(--danger)">Erro: ' + escapeHtml(e.message) + '</p>'; }
+}
+
+function verHistoricoRoteiro(id) {
+    const h = ROTEIRO_HISTORICO_CACHE.find(x => x.id === id);
+    if (!h) return;
+    abrirRelatorioRoteiro(h.resultados || []);
+}
+
+function fecharRelatorioRoteiro() {
+    const ov = document.getElementById('roteiro-relatorio-modal');
+    if (ov) ov.style.display = 'none';
+}
+
+function imprimirRelatorioRoteiro() {
+    document.body.classList.add('printing-roteiro');
+    const cleanup = () => { document.body.classList.remove('printing-roteiro'); window.removeEventListener('afterprint', cleanup); };
+    window.addEventListener('afterprint', cleanup);
+    window.print();
+}
+
+// Monta e abre o modal com o relatorio consolidado da execucao do roteiro
+function abrirRelatorioRoteiro(resultados) {
+    let totalCasos = 0, casosOk = 0, casosErro = 0, programasOk = 0, programasComErro = 0;
+
+    const linhasProgramas = resultados.map(res => {
+        let errProg = 0;
+        const linhasCasos = (res.casos || []).map(c => {
+            const r = c.convertido || c.original || {};
+            const temRes = !c.erro && r.sucesso && r.codigo != null;
+            totalCasos++;
+            if (c.erro || !temRes) { casosErro++; errProg++; } else { casosOk++; }
+            const resTxt = c.erro ? 'erro' : (temRes ? (r.codigo + (r.descricao ? ' ' + r.descricao : '')) : '-');
+            const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
+                        : (temRes ? '<span class="badge badge-green">OK</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
+            const passos = c.passos || [];
+            let passosHtml = '';
+            if (passos.length) {
+                passosHtml = '<tr><td colspan="4" style="padding:6px 8px 10px 24px;background:#fcfcfc">' +
+                    '<div style="font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:4px">Passos do roteiro (' + passos.length + ')</div>' +
+                    '<ol style="margin:0;padding-left:18px;font-size:11px;line-height:1.7">' +
+                    passos.map(p => {
+                        const tbadge = p.transacao ? ' <span class="badge badge-blue" style="font-size:9px;padding:1px 6px">' + escapeHtml(p.transacao) + '</span>' : '';
+                        const esperado = p.resultado_esperado ? '<div style="color:var(--text-muted);font-size:10px">Esperado: ' + escapeHtml(p.resultado_esperado) + '</div>' : '';
+                        return '<li><strong>' + escapeHtml(p.titulo || '') + '</strong>' + tbadge + esperado + '</li>';
+                    }).join('') +
+                    '</ol></td></tr>';
+            }
+            return '<tr style="border-bottom:1px solid var(--border)">' +
+                '<td style="padding:5px 8px"><strong>' + escapeHtml(c.cenario || '') + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria || '') + '</div></td>' +
+                '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(c.chassi || '-') + '</td>' +
+                '<td style="text-align:center;font-size:11px">' + escapeHtml(String(resTxt)) + '</td>' +
+                '<td style="text-align:center">' + badge + '</td></tr>' +
+                (c.erro ? '<tr><td colspan="4" style="padding:2px 8px;font-size:10px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>' : '') +
+                passosHtml;
+        }).join('');
+
+        if (res.erroGeral) errProg = Math.max(errProg, 1);
+        if (errProg === 0) programasOk++; else programasComErro++;
+        const progBadge = res.erroGeral ? '<span class="badge badge-red">FALHA</span>'
+                         : (errProg === 0 ? '<span class="badge badge-green">OK</span>' : '<span class="badge badge-red">' + errProg + ' com erro</span>');
+
+        return '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;break-inside:avoid">' +
+            '<div style="background:var(--card-hover);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">' +
+            '<div><strong style="font-size:13px">' + escapeHtml(res.programa) + '</strong>' +
+            (res.convertido ? ' <span style="font-size:11px;color:var(--text-muted)">→ ' + escapeHtml(res.convertido) + '</span>' : '') +
+            (res.categoria ? '<div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(res.categoria) + '</div>' : '') + '</div>' +
+            progBadge + '</div>' +
+            (res.erroGeral
+                ? '<div style="padding:10px 14px;font-size:12px;color:var(--danger)">' + escapeHtml(res.erroGeral) + '</div>'
+                : '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+                  '<tr style="background:var(--card-hover)"><th style="padding:5px 8px;text-align:left">Cenario</th><th>Chassi</th><th>Resultado</th><th>Status</th></tr>' +
+                  linhasCasos + '</table>') +
+            '</div>';
+    }).join('');
+
+    const agora = new Date().toLocaleString('pt-BR');
+    const html =
+        '<div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+        '<div><div style="font-weight:700;font-size:16px">Relatorio - Roteiro de Testes</div>' +
+        '<div style="font-size:11px;color:var(--text-muted)">Gerado em ' + agora + '</div></div>' +
+        '<button class="btn btn-outline btn-sm no-print" onclick="fecharRelatorioRoteiro()">Fechar</button></div>' +
+        '<div id="roteiro-relatorio-scroll" style="padding:18px 20px;overflow-y:auto;flex:1">' +
+        '<div class="grid-3" style="margin-bottom:18px">' +
+        '<div class="stat"><div class="stat-value">' + resultados.length + '</div><div class="stat-label">Programas testados</div></div>' +
+        '<div class="stat"><div class="stat-value" style="color:' + (casosErro ? 'var(--danger)' : 'var(--green)') + '">' + casosOk + '/' + totalCasos + '</div><div class="stat-label">Cenarios OK</div></div>' +
+        '<div class="stat"><div class="stat-value" style="color:' + (programasComErro ? 'var(--danger)' : 'var(--green)') + '">' + programasOk + '/' + resultados.length + '</div><div class="stat-label">Programas sem erro</div></div>' +
+        '</div>' + linhasProgramas + '</div>' +
+        '<div class="no-print" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">' +
+        '<button class="btn btn-outline btn-sm" onclick="fecharRelatorioRoteiro()">Fechar</button>' +
+        '<button class="btn btn-dark btn-sm" onclick="imprimirRelatorioRoteiro()">Baixar PDF</button></div>';
+
+    let ov = document.getElementById('roteiro-relatorio-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'roteiro-relatorio-modal';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+        ov.onclick = function(e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div id="roteiro-relatorio-box" style="background:#fff;border-radius:10px;max-width:95%;max-height:90%;width:900px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3)"></div>';
+        document.body.appendChild(ov);
+    }
+    document.getElementById('roteiro-relatorio-box').innerHTML = html;
+    ov.style.display = 'flex';
 }
 
 // Logout
@@ -604,7 +869,7 @@ function valorExemplo(prog) {
 }
 
 // guarda o codigo carregado para trocar de aba sem refazer fetch
-let IDE_CODE = { original: null, convertido: null, prog: '' };
+let IDE_CODE = { original: null, convertido: null, prog: '', inferidos: [] };
 
 // numera as linhas do codigo em uma tabela
 function renderCodigoNumerado(codigo) {
@@ -614,6 +879,27 @@ function renderCodigoNumerado(codigo) {
         rows += '<tr><td class="ln">' + (i + 1) + '</td><td class="lc">' + escapeHtml(linhas[i]) + '</td></tr>';
     }
     return '<table>' + rows + '</table>';
+}
+
+// Monta o banner de aviso quando o programa depende de copybooks inferidos.
+// Deixa claro que a estrutura de dados foi deduzida para permitir a execucao.
+function bannerInferencia(inferidos) {
+    if (!inferidos || !inferidos.length) return '';
+    let itens = inferidos.map(i =>
+        '<li style="margin:2px 0"><code style="font-weight:700">' + escapeHtml(i.copybook) +
+        '</code> &ndash; ' + escapeHtml(i.descricao) + '</li>').join('');
+    return '<div style="border:1px solid #F59E0B;background:#FFFBEB;border-radius:8px;padding:12px 14px;margin-bottom:14px">' +
+        '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#92400E;font-size:13px">' +
+        '<span style="font-size:16px">&#9888;</span> Estrutura de dados inferida</div>' +
+        '<div style="font-size:12px;color:#78350F;margin-top:6px">' +
+        'Este programa usa copybooks de tabela que <strong>nao foram entregues</strong> com os fontes. ' +
+        'Para permitir a compilacao e execucao do teste, a estrutura desses dados foi <strong>inferida</strong> ' +
+        'a partir do uso no proprio codigo (host variables dos EXEC SQL e MOVEs). ' +
+        'Os tipos e tamanhos sao uma <strong>aproximacao</strong> e podem nao ser fieis ao dicionario DB2 original.' +
+        '</div>' +
+        '<div style="font-size:12px;color:#78350F;margin-top:8px">Copybooks inferidos:</div>' +
+        '<ul style="margin:4px 0 0 18px;font-size:12px;color:#78350F">' + itens + '</ul>' +
+        '</div>';
 }
 
 function ideMostrar(modo) {
@@ -632,16 +918,13 @@ function ideMostrar(modo) {
     if (wrap) wrap.style.display = '';
     if (testes) testes.style.display = 'none';
 
-    const o = IDE_CODE.original, c = IDE_CODE.convertido;
-    const paneO = '<div class="ide-pane"><div class="ide-pane-head"><span>ORIGINAL</span><span>' +
-        (o ? escapeHtml(o.arquivo) + ' - ' + o.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
-        '<div class="ide-code">' + (o ? renderCodigoNumerado(o.codigo) : '<div style="padding:16px;color:#888">Fonte original nao encontrado.</div>') + '</div></div>';
-    const paneC = '<div class="ide-pane"><div class="ide-pane-head"><span>CONVERTIDO</span><span>' +
-        (c ? escapeHtml(c.arquivo) + ' - ' + c.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
-        '<div class="ide-code">' + (c ? renderCodigoNumerado(c.codigo) : '<div style="padding:16px;color:#888">Fonte convertido nao encontrado.</div>') + '</div></div>';
-    if (modo === 'original') wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + paneO + '</div>';
-    else if (modo === 'convertido') wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + paneC + '</div>';
-    else wrap.innerHTML = '<div class="ide-split">' + paneO + paneC + '</div>';
+    // Visao unica do codigo fonte: mostra o convertido (o que roda);
+    // se nao houver convertido, cai no original.
+    const fonte = IDE_CODE.convertido || IDE_CODE.original;
+    const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>CODIGO FONTE</span><span>' +
+        (fonte ? escapeHtml(fonte.arquivo) + ' - ' + fonte.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
+        '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div></div>';
+    wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + pane + '</div>';
 }
 
 // Codigo fonte - renderiza no layout IDE
@@ -654,92 +937,38 @@ async function carregarCodigo() {
     try {
         const r = await fetch('/api/codigo-fonte/' + prog);
         const d = await r.json();
-        IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog };
+        IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog, inferidos: d.inferidos || [] };
 
         let html = '';
         // barra de titulo + abas (codigo + testes)
         html += '<div class="ide-tabs">';
-        html += '<div class="ide-tab active" id="ide-tab-split" onclick="ideMostrar(\'split\')">Lado a lado</div>';
-        html += '<div class="ide-tab" id="ide-tab-original" onclick="ideMostrar(\'original\')">Original</div>';
-        html += '<div class="ide-tab" id="ide-tab-convertido" onclick="ideMostrar(\'convertido\')">Convertido</div>';
+        html += '<div class="ide-tab active" id="ide-tab-codigo" onclick="ideMostrar(\'codigo\')">Codigo fonte</div>';
         html += '<div class="ide-tab" id="ide-tab-testes" onclick="ideMostrar(\'testes\')">Testes</div>';
         html += '<div style="margin-left:auto;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text)">' + prog + '</div>';
         html += '</div>';
         html += '<div class="ide-editor-wrap" id="ide-editor-wrap"></div>';
         // painel de Testes (exibido quando a aba Testes esta ativa)
         html += '<div id="ide-testes" style="display:none;flex:1;overflow:auto;padding:16px">';
+        html += bannerInferencia(d.inferidos || []);
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
-        html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">Entrada manual:</span>';
-        html += '<input type="text" id="test-input-both" value="' + valorExemplo(prog) + '" placeholder="ex: ABC1D23" style="min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarAmbos()">';
-        html += '<button class="btn btn-outline btn-sm" onclick="executarAmbos()">Executar teste manual</button>';
+        html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">Entrada de teste:</span>';
+        html += '<input type="text" id="test-input" value="' + valorExemplo(prog) + '" placeholder="ex: ABC1D23" style="min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarTesteFonte(\'' + prog + '\')">';
+        html += '<button class="btn btn-outline btn-sm" onclick="executarTesteFonte(\'' + prog + '\')">Executar teste</button>';
         html += '<button class="btn btn-dark btn-sm" onclick="validarRoteiro(\'' + prog + '\')">Validar com roteiro de teste</button>';
         html += '</div>';
-        html += '<div id="test-result-both"></div>';
-        html += '<input type="hidden" id="test-input-orig"><input type="hidden" id="test-input-conv">';
-        html += '<div id="test-result-orig" style="display:none"></div><div id="test-result-conv" style="display:none"></div>';
+        html += '<div id="test-result"></div>';
         html += '</div>';
         editor.innerHTML = html;
-        ideMostrar('split');
+        ideMostrar('codigo');
     } catch(e) {
         editor.className = 'ide-empty';
         editor.innerHTML = '<p style="color:var(--danger)">Erro ao carregar: ' + e.message + '</p>';
     }
 }
 
-// Executar teste individual (original ou convertido)
-async function executarTeste(fluxo) {
-    const prog = document.getElementById('code-prog').value.trim();
-    const inputId = fluxo === 'original' ? 'test-input-orig' : 'test-input-conv';
-    const resultId = fluxo === 'original' ? 'test-result-orig' : 'test-result-conv';
-    const entrada = document.getElementById(inputId).value.trim();
-    const div = document.getElementById(resultId);
-
-    div.innerHTML = '<span class="spinner"></span> Executando...';
-
-    // Determinar nome do programa e env_vars baseado no fluxo
-    let programa, envVars;
-    if (fluxo === 'original') {
-        programa = prog;
-        envVars = { 'COB_PLACA': entrada.toUpperCase() };
-    } else {
-        // Para convertido, usar o nome convertido
-        // Tentar extrair do mapeamento
-        const mapR = await fetch('/api/programas-dual');
-        const mapD = await mapR.json();
-        let nomeConv = null;
-        Object.values(mapD.categorias).forEach(progs => {
-            progs.forEach(p => { if (p.original === prog) nomeConv = p.convertido; });
-        });
-        programa = nomeConv || prog;
-        envVars = { 'COB_PLACA': entrada.toUpperCase() };
-    }
-
-    try {
-        const r = await fetch('/api/executar-fluxo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ programa: programa, fluxo: fluxo, env_vars: envVars })
-        });
-        const d = await r.json();
-        if (d.sucesso) {
-            div.innerHTML = '<div style="padding:12px;background:#F0FDF4;border:1px solid var(--green);border-radius:6px">' +
-                '<div style="font-weight:700;color:var(--green);margin-bottom:4px">Codigo: ' + d.output + '</div>' +
-                '<div style="font-size:12px;color:var(--text-3)">Programa: ' + d.programa + '</div>' +
-                '<div style="font-size:11px;color:var(--text-muted)">' + d.tempo_ms.toFixed(0) + 'ms | ' + d.exe_path.split('\\\\').pop().split('/').pop() + '</div>' +
-                '</div>';
-        } else {
-            div.innerHTML = '<div style="padding:12px;background:#FEF2F2;border:1px solid var(--danger);border-radius:6px">' +
-                '<div style="font-weight:700;color:var(--danger)">Erro</div>' +
-                '<div style="font-size:12px;color:var(--text-3)">' + (d.erro || 'Falha na execucao') + '</div></div>';
-        }
-    } catch(e) {
-        div.innerHTML = '<div style="padding:12px;background:#FEF2F2;border:1px solid var(--danger);border-radius:6px;color:var(--danger)">Erro: ' + e.message + '</div>';
-    }
-}
-
 // Validar o programa com os dados de teste do roteiro (3 cenarios)
 async function validarRoteiro(prog) {
-    const div = document.getElementById('test-result-both');
+    const div = document.getElementById('test-result');
     div.innerHTML = '<span class="spinner"></span> Executando validacao com os cenarios do roteiro de teste...';
     try {
         const r = await fetch('/api/testar-roteiro/' + encodeURIComponent(prog));
@@ -747,22 +976,21 @@ async function validarRoteiro(prog) {
         if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
         let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Validacao com o roteiro <strong>Primeiro Emplacamento</strong> (' + d.casos.length + ' cenarios)</div>';
         html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
-        html += '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Cenario</th><th>Entrada (chassi)</th><th>Original</th><th>Convertido</th><th>Status</th></tr>';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Cenario</th><th>Entrada (chassi)</th><th>Resultado</th><th>Status</th></tr>';
         d.casos.forEach(c => {
-            const o = c.original || {}; const cv = c.convertido || {};
-            const oTxt = c.erro ? 'erro' : ((o.codigo != null ? o.codigo : '-') + (o.descricao ? ' ' + o.descricao : ''));
-            const cTxt = c.erro ? 'erro' : ((cv.codigo != null ? cv.codigo : '-') + (cv.descricao ? ' ' + cv.descricao : ''));
-            const ok = c.iguais;
+            // usa o resultado da execucao do fonte (convertido); cai no original se preciso
+            const res = c.convertido || c.original || {};
+            const temRes = !c.erro && res.sucesso && res.codigo != null;
+            const resTxt = c.erro ? 'erro' : (temRes ? (res.codigo + (res.descricao ? ' ' + res.descricao : '')) : '-');
             const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
-                        : (ok ? '<span class="badge badge-green">IGUAL</span>' : '<span class="badge badge-red">DIVERGENTE</span>');
+                        : (temRes ? '<span class="badge badge-green">RESULTADO ESPERADO</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
             html += '<tr style="border-bottom:1px solid var(--border)">' +
                 '<td style="padding:6px 8px"><strong>' + escapeHtml(c.cenario) + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria) + '</div></td>' +
                 '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(c.chassi || '-') + '</td>' +
-                '<td style="text-align:center">' + escapeHtml(String(oTxt)) + '</td>' +
-                '<td style="text-align:center">' + escapeHtml(String(cTxt)) + '</td>' +
+                '<td style="text-align:center">' + escapeHtml(String(resTxt)) + '</td>' +
                 '<td style="text-align:center">' + badge + '</td></tr>';
             if (c.erro) {
-                html += '<tr><td colspan="5" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
+                html += '<tr><td colspan="4" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
             }
         });
         html += '</table>';
@@ -770,66 +998,51 @@ async function validarRoteiro(prog) {
     } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; }
 }
 
-// Executar ambos e comparar
-async function executarAmbos() {
-    const entrada = document.getElementById('test-input-both').value.trim().toUpperCase();
-    const div = document.getElementById('test-result-both');
-    div.innerHTML = '<span class="spinner"></span> Executando Original e Convertido...';
-
-    // Preencher campos individuais
-    const origInput = document.getElementById('test-input-orig');
-    const convInput = document.getElementById('test-input-conv');
-    if (origInput) origInput.value = entrada;
-    if (convInput) convInput.value = entrada;
+// Executa o teste do codigo fonte (execucao unica) e mostra o resultado
+async function executarTesteFonte(prog) {
+    const entrada = document.getElementById('test-input').value.trim().toUpperCase();
+    const div = document.getElementById('test-result');
+    div.innerHTML = '<span class="spinner"></span> Executando ' + prog + '...';
 
     try {
-        const r = await fetch('/api/comparar-placa', {
+        const r = await fetch('/api/executar-fluxo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placa: entrada })
+            body: JSON.stringify({
+                programa: prog,
+                fluxo: 'convertido',
+                env_vars: { 'COB_PLACA': entrada }
+            })
         });
         const d = await r.json();
         if (d.error) {
-            div.innerHTML = '<div class="result-box diff">' +
-                '<div style="font-weight:700;color:var(--danger);margin-bottom:4px">ERRO</div>' +
-                '<div style="font-size:12px">Entrada: <strong>' + (entrada || '(vazio)') + '</strong></div>' +
-                '<div style="font-size:12px;color:var(--text-3);margin-top:4px">' + d.error + '</div></div>';
+            div.innerHTML = '<div class="result-box diff"><div style="font-weight:700;color:var(--danger)">ERRO</div>' +
+                '<div style="font-size:12px;color:var(--text-3);margin-top:4px">' + escapeHtml(d.error) + '</div></div>';
             return;
         }
 
-        // interpreta a saida de cada fluxo como "resultado esperado" ou "erro"
-        function saida(res) {
-            if (!res || res.codigo === null || res.codigo === undefined) {
-                return { ok: false, texto: (res && res.erro) ? res.erro : 'Sem retorno / erro na execucao' };
-            }
-            return { ok: true, codigo: res.codigo, descricao: res.descricao || '', tempo: res.tempo_ms };
-        }
-        const so = saida(d.original);
-        const sc = saida(d.convertido);
-        const match = d.resultados_iguais;
-
-        function painel(titulo, s) {
-            if (s.ok) {
-                return '<div class="compare-col" style="border-color:var(--green)">' +
-                    '<h4>' + titulo + '</h4>' +
-                    '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado esperado</div>' +
-                    '<div class="code-val" style="color:var(--green-dark)">' + s.codigo + '</div>' +
-                    '<div class="desc">' + s.descricao + '</div>' +
-                    '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + (s.tempo != null ? s.tempo.toFixed(0) + 'ms' : '') + '</div></div>';
-            }
-            return '<div class="compare-col" style="border-color:var(--danger)">' +
-                '<h4>' + titulo + '</h4>' +
+        // resultado esperado (codigo) ou erro
+        const temResultado = d.codigo !== null && d.codigo !== undefined && d.sucesso;
+        if (temResultado) {
+            div.innerHTML = '<div class="result-box match">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
+                '<span style="font-size:14px">Entrada: <strong>' + escapeHtml(entrada || '(vazio)') + '</strong></span>' +
+                '<span class="badge badge-green">RESULTADO ESPERADO</span></div>' +
+                '<div class="compare-col" style="border-color:var(--green)">' +
+                '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado</div>' +
+                '<div class="code-val" style="color:var(--green-dark)">' + escapeHtml(String(d.codigo)) + '</div>' +
+                '<div class="desc">' + escapeHtml(d.descricao || '') + '</div>' +
+                (d.output ? '<div style="font-size:11px;color:var(--text-3);margin-top:6px;font-family:monospace;white-space:pre-wrap">' + escapeHtml(d.output) + '</div>' : '') +
+                '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + (d.tempo_ms != null ? d.tempo_ms.toFixed(0) + 'ms' : '') + '</div></div></div>';
+        } else {
+            div.innerHTML = '<div class="result-box diff">' +
+                '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
+                '<span style="font-size:14px">Entrada: <strong>' + escapeHtml(entrada || '(vazio)') + '</strong></span>' +
+                '<span class="badge badge-red">ERRO</span></div>' +
+                '<div class="compare-col" style="border-color:var(--danger)">' +
                 '<div style="font-size:11px;color:var(--danger);margin-bottom:2px">Erro</div>' +
-                '<div class="desc" style="color:var(--danger)">' + s.texto + '</div></div>';
+                '<div class="desc" style="color:var(--danger)">' + escapeHtml(d.erro || 'Sem retorno / falha na execucao') + '</div></div></div>';
         }
-
-        div.innerHTML = '<div class="result-box ' + (match ? 'match' : 'diff') + '">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
-            '<span style="font-size:14px">Entrada: <strong>' + (entrada || '(vazio)') + '</strong></span>' +
-            '<span class="badge ' + (match ? 'badge-green' : 'badge-red') + '">' + (match ? 'RESULTADOS IGUAIS' : 'RESULTADOS DIFERENTES') + '</span></div>' +
-            '<div class="compare-grid">' + painel('Original', so) + painel('Convertido', sc) + '</div>' +
-            (d.diferencas && d.diferencas.length ? '<div class="diff-list">' + d.diferencas.map(x => '<div class="diff-item">' + x + '</div>').join('') + '</div>' : '') +
-            '</div>';
     } catch(e) {
         div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>';
     }
@@ -1008,6 +1221,306 @@ carregarListaProgramas();
 // ===== Aba Codigo Fonte: layout IDE =====
 let IDE_PROGRAMAS = [];   // [{original, convertido, categoria}]
 
+function toolbarMsg(txt, cor) {
+    const el = document.getElementById('ide-toolbar-msg');
+    if (el) { el.textContent = txt || ''; el.style.color = cor || 'var(--text-muted)'; }
+}
+
+// Abre/atualiza o modal de status da importacao
+function modalImport(innerHtml) {
+    let ov = document.getElementById('imp-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'imp-modal';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+        ov.onclick = function(e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div id="imp-modal-box" style="background:#fff;border-radius:10px;max-width:95%;max-height:85%;width:640px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3)"></div>';
+        document.body.appendChild(ov);
+    }
+    document.getElementById('imp-modal-box').innerHTML = innerHtml;
+    ov.style.display = 'flex';
+}
+function fecharModalImport() {
+    const ov = document.getElementById('imp-modal');
+    if (ov) ov.style.display = 'none';
+}
+
+// Etapas do pipeline de importacao, na ordem em que acontecem por arquivo
+const IMPORT_ETAPAS = [
+    { chave: 'validando', label: 'Validando COBOL' },
+    { chave: 'gravando', label: 'Gravando fonte' },
+    { chave: 'compilando', label: 'Compilando (auto-inferencia)' },
+];
+
+// Desenha a trilha de passos (pipeline) para o arquivo atual
+function renderPipelineTrilha(etapaAtual) {
+    const idxAtual = IMPORT_ETAPAS.findIndex(e => e.chave === etapaAtual);
+    let html = '<div style="display:flex;align-items:center;gap:6px;margin-top:10px">';
+    IMPORT_ETAPAS.forEach((e, i) => {
+        let estado = 'pendente';
+        if (idxAtual === -1) estado = 'pendente';
+        else if (i < idxAtual) estado = 'feito';
+        else if (i === idxAtual) estado = 'ativo';
+
+        const cor = estado === 'feito' ? 'var(--green)' : (estado === 'ativo' ? 'var(--brq-black, #111)' : 'var(--text-muted)');
+        const icone = estado === 'feito' ? '&#10004;' : (estado === 'ativo' ? '<span class="spinner" style="width:11px;height:11px;border-width:2px"></span>' : (i + 1));
+        const peso = estado === 'ativo' ? '700' : '400';
+
+        html += '<div style="display:flex;align-items:center;gap:6px">' +
+            '<span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;' +
+            'background:' + (estado === 'pendente' ? 'var(--bg-subtle,#f2f2f2)' : 'transparent') + ';color:' + cor +
+            ';border:1.5px solid ' + cor + ';font-size:11px">' + icone + '</span>' +
+            '<span style="font-size:12px;color:' + cor + ';font-weight:' + peso + '">' + e.label + '</span></div>';
+        if (i < IMPORT_ETAPAS.length - 1) {
+            html += '<span style="flex:0 0 20px;height:1px;background:' + (i < idxAtual ? 'var(--green)' : 'var(--border)') + '"></span>';
+        }
+    });
+    html += '</div>';
+    return html;
+}
+
+// Desenha o modal enquanto o pipeline esta rodando (polling de status)
+function renderPipelineEmAndamento(st) {
+    let html = '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)">';
+    html += '<div><div style="font-weight:700;font-size:15px">Importando fontes...</div>' +
+        '<div style="font-size:12px;color:var(--text-muted);margin-top:2px">' +
+        'Arquivo ' + st.indice_atual + ' de ' + st.total + '</div></div>';
+    html += '<button class="btn btn-outline btn-sm" onclick="cancelarImportacao()">Cancelar</button>';
+    html += '</div>';
+
+    html += '<div style="padding:16px 18px">';
+    if (st.arquivo_atual) {
+        html += '<div style="font-family:monospace;font-size:13px;font-weight:700">' + escapeHtml(st.arquivo_atual) + '</div>';
+        html += renderPipelineTrilha(st.etapa_atual);
+
+        // evidencia do que o auto-inferidor esta fazendo AGORA nesse arquivo -
+        // sem isso a etapa "Compilando" fica parada visualmente por ate 2min
+        const cp = st.compilacao_progresso;
+        if (st.etapa_atual === 'compilando') {
+            if (cp) {
+                const pctTempo = cp.orcamento_segundos ? Math.min(100, Math.round((cp.elapsed / cp.orcamento_segundos) * 100)) : 0;
+                html += '<div style="margin-top:10px;padding:10px 12px;background:var(--bg-subtle,#f7f7f7);border-radius:6px">' +
+                    '<div style="font-size:12px;color:var(--text-muted)">' +
+                    'Tentativa ' + cp.iteracao + '/' + cp.limite_iteracoes +
+                    ' &middot; ' + cp.elapsed + 's de ' + cp.orcamento_segundos + 's' +
+                    ' &middot; ' + cp.simbolos_total + ' simbolo(s) inferido(s) ate agora' +
+                    (cp.simbolos_novos ? ' (+' + cp.simbolos_novos + ' nesta tentativa)' : '') +
+                    '</div>' +
+                    '<div style="height:4px;border-radius:2px;background:var(--border);overflow:hidden;margin-top:6px">' +
+                    '<div style="height:100%;width:' + pctTempo + '%;background:var(--brq-black,#333);transition:width .4s"></div></div>' +
+                    '</div>';
+            } else {
+                html += '<div style="margin-top:10px;font-size:12px;color:var(--text-muted)">' +
+                    '<span class="spinner" style="width:10px;height:10px;border-width:2px"></span> ' +
+                    'Compilando modulo (sem simbolos ausentes ate agora)...</div>';
+            }
+        }
+    }
+
+    // lista de TODOS os arquivos do lote (concluidos, o atual e os pendentes)
+    // com nome + % de cada um - nao so o log dos ja terminados. Reordenada
+    // (em andamento -> pendentes -> concluidos, mais recente primeiro) para
+    // o arquivo atual sempre aparecer no topo, sem precisar rolar pra achar.
+    const arquivosProgresso = st.arquivos_progresso || [];
+    const emAndamento = arquivosProgresso.filter(a => a.status === 'em_andamento');
+    const pendentes = arquivosProgresso.filter(a => a.status === 'pendente');
+    const concluidos = arquivosProgresso.filter(a => a.status === 'importado' || a.status === 'rejeitado').reverse();
+    const arquivosOrdenados = emAndamento.concat(pendentes, concluidos);
+
+    if (arquivosOrdenados.length) {
+        html += '<div style="margin-top:16px;max-height:260px;overflow-y:auto">';
+        arquivosOrdenados.forEach(ap => {
+            let icone, cor;
+            if (ap.status === 'importado') { icone = '&#10004;'; cor = 'var(--green)'; }
+            else if (ap.status === 'rejeitado') { icone = '&#10008;'; cor = 'var(--danger)'; }
+            else if (ap.status === 'em_andamento') { icone = '<span class="spinner" style="width:9px;height:9px;border-width:2px"></span>'; cor = 'var(--brq-black,#111)'; }
+            else { icone = String(ap.percentual); cor = 'var(--text-muted)'; }
+
+            let badgeCompila = '';
+            if (ap.compilou !== null && ap.compilou !== undefined) {
+                badgeCompila = ap.compilou
+                    ? ' <span class="badge badge-green">compila</span>'
+                    : ' <span class="badge badge-red">nao compila</span>';
+            }
+
+            const destaque = ap.status === 'em_andamento' ? 'background:var(--bg-subtle,#f7f7f7);border-radius:6px;padding-left:6px;padding-right:6px' : '';
+            const barCor = ap.status === 'rejeitado' ? 'var(--danger)' : (ap.status === 'pendente' ? 'var(--border)' : 'var(--green)');
+            html += '<div style="padding:6px 0;border-bottom:1px solid var(--border);' + destaque + '">' +
+                '<div style="display:flex;align-items:center;gap:8px;font-size:12px">' +
+                '<span style="width:16px;text-align:center;color:' + cor + ';font-size:10px">' + icone + '</span>' +
+                '<span style="font-family:monospace;' + (ap.status === 'pendente' ? 'color:var(--text-muted)' : '') + '">' + escapeHtml(ap.arquivo) + '</span>' +
+                badgeCompila +
+                '<span style="margin-left:auto;font-size:11px;color:var(--text-muted)">' + ap.percentual + '%</span>' +
+                '</div>' +
+                '<div style="height:3px;border-radius:2px;background:var(--bg-subtle,#eee);overflow:hidden;margin-top:3px">' +
+                '<div style="height:100%;width:' + ap.percentual + '%;background:' + barCor + ';transition:width .3s"></div></div>' +
+                '</div>';
+        });
+        html += '</div>';
+    }
+    html += '</div>';
+
+    // barra de progresso geral (media do % de cada arquivo do lote)
+    const pct = arquivosProgresso.length
+        ? Math.round(arquivosProgresso.reduce((s, a) => s + a.percentual, 0) / arquivosProgresso.length)
+        : 0;
+    html += '<div style="padding:12px 18px;border-top:1px solid var(--border)">' +
+        '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-bottom:4px">' +
+        '<span>Progresso geral (' + st.indice_atual + '/' + st.total + ' arquivos)</span><span>' + pct + '%</span></div>' +
+        '<div style="height:6px;border-radius:3px;background:var(--bg-subtle,#eee);overflow:hidden">' +
+        '<div style="height:100%;width:' + pct + '%;background:var(--green);transition:width .3s"></div></div></div>';
+
+    return html;
+}
+
+// Desenha o resultado final apos o pipeline concluir
+function renderPipelineConcluido(st) {
+    const itens = st.itens || [];
+    const imp = st.importados || [];
+    const rej = st.rejeitados || [];
+    const resumo = st.resumo || {};
+
+    let html = '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)">';
+    let resumoCompilacao = '';
+    if (resumo.total_compilaveis) {
+        const okCor = resumo.total_compilaram === resumo.total_compilaveis ? 'var(--green)' : 'var(--danger)';
+        resumoCompilacao = ' &middot; <span style="color:' + okCor + '">' +
+            resumo.total_compilaram + '/' + resumo.total_compilaveis + ' compilaram</span>';
+    }
+    html += '<div><div style="font-weight:700;font-size:15px">Status da importacao</div>' +
+            '<div style="font-size:12px;color:var(--text-muted)">' +
+            (resumo.total_enviados || 0) + ' enviado(s) &middot; ' +
+            '<span style="color:var(--green)">' + (resumo.total_importados || 0) + ' importado(s)</span> &middot; ' +
+            '<span style="color:' + (resumo.total_rejeitados ? 'var(--danger)' : 'var(--text-muted)') + '">' + (resumo.total_rejeitados || 0) + ' rejeitado(s)</span>' +
+            resumoCompilacao +
+            '</div></div>';
+    html += '<button class="btn btn-outline btn-sm" onclick="fecharModalImport()">Fechar</button>';
+    html += '</div>';
+
+    html += '<div style="overflow-y:auto;padding:12px 18px">';
+
+    if (imp.length) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:4px 0 6px">Importados</div>';
+        imp.forEach(a => {
+            let badgeCompila = '';
+            if (a.tipo === 'convertido' && a.compilou !== null && a.compilou !== undefined) {
+                badgeCompila = a.compilou
+                    ? '<span class="badge badge-green" title="' + escapeHtml(a.mensagem_compilacao || '') + '">compila</span>'
+                    : '<span class="badge badge-red" title="' + escapeHtml(a.mensagem_compilacao || '') + '">nao compila</span>';
+            } else if (a.tipo === 'convertido') {
+                badgeCompila = '<span class="badge" style="background:var(--bg-subtle,#eee);color:var(--text-muted)" title="' +
+                    escapeHtml(a.mensagem_compilacao || '') + '">copybook</span>';
+            }
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)">' +
+                '<span style="color:var(--green)">&#10004;</span>' +
+                '<span style="font-family:monospace;font-size:13px">' + escapeHtml(a.arquivo) + '</span>' +
+                '<span class="badge badge-green" style="margin-left:auto">' + escapeHtml(a.tipo) + '</span>' +
+                badgeCompila + '</div>';
+        });
+    }
+
+    if (rej.length) {
+        html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:14px 0 6px">Rejeitados (nao sao COBOL)</div>';
+        rej.forEach(a => {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid var(--border)">' +
+                '<span style="color:var(--danger)">&#10008;</span>' +
+                '<div style="min-width:0"><div style="font-family:monospace;font-size:13px">' + escapeHtml(a.arquivo) + '</div>' +
+                '<div style="font-size:11px;color:var(--danger)">' + escapeHtml(a.motivo) + '</div></div></div>';
+        });
+    }
+
+    if (!itens.length) {
+        html += '<div style="padding:24px;text-align:center;color:var(--text-muted)">Nenhum arquivo processado.</div>';
+    }
+
+    html += '</div>';
+
+    html += '<div style="padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+            '<span style="font-size:12px;color:var(--text-muted)">' + (resumo.total_programas || 0) + ' programa(s) no projeto</span>' +
+            '<button class="btn btn-dark btn-sm" onclick="fecharModalImport()">OK</button></div>';
+
+    return html;
+}
+
+// Cancela a importacao em andamento - o proprio loop de polling de
+// importarFontes ve o estado mudar (concluido=true, erro="Cancelado...")
+// na proxima consulta e encerra sozinho.
+async function cancelarImportacao() {
+    try {
+        await fetch('/api/projeto/importar/cancelar', { method: 'POST' });
+    } catch (e) {
+        toolbarMsg('Erro ao cancelar: ' + e.message, 'var(--danger)');
+    }
+}
+
+// Importa fontes COBOL selecionados: inicia o pipeline no backend e faz
+// polling do progresso, desenhando o passo a passo (validar/gravar/compilar)
+// por arquivo em vez de um spinner generico ate a resposta final.
+async function importarFontes(files) {
+    if (!files || !files.length) return;
+    const fd = new FormData();
+    for (const f of files) fd.append('arquivos', f);
+
+    modalImport('<div style="padding:40px;text-align:center;color:var(--text-muted)">' +
+        '<span class="spinner"></span> Enviando ' + files.length + ' arquivo(s)...</div>');
+
+    try {
+        const r = await fetch('/api/projeto/importar', { method: 'POST', body: fd });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Falha no import');
+
+        // poll do status ate o pipeline concluir
+        while (true) {
+            const rs = await fetch('/api/projeto/importar/status');
+            const st = await rs.json();
+
+            if (st.erro) throw new Error(st.erro);
+
+            if (st.concluido) {
+                modalImport(renderPipelineConcluido(st));
+                const resumo = st.resumo || {};
+                toolbarMsg((resumo.total_importados || 0) + ' importado(s), ' + (resumo.total_rejeitados || 0) + ' rejeitado(s).',
+                    resumo.total_rejeitados ? 'var(--danger)' : 'var(--green)');
+                await carregarListaProgramas();
+                break;
+            }
+
+            modalImport(renderPipelineEmAndamento(st));
+            await new Promise(res => setTimeout(res, 600));
+        }
+    } catch(e) {
+        modalImport('<div style="padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700">Erro na importacao</div>' +
+            '<div style="padding:20px;color:var(--danger)">' + escapeHtml(e.message) + '</div>' +
+            '<div style="padding:12px 18px;border-top:1px solid var(--border);text-align:right">' +
+            '<button class="btn btn-outline btn-sm" onclick="fecharModalImport()">Fechar</button></div>');
+        toolbarMsg('Erro: ' + e.message, 'var(--danger)');
+    } finally {
+        document.getElementById('import-input').value = '';
+    }
+}
+
+// Limpa TODO o projeto (fontes + gerado) apos confirmacao
+async function limparProjeto() {
+    if (!confirm('Limpar TODO o projeto? Isso remove os fontes (originais e convertidos), os arquivos importados, os artefatos compilados e o banco/estrutura gerada. A lista de programas fica vazia ate importar fontes novos. Esta acao nao pode ser desfeita.')) return;
+    toolbarMsg('Limpando...');
+    try {
+        const r = await fetch('/api/projeto/limpar', { method: 'POST' });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Falha ao limpar');
+        const rel = d.relatorio || {};
+        toolbarMsg('Removidos: ' + (rel.originais_removidos || 0) + ' orig, ' +
+            (rel.convertidos_removidos || 0) + ' conv, ' +
+            (rel.importados_removidos || 0) + ' import, ' +
+            (rel.artefatos_removidos || 0) + ' artefato(s)' +
+            (rel.estrutura_removida ? ', estrutura' : '') + '.', 'var(--green)');
+        // esvazia o editor e recarrega a lista (agora vazia)
+        const cp = document.getElementById('code-prog'); if (cp) cp.value = '';
+        await carregarListaProgramas();
+    } catch(e) {
+        toolbarMsg('Erro: ' + e.message, 'var(--danger)');
+    }
+}
+
 // Popula a sidebar de programas
 async function carregarListaProgramas() {
     const list = document.getElementById('ide-list');
@@ -1025,35 +1538,87 @@ async function carregarListaProgramas() {
     }
 }
 
+// Guarda o estado (aberto/fechado) de cada pasta da arvore entre renders
+let IDE_TREE_STATE = {};
+
+// Rotulo curto para a pasta a partir do nome da categoria (ex: "GAA - ..." -> "GAA")
+function nomePasta(cat) {
+    const m = (cat || '').split(' - ');
+    return m[0] || cat || 'Outros';
+}
+
+// Renderiza a lista de programas como uma arvore de pastas/arquivos (estilo explorador)
 function renderListaProgramas(items) {
     const list = document.getElementById('ide-list');
     if (!list) return;
     if (!items.length) { list.innerHTML = '<p style="padding:14px;color:var(--text-muted);font-size:12px">Nenhum programa.</p>'; return; }
+
     // agrupar por categoria
     const cats = {};
     items.forEach(p => { (cats[p.categoria] = cats[p.categoria] || []).push(p); });
-    let html = '';
+
+    let html = '<div class="ide-tree">';
+    // Raiz: a pasta do projeto de fontes
+    html += '<div class="ide-node" onclick="togglePasta(this)" style="font-weight:600">' +
+        '<span class="twisty">&#9660;</span>' +
+        '<span class="n-ico">&#128449;</span>' +
+        '<span class="n-label">fontes_convertidos</span></div>';
+    html += '<div class="ide-children" data-root="1">';
+
     Object.entries(cats).forEach(([cat, progs]) => {
-        html += '<div class="ide-cat">' + escapeHtml(cat) + '</div>';
+        const chaveEstado = 'cat:' + cat;
+        // por padrao aberto; respeita estado salvo
+        const aberto = IDE_TREE_STATE[chaveEstado] !== false;
+        const nodeCls = 'ide-node' + (aberto ? '' : ' collapsed');
+        const childCls = 'ide-children' + (aberto ? '' : ' hidden');
+        html += '<div class="' + nodeCls + '" data-key="' + escapeHtml(chaveEstado) + '" onclick="togglePasta(this)" style="padding-left:16px" title="' + escapeHtml(cat) + '">' +
+            '<span class="twisty">&#9660;</span>' +
+            '<span class="n-ico">&#128193;</span>' +
+            '<span class="n-label">' + escapeHtml(nomePasta(cat)) + '</span>' +
+            '<span class="n-badge">' + progs.length + '</span></div>';
+        html += '<div class="' + childCls + '">';
         progs.forEach(p => {
-            html += '<div class="ide-item" data-prog="' + p.original + '" onclick="selecionarPrograma(this,\'' + p.original + '\')">' +
-                '<span class="ico">&lt;/&gt;</span>' +
-                '<span>' + p.original + '</span>' +
-                '<span class="arrow">' + p.convertido + '</span></div>';
+            const conv = p.convertido ? escapeHtml(p.convertido) : '';
+            html += '<div class="ide-file" data-prog="' + escapeHtml(p.original) + '" style="padding-left:40px" ' +
+                'onclick="selecionarPrograma(this,\'' + escapeHtml(p.original) + '\')" title="' + escapeHtml(p.original) + (conv ? ' \u2192 ' + conv : '') + '">' +
+                '<span class="f-ico">&lt;/&gt;</span>' +
+                '<span class="n-label">' + escapeHtml(p.original) + '</span>' +
+                (conv ? '<span class="f-conv">' + conv + '</span>' : '') +
+                '</div>';
         });
+        html += '</div>';
     });
+
+    html += '</div></div>';
     list.innerHTML = html;
+}
+
+// Expande/recolhe uma pasta da arvore
+function togglePasta(nodeEl) {
+    const filhos = nodeEl.nextElementSibling;
+    const colapsar = !nodeEl.classList.contains('collapsed');
+    nodeEl.classList.toggle('collapsed', colapsar);
+    if (filhos && filhos.classList.contains('ide-children')) {
+        filhos.classList.toggle('hidden', colapsar);
+    }
+    const key = nodeEl.getAttribute('data-key');
+    if (key) IDE_TREE_STATE[key] = !colapsar;   // salva estado (true = aberto)
 }
 
 function filtrarProgramas(termo) {
     const t = (termo || '').trim().toUpperCase();
     if (!t) { renderListaProgramas(IDE_PROGRAMAS); return; }
-    renderListaProgramas(IDE_PROGRAMAS.filter(p =>
-        p.original.toUpperCase().includes(t) || p.convertido.toUpperCase().includes(t)));
+    // ao filtrar, forca todas as pastas abertas para ver os resultados
+    const filtrados = IDE_PROGRAMAS.filter(p =>
+        p.original.toUpperCase().includes(t) || (p.convertido || '').toUpperCase().includes(t));
+    const estadoAnterior = IDE_TREE_STATE;
+    IDE_TREE_STATE = {};   // tudo aberto durante a busca
+    renderListaProgramas(filtrados);
+    IDE_TREE_STATE = estadoAnterior;
 }
 
 function selecionarPrograma(el, prog) {
-    document.querySelectorAll('.ide-item').forEach(i => i.classList.remove('active'));
+    document.querySelectorAll('.ide-file, .ide-item').forEach(i => i.classList.remove('active'));
     if (el) el.classList.add('active');
     document.getElementById('code-prog').value = prog;
     carregarCodigo();

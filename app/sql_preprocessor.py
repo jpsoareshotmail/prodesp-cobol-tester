@@ -17,6 +17,149 @@ import re
 from pathlib import Path
 
 
+def _reparar_literais_partidos(content: str) -> str:
+    """Reparos de conversao seguros aplicados antes de compilar.
+
+    (1) Neutraliza clausulas 'REDEFINES C-MAPA' orfas (mapas de tela cujo item
+        base vem de um stub e nao precede imediatamente o REDEFINES), removendo
+        o REDEFINES para permitir a compilacao. O overlay de memoria e perdido,
+        o que e aceitavel para o teste isolado.
+
+    (2) Neutraliza a continuacao orfa de 'INVOKE <dataset> USING ...' do DMS:
+        o conversor comenta a linha do INVOKE e a linha do '01 X = Y' seguinte,
+        mas deixa a linha 'USING ... .' descomentada, causando erro de sintaxe
+        (verbo INVOKE removido, clausula USING sem statement). Comenta essa
+        linha orfa tambem.
+
+    (3) 'SELECT X ASSIGN TO X' (mesmo nome do arquivo e do assign, sem aspas):
+        o GnuCOBOL tenta criar um item interno de assign dinamico com o mesmo
+        nome do FD e da erro de redefinicao. Coloca o alvo do ASSIGN entre
+        aspas (torna-o um literal, nao mais uma referencia a outro data-name).
+
+    (4) 'PERFORM X OF Y-STBG' orfao: residuo de navegacao DMS (provavelmente
+        um FIND/STORE do sub-schema original) que o conversor transformou num
+        PERFORM sem paragrafo valido correspondente. Comenta a linha (nao ha
+        equivalente sem runtime DMS real).
+
+    (5) 'SET X OF Y' / 'TO BEGINNING' (2 linhas): posicionamento de cursor DMS
+        ("ir para o primeiro registro do conjunto"), sem equivalente em COBOL
+        padrao (SET so aceita INDEX/POINTER/numerico/condition-name). O
+        conversor ja comenta a maioria das ocorrencias; as que sobraram sem
+        comentar geram erro de sintaxe. Comenta as duas linhas.
+
+    (6) Literal truncado 'DEAD*GOX*': defeito de transcricao no fonte original
+        (nao e algo que o nosso pre-processador causa) - o conversor cortou
+        'DEADLOCK' no meio e colou a tag de identificacao *GOX* logo depois,
+        sem fechar a aspa. A mesma comparacao aparece correta ('DEADLOCK')
+        em outro ponto do mesmo arquivo, confirmando o valor certo. Isso e
+        reparado aqui (nao editando o fonte do usuario) para sobreviver a
+        reimportacoes do arquivo original ainda corrompido.
+    """
+    # usado pelo reparo (3): se o fonte usa INVALID KEY em algum WRITE/READ,
+    # um SELECT sem ORGANIZATION (default sequencial) nao aceita a clausula -
+    # RELATIVE aceita INVALID KEY em acesso sequencial sem exigir uma chave
+    # real (que nao temos, por ser campo do copybook original).
+    usa_invalid_key = 'INVALID KEY' in content.upper()
+
+    linhas = content.split('\n')
+    saida = []
+    pendente_invoke = False
+    i = 0
+    n = len(linhas)
+    while i < n:
+        ln = linhas[i]
+
+        # ignora linhas de comentario (col 7 = '*' ou '/')
+        if len(ln) >= 7 and ln[6] in ('*', '/'):
+            if 'INVOKE' in ln.upper():
+                pendente_invoke = True
+            saida.append(ln)
+            i += 1
+            continue
+
+        if not ln.strip():
+            saida.append(ln)
+            i += 1
+            continue
+
+        # (2) continuacao orfa de INVOKE comentado: proxima linha ativa e
+        #     inteiramente "USING <campo(s)> ." -> e a continuacao perdida.
+        if pendente_invoke:
+            pendente_invoke = False
+            musing = re.match(r'^\s{7,}USING\s+[A-Za-z0-9,\-\s]+\.\s*$', ln)
+            if musing:
+                saida.append(_comment_line(ln))
+                i += 1
+                continue
+
+        # (5) 'SET X OF Y' seguido de 'TO BEGINNING' na proxima linha ativa
+        mset = re.match(r'^\s*SET\s+[A-Za-z][\w-]*\s+OF\s+[A-Za-z][\w-]*\s*$', ln, re.IGNORECASE)
+        if mset and i + 1 < n:
+            prox = linhas[i + 1]
+            if re.match(r'^\s*TO\s+BEGINNING\b', prox, re.IGNORECASE):
+                saida.append(_comment_line(ln))
+                saida.append(_comment_line(prox))
+                i += 2
+                continue
+
+        # (1) REDEFINES orfao de mapa de tela: "01 X REDEFINES C-MAPA" quando
+        #     C-MAPA vem de um stub e nao e o item imediatamente anterior.
+        #     Remove a clausula REDEFINES para permitir compilar (overlay perdido,
+        #     aceitavel para teste isolado).
+        mred = re.match(r'^(\s*\d{2}\s+[A-Za-z][A-Za-z0-9\-]*)\s+REDEFINES\s+C-MAPA\s*\.?\s*$',
+                        ln, re.IGNORECASE)
+        if mred:
+            saida.append(mred.group(1) + '.')
+            i += 1
+            continue
+
+        # (6) Literal truncado "'DEAD*GOX*" -> "'DEADLOCK'" (ver docstring)
+        mliteral = re.match(r"^(.*)'DEAD\*GOX\*\s*$", ln)
+        if mliteral:
+            nova = mliteral.group(1) + "'DEADLOCK'"
+            if len(nova) > 72:
+                # colapsa espacos multiplos so na area de codigo (col 8+) -
+                # nunca mexe nas colunas 1-7 (sequencia/indicador do formato
+                # fixo), senao desalinha o indicador e quebra a compilacao.
+                nova = nova[:7] + re.sub(r' {2,}', ' ', nova[7:])
+            if len(nova) <= 72:
+                saida.append(nova + (' ' * (72 - len(nova))) + '*GOX*')
+                i += 1
+                continue
+
+        # (3) SELECT X ASSIGN TO X -> SELECT X ASSIGN TO "X"
+        self_assign = False
+
+        def _quote_assign(m):
+            nonlocal self_assign
+            nome1, mid, nome2 = m.group(1), m.group(2), m.group(3)
+            if nome1.upper() == nome2.upper():
+                self_assign = True
+                return f'SELECT {nome1}{mid}"{nome2}"'
+            return m.group(0)
+
+        ln2 = re.sub(r'(?i)SELECT\s+([A-Za-z][\w-]*)(\s+ASSIGN\s+TO\s+)([A-Za-z][\w-]*)',
+                     _quote_assign, ln)
+        if self_assign and usa_invalid_key:
+            # linha NOVA (nao concatenada) para nao estourar a coluna 72 do
+            # formato fixo - concatenar inline truncaria o texto em col 72.
+            saida.append(ln2)
+            saida.append('           ORGANIZATION IS RELATIVE')
+            i += 1
+            continue
+
+        # (4) PERFORM X OF Y-STBG orfao (residuo de navegacao DMS)
+        if re.match(r'^\s*PERFORM\s+[A-Za-z][\w-]*\s+OF\s+[A-Za-z][\w-]*-STBG\s*\.\s*$',
+                    ln2, re.IGNORECASE):
+            saida.append(_comment_line(ln2))
+            i += 1
+            continue
+
+        saida.append(ln2)
+        i += 1
+    return '\n'.join(saida)
+
+
 def preprocessar_sql(source_content: str) -> str:
     """
     Remove blocos EXEC SQL/CICS do fonte COBOL, substituindo por stubs.
@@ -189,6 +332,9 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
             host_vars = set()  # Copybooks ja definem tudo
         else:
             host_vars = set(re.findall(r':([A-Za-z][\w-]*)', content))
+
+        # Reparos seguros de conversao (hoje: REDEFINES C-MAPA orfao)
+        content = _reparar_literais_partidos(content)
 
         # Processar SQL
         processed = preprocessar_sql(content)

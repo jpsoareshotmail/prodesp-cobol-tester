@@ -50,7 +50,28 @@ from functools import wraps
 from flask import session, redirect, url_for
 import auth as auth_mod
 
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
+def _obter_secret_key():
+    """Chave de sessao: usa SECRET_KEY do ambiente se definida; senao persiste
+    uma gerada em disco. Sem persistir, cada reinicio (inclusive o auto-reload
+    do servidor de desenvolvimento a cada edicao de arquivo) gera uma chave
+    nova e invalida TODAS as sessoes/logins ativos sem aviso.
+    """
+    env_key = os.environ.get('SECRET_KEY')
+    if env_key:
+        return env_key
+    key_file = Path(__file__).resolve().parent / 'data' / '.secret_key'
+    try:
+        if key_file.exists():
+            return key_file.read_text(encoding='utf-8').strip()
+        key_file.parent.mkdir(parents=True, exist_ok=True)
+        nova = secrets.token_hex(32)
+        key_file.write_text(nova, encoding='utf-8')
+        return nova
+    except Exception:
+        return secrets.token_hex(32)
+
+
+app.secret_key = _obter_secret_key()
 auth_mod.init_auth()
 
 # Rotas que nao exigem login
@@ -131,7 +152,17 @@ def do_login():
     user = auth_mod.verify_login(username, senha)
     if not user:
         return jsonify({'error': 'Usuario ou senha invalidos'}), 401
+
+    # So conta como "saiu e voltou" se NAO havia sessao valida antes deste
+    # login (ou era outro usuario). Um login redundante com sessao ja ativa
+    # (ex: uma checagem de status, ou o navegador reconfirmando) nao deve
+    # cancelar uma importacao que o proprio usuario ainda esta acompanhando.
+    sessao_anterior = session.get('user')
+    era_sessao_nova = (not sessao_anterior) or (sessao_anterior.get('username') != user['username'])
+
     session['user'] = user
+    if era_sessao_nova:
+        _cancelar_import_ativo("Sessao reiniciada (login) - importacao cancelada")
     return jsonify({
         'ok': True,
         'username': user['username'],
@@ -162,6 +193,9 @@ def trocar_senha():
 
 @app.route('/api/logout', methods=['POST'])
 def do_logout():
+    # Sair cancela qualquer importacao em andamento - o usuario nao esta mais
+    # olhando o pipeline, entao nao faz sentido deixar rodando as escondidas.
+    _cancelar_import_ativo("Sessao encerrada (logout) - importacao cancelada")
     session.pop('user', None)
     return jsonify({'ok': True})
 
@@ -240,30 +274,35 @@ def cobol_status():
 
 @app.route('/api/programas-dual', methods=['GET'])
 def get_programas_dual():
-    """Retorna lista de programas com mapeamento original/convertido"""
-    from data.program_mapping import get_programs_by_category, PROGRAM_MAP
+    """Retorna lista de programas com mapeamento original/convertido.
+
+    A lista vem do registro dinamico (data/program_registry.py), reconstruido
+    a partir dos fontes presentes em disco. Assim, fontes importados aparecem
+    automaticamente e fontes removidos somem, sem editar codigo.
+    """
+    from data.program_registry import programas_por_categoria, total_programas
     from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR, BUILD_DIR
 
     resultado = {}
-    for category, progs in get_programs_by_category().items():
+    for category, progs in programas_por_categoria().items():
         resultado[category] = []
         for prog in progs:
             orig_file = ORIGINAIS_DIR / prog["original_file"]
-            conv_file = CONVERTIDOS_DIR / prog["converted_file"]
+            conv_file = CONVERTIDOS_DIR / prog["converted_file"] if prog["converted_file"] else None
             standalone = BUILD_DIR / f"{prog['original']}.cob"
-            driver = BUILD_DIR / f"DRIVER-{prog['converted']}.cob"
+            driver = BUILD_DIR / f"DRIVER-{prog['converted']}.cob" if prog["converted"] else None
             resultado[category].append({
                 "original": prog["original"],
                 "convertido": prog["converted"],
                 "original_existe": orig_file.exists(),
-                "convertido_existe": conv_file.exists(),
+                "convertido_existe": bool(conv_file and conv_file.exists()),
                 "standalone_pronto": standalone.exists(),
-                "driver_pronto": driver.exists(),
+                "driver_pronto": bool(driver and driver.exists()),
             })
 
     return jsonify({
         "categorias": resultado,
-        "total_programas": len(PROGRAM_MAP),
+        "total_programas": total_programas(),
     })
 
 @app.route('/api/comparar-placa', methods=['POST'])
@@ -342,17 +381,71 @@ def executar_fluxo():
         "tempo_ms": resultado.tempo_ms,
     })
 
+def _detectar_copybooks_inferidos(codigo_convertido: str):
+    """Detecta copybooks INFERIDOS usados por um programa.
+
+    Le os 'COPY XXXX' do fonte convertido e, para cada copybook correspondente
+    em cobol_build/copy, verifica se ele contem a marca '@inferido:' (deixada
+    quando a estrutura foi deduzida do uso, por falta do copybook original do
+    mainframe). Retorna lista de {copybook, descricao}.
+    """
+    import re
+    from cobol_runner import COPY_DIR
+
+    if not codigo_convertido:
+        return []
+
+    # nomes de copybooks referenciados (COPY XXXX. ou COPY XXXX)
+    nomes = set()
+    for m in re.finditer(r'(?im)^\s*COPY\s+([A-Z0-9\-]+)', codigo_convertido):
+        nomes.add(m.group(1).strip().upper())
+
+    inferidos = []
+    for nome in sorted(nomes):
+        cpy = COPY_DIR / f"{nome}.cpy"
+        if not cpy.exists():
+            continue
+        try:
+            txt = cpy.read_text(encoding='latin-1', errors='ignore')
+        except Exception:
+            continue
+        m = re.search(r'@inferido:\s*(.+)', txt)
+        if m:
+            # remove eventual '*' de fim de linha de comentario COBOL
+            desc = m.group(1).strip().rstrip('*').strip()
+            inferidos.append({"copybook": nome, "descricao": desc})
+    return inferidos
+
+
 @app.route('/api/codigo-fonte/<programa>', methods=['GET'])
 def get_codigo_fonte_dual(programa):
     """Retorna codigo fonte do programa em ambas versoes (original e convertido)"""
     from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR
-    from data.program_mapping import get_converted_name, get_original_name
+    from data.program_registry import carregar_mapa
 
-    resultado = {"programa": programa, "original": None, "convertido": None}
+    resultado = {"programa": programa, "original": None, "convertido": None,
+                 "inferidos": []}
 
-    # Determinar nomes
-    nome_convertido = get_converted_name(programa)
-    nome_original = get_original_name(programa) if not nome_convertido else programa
+    # Determinar nomes a partir do registro dinamico (original -> convertido)
+    mapa = carregar_mapa()
+    reverso = {v: k for k, v in mapa.items() if v}
+    if programa in mapa:
+        # 'programa' e um nome original
+        nome_original = programa
+        nome_convertido = mapa[programa] or None
+    elif programa in reverso:
+        # 'programa' e um nome convertido
+        nome_convertido = programa
+        nome_original = reverso[programa]
+    else:
+        # fallback: tenta o mapeamento hardcoded antigo
+        try:
+            from data.program_mapping import get_converted_name, get_original_name
+            nome_convertido = get_converted_name(programa)
+            nome_original = get_original_name(programa) if not nome_convertido else programa
+        except Exception:
+            nome_convertido = None
+            nome_original = programa
 
     # Carregar original
     if nome_original:
@@ -383,6 +476,8 @@ def get_codigo_fonte_dual(programa):
                     "linhas": len(codigo.split('\n')),
                     "codigo": codigo,
                 }
+                # copybooks inferidos usados por este programa
+                resultado["inferidos"] = _detectar_copybooks_inferidos(codigo)
             except:
                 pass
 
@@ -1036,6 +1131,7 @@ def testar_com_roteiro(programa):
                 'chassi': dt.get('chassi', ''),
                 'identificador': ident,
                 'entrada': entrada,
+                'passos': rot.get('passos', []),
             }
 
             try:
@@ -1046,14 +1142,20 @@ def testar_com_roteiro(programa):
                     caso['original'] = {
                         'codigo': comp.resultado_original.codigo if comp.resultado_original else None,
                         'descricao': comp.resultado_original.descricao if comp.resultado_original else '',
+                        'sucesso': bool(comp.resultado_original and comp.resultado_original.sucesso),
                     }
                     caso['convertido'] = {
                         'codigo': comp.resultado_convertido.codigo if comp.resultado_convertido else None,
                         'descricao': comp.resultado_convertido.descricao if comp.resultado_convertido else '',
+                        'sucesso': bool(comp.resultado_convertido and comp.resultado_convertido.sucesso),
                     }
                     caso['iguais'] = comp.resultados_iguais
                 else:
                     env = {'COB_PLACA': entrada, 'COB_CHASSI': entrada}
+                    if dt.get('cpf'):
+                        env['COB_CPF'] = dt['cpf']
+                    if dt.get('cnpj'):
+                        env['COB_CNPJ'] = dt['cnpj']
                     ro = executar_original(programa, env)
                     nome_conv = get_converted_name(programa) or programa
                     rc = executar_convertido(nome_conv, env)
@@ -1093,6 +1195,63 @@ def get_roteiros_endpoint():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
+
+
+HISTORICO_ROTEIRO_PATH = Path(__file__).resolve().parent / 'data' / 'roteiro_historico.json'
+HISTORICO_ROTEIRO_MAX = 3
+
+
+@app.route('/api/roteiro-historico', methods=['GET'])
+def get_roteiro_historico():
+    """Retorna as ultimas execucoes salvas do roteiro de testes (ate 3)."""
+    try:
+        historico = []
+        if HISTORICO_ROTEIRO_PATH.exists():
+            historico = json.loads(HISTORICO_ROTEIRO_PATH.read_text(encoding='utf-8'))
+        return jsonify({'historico': historico})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/roteiro-historico', methods=['POST'])
+def salvar_roteiro_historico():
+    """Salva o resultado de uma execucao do roteiro de testes, mantendo
+    apenas as ultimas HISTORICO_ROTEIRO_MAX - permite reabrir o relatorio
+    (e baixar o PDF) de execucoes anteriores sem rodar tudo de novo."""
+    try:
+        dados = request.get_json(force=True) or {}
+        resultados = dados.get('resultados')
+        if not isinstance(resultados, list):
+            return jsonify({"error": "campo 'resultados' (lista) e obrigatorio"}), 400
+
+        entrada = {
+            'id': datetime.now().strftime('%Y%m%d%H%M%S%f'),
+            'quando': datetime.now().isoformat(timespec='seconds'),
+            'alvo': dados.get('alvo', ''),
+            'usuario': (session.get('user') or {}).get('username', ''),
+            'resultados': resultados,
+        }
+
+        historico = []
+        if HISTORICO_ROTEIRO_PATH.exists():
+            try:
+                historico = json.loads(HISTORICO_ROTEIRO_PATH.read_text(encoding='utf-8'))
+            except Exception:
+                historico = []
+
+        historico.insert(0, entrada)
+        historico = historico[:HISTORICO_ROTEIRO_MAX]
+        HISTORICO_ROTEIRO_PATH.parent.mkdir(parents=True, exist_ok=True)
+        HISTORICO_ROTEIRO_PATH.write_text(
+            json.dumps(historico, ensure_ascii=False, indent=2), encoding='utf-8')
+        return jsonify({'ok': True, 'total': len(historico)})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 
 def _execute_tests():
     """Executa suite de testes em background"""
@@ -1219,6 +1378,494 @@ def _execute_tests_custom(programas_selecionados):
         sys.stdout = old_stdout
         sys.stderr = old_stderr
         test_state["running"] = False
+
+# =============================================================================
+# FLUXO: LIMPAR PROJETO / IMPORTAR FONTES COBOL
+# =============================================================================
+
+def _limpar_artefatos_build():
+    """Remove artefatos compilados em cobol_build, preservando os stubs em copy/."""
+    from cobol_runner import BUILD_DIR
+    removidos = 0
+    if not BUILD_DIR.exists():
+        return removidos
+    padroes = ["*.dll", "*.so", "*_processed", "DRIVER-*.cob",
+               "DRIVER-*.exe", "*.cob", "*.exe", "errors.txt"]
+    for padrao in padroes:
+        for f in BUILD_DIR.glob(padrao):
+            if f.is_file():
+                try:
+                    f.unlink()
+                    removidos += 1
+                except Exception:
+                    pass
+    return removidos
+
+
+@app.route('/api/projeto/limpar', methods=['POST'])
+def limpar_projeto():
+    """Limpa TODO o projeto, deixando-o pronto para importar fontes novos:
+
+      - fontes de runtime: Originais (.C74/.cob, preserva copybooks MAPA_*.cpy)
+        e Convertidos (todos os arquivos)
+      - conteudo de 'arquivosimportados' (os fontes importados)
+      - artefatos compilados em cobol_build (.dll/.so/.exe, DRIVER-*, *_processed,
+        errors.txt) - preserva os stubs em cobol_build/copy
+      - a estrutura/banco gerado em saida_estrutura (SQLite + DDL + massa)
+      - o cache de estrutura em memoria
+      - zera o registro de programas (a lista fica vazia ate reimportar)
+    """
+    global _estrutura_cache
+
+    # Nao deixa limpar com uma importacao rodando: ela continuaria escrevendo
+    # arquivos no thread em background por cima de um projeto recem-limpo,
+    # deixando disco e o estado da importacao dessincronizados um do outro.
+    if import_state["running"]:
+        return jsonify({"ok": False, "error": (
+            "Ha uma importacao em andamento - cancele-a "
+            "(POST /api/projeto/importar/cancelar) ou aguarde terminar antes de limpar."
+        )}), 409
+
+    try:
+        from cobol_runner import PROJECT_ROOT, ORIGINAIS_DIR, CONVERTIDOS_DIR
+        from data.program_registry import salvar_mapa
+
+        relatorio = {"originais_removidos": 0, "convertidos_removidos": 0,
+                     "importados_removidos": 0, "artefatos_removidos": 0,
+                     "estrutura_removida": False}
+
+        # 1. Fontes originais (.C74/.cob), preservando copybooks MAPA_*.cpy
+        if ORIGINAIS_DIR.exists():
+            for f in ORIGINAIS_DIR.iterdir():
+                if f.is_file() and f.suffix.lower() in ('.c74', '.cob') \
+                        and not f.name.upper().startswith('MAPA_'):
+                    try:
+                        f.unlink()
+                        relatorio["originais_removidos"] += 1
+                    except Exception:
+                        pass
+
+        # 2. Fontes convertidos (arquivos sem extensao)
+        if CONVERTIDOS_DIR.exists():
+            for f in CONVERTIDOS_DIR.iterdir():
+                if f.is_file():
+                    try:
+                        f.unlink()
+                        relatorio["convertidos_removidos"] += 1
+                    except Exception:
+                        pass
+
+        # 3. Diretorio de arquivos importados
+        importados_dir = PROJECT_ROOT / 'arquivosimportados'
+        if importados_dir.exists():
+            for f in importados_dir.iterdir():
+                if f.is_file():
+                    try:
+                        f.unlink()
+                        relatorio["importados_removidos"] += 1
+                    except Exception:
+                        pass
+
+        # 4. Artefatos compilados (preserva cobol_build/copy)
+        relatorio["artefatos_removidos"] = _limpar_artefatos_build()
+
+        # 5. Estrutura/banco gerado
+        saida = PROJECT_ROOT / 'saida_estrutura'
+        if saida.exists():
+            import shutil
+            try:
+                shutil.rmtree(saida)
+                relatorio["estrutura_removida"] = True
+            except Exception:
+                pass
+
+        # 6. Cache em memoria e registro de programas
+        _estrutura_cache = {}
+        salvar_mapa({})
+
+        return jsonify({"ok": True, "relatorio": relatorio})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+def _validar_cobol(conteudo: str, eh_copybook: bool):
+    """Valida se o conteudo textual parece um fonte COBOL.
+
+    Retorna (valido: bool, motivo: str). Aceita tanto programas completos
+    (IDENTIFICATION/PROGRAM-ID/divisoes) quanto copybooks/mapas de tela (que
+    sao apenas estrutura de dados: niveis 01/05/07 + PICTURE/PIC/REDEFINES/OCCURS).
+    A validacao de estrutura de dados vale para qualquer arquivo - inclusive os
+    auxiliares convertidos sem extensao (ex: AUML01, CCCC99, MENS01).
+    """
+    import re
+    u = (conteudo or '').upper()
+
+    # 1. Programa COBOL: divisoes / PROGRAM-ID
+    # regex (nao substring de espaco unico): o formato fixo destes fontes usa
+    # varios espacos entre palavras-chave (ex: "PROCEDURE   DIVISION.").
+    tem_id = (re.search(r'IDENTIFICATION\s+DIVISION', u) is not None) or ('PROGRAM-ID' in u)
+    tem_divisao = any(re.search(dv, u) for dv in (
+        r'DATA\s+DIVISION', r'PROCEDURE\s+DIVISION',
+        r'ENVIRONMENT\s+DIVISION', r'WORKING-STORAGE\s+SECTION',
+    ))
+    if tem_id and tem_divisao:
+        return True, 'Programa COBOL valido'
+    if tem_id or tem_divisao:
+        return True, 'Fonte COBOL valido'
+
+    # 2. Copybook / mapa de tela: estrutura de dados COBOL tipica.
+    #    Vale para qualquer arquivo, nao so .cpy (os auxiliares convertidos
+    #    vem sem extensao mas sao copybooks de tela).
+    tem_nivel = re.search(r'(?m)^\s*\d{2}\s+[\w\-]+', u) is not None
+    tem_pic = ('PIC ' in u) or ('PIC(' in u) or ('PICTURE' in u)
+    tem_clausulas = any(c in u for c in ('OCCURS', 'REDEFINES', 'VALUE ', 'COMP', 'FILLER'))
+    if tem_nivel and (tem_pic or tem_clausulas):
+        return True, 'Copybook/estrutura COBOL valido'
+
+    if eh_copybook:
+        return False, 'Nao parece um copybook COBOL (sem niveis/PIC)'
+    return False, 'Nao contem estruturas COBOL (DIVISION/PROGRAM-ID ou niveis/PIC)'
+
+
+# Estado da importacao em andamento (pipeline com progresso por arquivo,
+# no mesmo padrao de test_state: thread em background + polling de status).
+import_state = {
+    "running": False,
+    "run_id": 0,            # identifica a execucao atual; uma thread antiga
+                             # (travada, ou orfa de um reload) para de escrever
+                             # no estado assim que ver que seu run_id ficou
+                             # obsoleto - evita corromper uma importacao nova.
+    "total": 0,
+    "indice_atual": 0,      # 1-based: arquivo que esta sendo processado agora
+    "arquivo_atual": None,
+    "etapa_atual": None,    # 'validando' | 'gravando' | 'compilando' | None
+    "etapa_iniciada_em": None,  # time.time() de quando a etapa atual comecou (rampa 0-100 continua)
+    "compilacao_progresso": None,  # {iteracao, limite_iteracoes, elapsed, orcamento_segundos, simbolos_novos, simbolos_total}
+    "nomes": [],            # nomes de todos os arquivos do lote, na ordem (pendentes + em curso + concluidos)
+    "itens": [],            # [{arquivo, tipo, status, motivo, compilou, mensagem_compilacao}]
+    "concluido": False,
+    "erro": None,
+    "resumo": None,
+}
+
+
+def _processar_importacao(pendentes, run_id):
+    """Roda em thread separada: valida, grava e (se convertido) compila cada
+    arquivo, atualizando import_state a cada etapa para o frontend acompanhar
+    o pipeline em tempo real via polling.
+
+    'run_id' identifica esta execucao - se import_state["run_id"] mudar (uma
+    nova importacao foi iniciada, ou esta foi cancelada), a thread para de
+    escrever no estado global e encerra, mesmo que ainda esteja no meio de
+    um arquivo. Sem isso, uma thread presa (compilando um fonte grande) podia
+    sobreviver a um cancelamento/reload e corromper o estado de uma execucao
+    posterior.
+    """
+    global import_state
+    try:
+        from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR, PROJECT_ROOT, compilar_modulo
+        from data.program_registry import reconstruir_mapa_do_disco
+
+        ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
+        CONVERTIDOS_DIR.mkdir(parents=True, exist_ok=True)
+        IMPORTADOS_DIR = PROJECT_ROOT / 'arquivosimportados'
+        IMPORTADOS_DIR.mkdir(parents=True, exist_ok=True)
+
+        for idx, (nome, raw) in enumerate(pendentes, start=1):
+            if import_state["run_id"] != run_id:
+                return  # cancelada ou substituida por uma importacao mais nova
+            import_state["indice_atual"] = idx
+            import_state["arquivo_atual"] = nome
+            import_state["etapa_atual"] = "validando"
+            import_state["etapa_iniciada_em"] = time.time()
+            import_state["compilacao_progresso"] = None
+
+            item = {"arquivo": nome, "tipo": None, "status": None, "motivo": None,
+                     "compilou": None, "mensagem_compilacao": None}
+
+            if b'\x00' in raw:
+                item["status"] = "rejeitado"
+                item["motivo"] = "Arquivo binario (nao e texto COBOL)"
+                import_state["itens"].append(item)
+                continue
+
+            try:
+                conteudo = raw.decode('latin-1')
+            except Exception:
+                item["status"] = "rejeitado"
+                item["motivo"] = "Nao foi possivel decodificar como texto"
+                import_state["itens"].append(item)
+                continue
+
+            if not conteudo.strip():
+                item["status"] = "rejeitado"
+                item["motivo"] = "Arquivo vazio"
+                import_state["itens"].append(item)
+                continue
+
+            ext = Path(nome).suffix.lower()
+            eh_copybook = (ext == '.cpy')
+            valido, motivo = _validar_cobol(conteudo, eh_copybook)
+            item["motivo"] = motivo
+            if not valido:
+                item["status"] = "rejeitado"
+                import_state["itens"].append(item)
+                continue
+
+            if ext in ('.c74', '.cob', '.cpy'):
+                destino = ORIGINAIS_DIR / nome
+                tipo = 'copybook' if eh_copybook else 'original'
+            else:
+                destino = CONVERTIDOS_DIR / nome
+                tipo = 'convertido'
+            item["tipo"] = tipo
+
+            import_state["etapa_atual"] = "gravando"
+            import_state["etapa_iniciada_em"] = time.time()
+            try:
+                destino.write_bytes(raw)
+                try:
+                    (IMPORTADOS_DIR / nome).write_bytes(raw)
+                except Exception:
+                    pass  # copia de backup nao deve falhar a importacao
+            except Exception as e:
+                item["status"] = "rejeitado"
+                item["motivo"] = f"Erro ao gravar: {e}"
+                import_state["itens"].append(item)
+                continue
+
+            item["status"] = "importado"
+
+            # Fonte convertido (programa, nao copybook/original): compila ja
+            # com o auto-inferidor, para ficar pronto para teste sem passo
+            # manual extra (pode demorar bastante em fontes grandes).
+            #
+            # So tenta compilar quando o fonte tem PROCEDURE DIVISION: varios
+            # "convertidos" sem extensao sao na verdade copybooks/mapas de
+            # tela (ex: AUML01, CAPA01, MENS01) que o proprio _validar_cobol
+            # ja identifica como estrutura de dados, nao programa executavel -
+            # tentar compila-los sozinhos sempre falha (faltam DIVISIONs) e so
+            # gera ruido de "nao compila" enganoso.
+            # regex (nao substring simples): o formato fixo destes fontes usa
+            # varios espacos entre palavras-chave (ex: "PROCEDURE   DIVISION."),
+            # entao 'PROCEDURE DIVISION' in texto (espaco unico) falha e
+            # marcava programas REAIS (FGAA004 etc.) como copybook por engano.
+            import re as _re
+            if tipo == 'convertido' and _re.search(r'PROCEDURE\s+DIVISION', conteudo.upper()):
+                import_state["etapa_atual"] = "compilando"
+                import_state["etapa_iniciada_em"] = time.time()
+
+                def _reportar_progresso(info, _item=item):
+                    # atualiza o estado global para o polling do front pegar;
+                    # nunca deixa o progresso (so informativo) derrubar a compilacao
+                    import_state["compilacao_progresso"] = info
+
+                try:
+                    ok_compila, msg_compila, _dll = compilar_modulo(nome, on_progress=_reportar_progresso)
+                    item["compilou"] = ok_compila
+                    item["mensagem_compilacao"] = msg_compila
+                except Exception as e:
+                    item["compilou"] = False
+                    item["mensagem_compilacao"] = f"Erro ao compilar: {e}"
+                finally:
+                    import_state["compilacao_progresso"] = None
+            elif tipo == 'convertido':
+                item["mensagem_compilacao"] = "Copybook/estrutura (sem PROCEDURE DIVISION) - nao compilavel isoladamente"
+
+            if import_state["run_id"] != run_id:
+                return  # cancelada/substituida enquanto este arquivo compilava
+            import_state["itens"].append(item)
+
+        if import_state["run_id"] != run_id:
+            return
+        mapa = reconstruir_mapa_do_disco()
+        itens = import_state["itens"]
+        importados = [i for i in itens if i["status"] == "importado"]
+        rejeitados = [i for i in itens if i["status"] == "rejeitado"]
+        total_compilaveis = sum(1 for i in importados if i.get("tipo") == "convertido")
+        total_compilaram = sum(1 for i in importados if i.get("compilou") is True)
+
+        import_state["resumo"] = {
+            "total_enviados": len(pendentes),
+            "total_importados": len(importados),
+            "total_rejeitados": len(rejeitados),
+            "total_programas": len(mapa),
+            "total_compilaveis": total_compilaveis,
+            "total_compilaram": total_compilaram,
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if import_state["run_id"] == run_id:
+            import_state["erro"] = str(e)
+    finally:
+        # so mexe no estado global se ainda for a execucao "dona" dele - uma
+        # thread cancelada/substituida nao pode sobrescrever o running/
+        # concluido de uma importacao mais nova que tenha assumido depois.
+        if import_state["run_id"] == run_id:
+            import_state["etapa_atual"] = None
+            import_state["arquivo_atual"] = None
+            import_state["running"] = False
+            import_state["concluido"] = True
+
+
+@app.route('/api/projeto/importar', methods=['POST'])
+def importar_fontes():
+    """Recebe os fontes COBOL via upload multipart e inicia a importacao em
+    background (pipeline: validar -> gravar -> compilar por arquivo).
+
+    Roteamento dos arquivos por extensao:
+      - .C74 / .cob  -> fontes_convertidos/Originais
+      - .cpy         -> fontes_convertidos/Originais (copybooks de mapa)
+      - sem extensao -> fontes_convertidos/Convertidos (fonte convertido)
+
+    O progresso (arquivo atual, etapa, resultados parciais) e consultado via
+    GET /api/projeto/importar/status - o front faz polling para desenhar o
+    pipeline passo a passo em vez de um spinner generico.
+    """
+    global import_state
+
+    if import_state["running"]:
+        return jsonify({"ok": False, "error": "Ja existe uma importacao em andamento"}), 409
+
+    arquivos = request.files.getlist('arquivos')
+    if not arquivos:
+        return jsonify({"ok": False, "error": "Nenhum arquivo enviado"}), 400
+
+    # Le o conteudo agora (dentro do contexto da requisicao) - o FileStorage
+    # do Werkzeug nao sobrevive apos a thread em background assumir.
+    pendentes = []
+    for arq in arquivos:
+        nome = os.path.basename(arq.filename or '').strip()
+        if not nome:
+            continue
+        pendentes.append((nome, arq.read()))
+
+    import_state["run_id"] += 1
+    meu_run_id = import_state["run_id"]
+    import_state["running"] = True
+    import_state["total"] = len(pendentes)
+    import_state["nomes"] = [nome for nome, _raw in pendentes]
+    import_state["indice_atual"] = 0
+    import_state["arquivo_atual"] = None
+    import_state["etapa_atual"] = None
+    import_state["compilacao_progresso"] = None
+    import_state["itens"] = []
+    import_state["concluido"] = False
+    import_state["erro"] = None
+    import_state["resumo"] = None
+
+    thread = threading.Thread(target=_processar_importacao, args=(pendentes, meu_run_id))
+    thread.daemon = True
+    thread.start()
+
+    return jsonify({"ok": True, "status": "iniciado", "total": len(pendentes)})
+
+
+def _cancelar_import_ativo(motivo: str) -> bool:
+    """Cancela a importacao em andamento (se houver). Retorna True se havia
+    uma rodando e foi cancelada agora, False se nao havia nada para cancelar.
+
+    Invalida o run_id atual: a thread em background ve a mudanca no proximo
+    ponto de checagem (entre arquivos, ou logo apos compilar o atual) e para
+    de escrever no estado, sem precisar matar a thread a forca. Libera a
+    aplicacao para uma nova importacao ou para limpar o projeto.
+    """
+    if not import_state["running"]:
+        return False
+    import_state["run_id"] += 1  # invalida a thread atual
+    import_state["running"] = False
+    import_state["concluido"] = True
+    import_state["etapa_atual"] = None
+    import_state["arquivo_atual"] = None
+    import_state["erro"] = motivo
+    return True
+
+
+@app.route('/api/projeto/importar/cancelar', methods=['POST'])
+def cancelar_importacao():
+    """Cancela a importacao em andamento (se houver), a pedido do usuario."""
+    cancelou = _cancelar_import_ativo("Cancelado pelo usuario")
+    return jsonify({"ok": True, "status": "cancelado" if cancelou else "nada_para_cancelar"})
+
+
+def _percentual_etapa(etapa, compilacao_progresso, etapa_iniciada_em):
+    """% (0-100) de progresso do arquivo em curso, como uma rampa continua -
+    nao um salto fixo por etapa. 'validando' e 'gravando' sao quase
+    instantaneos, entao rampam rapido dentro da sua faixa; 'compilando' e o
+    unico que pode demorar de verdade, e usa o tempo decorrido (real, do
+    auto-inferidor, ou estimado antes dele comecar a reportar) para avancar
+    suavemente ate quase 100 em vez de ficar parado num numero fixo.
+    """
+    agora = time.time()
+    decorrido_etapa = (agora - etapa_iniciada_em) if etapa_iniciada_em else 0
+
+    if etapa == 'validando':
+        # faixa 0-10%, rampa em ~0.3s (etapa e sub-segundo na pratica)
+        return min(10, round(2 + 8 * min(1, decorrido_etapa / 0.3)))
+    if etapa == 'gravando':
+        # faixa 10-20%
+        return min(20, round(12 + 8 * min(1, decorrido_etapa / 0.3)))
+    if etapa == 'compilando':
+        if compilacao_progresso and compilacao_progresso.get("orcamento_segundos"):
+            # o auto-inferidor ja esta reportando tempo/orcamento real: usa
+            # a fracao dele para preencher o resto da faixa (20-100%). Chega
+            # a 100 de verdade perto do fim em vez de ficar preso em 98-99%
+            # parecendo travado enquanto ainda esta processando.
+            fracao = compilacao_progresso["elapsed"] / compilacao_progresso["orcamento_segundos"]
+            return min(100, round(20 + 80 * fracao))
+        # ainda na primeira tentativa de compilar (antes do auto-inferidor
+        # entrar em acao, se precisar): rampa estimada assumindo ~8s tipicos
+        # para essa primeira tentativa, sem nunca passar de 20%
+        return min(20, round(2 + 18 * min(1, decorrido_etapa / 8)))
+    return 0
+
+
+@app.route('/api/projeto/importar/status', methods=['GET'])
+def importar_status():
+    """Status do pipeline de importacao em andamento (para polling)."""
+    itens = import_state["itens"]
+    nomes = import_state["nomes"]
+
+    # progresso por arquivo (nome + %) para toda a lista do lote: concluidos
+    # (100%), o atual (estimado pela etapa/tempo) e os ainda pendentes (0%) -
+    # assim o usuario ve o pipeline inteiro, nao so o arquivo corrente.
+    arquivos_progresso = []
+    for i, nome in enumerate(nomes):
+        if i < len(itens):
+            it = itens[i]
+            arquivos_progresso.append({
+                "arquivo": nome, "percentual": 100, "status": it["status"],
+                "compilou": it.get("compilou"),
+            })
+        elif nome == import_state["arquivo_atual"] and import_state["running"]:
+            arquivos_progresso.append({
+                "arquivo": nome,
+                "percentual": _percentual_etapa(import_state["etapa_atual"], import_state["compilacao_progresso"],
+                                                 import_state["etapa_iniciada_em"]),
+                "status": "em_andamento", "compilou": None,
+            })
+        else:
+            arquivos_progresso.append({"arquivo": nome, "percentual": 0, "status": "pendente", "compilou": None})
+
+    return jsonify({
+        "running": import_state["running"],
+        "total": import_state["total"],
+        "indice_atual": import_state["indice_atual"],
+        "arquivo_atual": import_state["arquivo_atual"],
+        "etapa_atual": import_state["etapa_atual"],
+        "compilacao_progresso": import_state["compilacao_progresso"],
+        "arquivos_progresso": arquivos_progresso,
+        "itens": itens,
+        "importados": [i for i in itens if i["status"] == "importado"],
+        "rejeitados": [i for i in itens if i["status"] == "rejeitado"],
+        "concluido": import_state["concluido"],
+        "erro": import_state["erro"],
+        "resumo": import_state["resumo"],
+    })
+
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

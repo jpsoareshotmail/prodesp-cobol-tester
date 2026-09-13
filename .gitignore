@@ -74,6 +74,10 @@ desktop.ini
 
 # Usuarios (contem hashes de senha - nao versionar)
 data/users.json
+data/.secret_key
+
+# Historico de execucoes do roteiro de testes - estado de runtime
+data/roteiro_historico.json
 
 # Imagens extraidas dos roteiros (.docx) - temporarias
 _imgs_roteiros/

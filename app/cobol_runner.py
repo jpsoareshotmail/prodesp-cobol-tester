@@ -12,7 +12,9 @@ Estrutura de arquivos:
 """
 
 import os
+import re
 import subprocess
+import time
 from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List
@@ -249,11 +251,16 @@ def compilar_standalone(nome: str) -> tuple:
         return False, str(e), None
 
 
-def compilar_modulo(nome_convertido: str) -> tuple:
+def compilar_modulo(nome_convertido: str, on_progress=None) -> tuple:
     """
     Compila um fonte convertido como modulo (.dll).
     Se o fonte contiver EXEC SQL, pre-processa antes de compilar.
     Retorna (sucesso, mensagem, path_dll).
+
+    'on_progress', se fornecido, e chamado a cada iteracao do auto-inferidor
+    com um dict {iteracao, limite_iteracoes, elapsed, orcamento_segundos,
+    simbolos_novos, simbolos_total} - usado pela UI para mostrar progresso
+    real durante compilacoes longas em vez de um spinner parado.
     """
     source = CONVERTIDOS_DIR / nome_convertido
     dll = BUILD_DIR / f"{nome_convertido}{MOD_EXT}"
@@ -274,17 +281,121 @@ def compilar_modulo(nome_convertido: str) -> tuple:
     compile_source = processed_source if processed_source.exists() else source
 
     env = _get_env()
-    try:
-        result = subprocess.run(
+
+    def _compilar():
+        return subprocess.run(
             [_cobc(), "-m", str(compile_source), "-o", str(dll),
              "-I", str(COPY_DIR), "-w", "-frelax-syntax-checks",
              "-frelax-level-hierarchy"] + _flag_larger_redefines(),
-            capture_output=True, text=True, env=env, timeout=30,
+            capture_output=True, text=True, env=env, timeout=60,
             cwd=str(PROJECT_ROOT),
         )
-        if result.returncode != 0:
-            return False, f"Erro compilacao: {result.stderr.strip()[:500]}", None
-        return True, "Compilado como modulo", str(dll)
+
+    try:
+        result = _compilar()
+        if result.returncode == 0:
+            return True, "Compilado como modulo", str(dll)
+
+        # AUTO-INFERIDOR: tenta resolver simbolos ausentes gerando stubs
+        # inferidos a partir do uso, e recompila. Loop com limite de iteracoes.
+        try:
+            from auto_inferidor import (
+                extrair_undefined, extrair_qualificados, gerar_copybook_inferido,
+                gerar_paragrafos_inferidos, injetar_copys,
+            )
+        except Exception:
+            from app.auto_inferidor import (  # type: ignore
+                extrair_undefined, extrair_qualificados, gerar_copybook_inferido,
+                gerar_paragrafos_inferidos, injetar_copys,
+            )
+
+        codigo_proc = compile_source.read_text(encoding='latin-1', errors='ignore')
+        vistos = set()
+        qualificados_acumulado: dict = {}
+        pares_vistos = set()  # (grupo, membro) ja incorporados ao .cpy
+        # orcamento de tempo total (nao so numero de iteracoes): fontes muito
+        # grandes tem cobc lento por chamada, e sem isso uma unica importacao
+        # pode travar o pipeline por 10-15+ minutos num arquivo so.
+        #
+        # Proporcional ao tamanho do fonte: um arquivo pequeno que realmente
+        # nao converge deve falhar rapido (nao vale a pena esperar 1500s por
+        # todo mundo); ja um fonte gigante (ex: OGAA640D, 26 mil linhas) so
+        # converge de verdade com bem mais tempo - dar o mesmo teto curto pra
+        # ele so produz uma falha por timeout, nunca uma chance real.
+        inicio = time.time()
+        n_linhas = codigo_proc.count('\n') + 1
+        ORCAMENTO_SEGUNDOS = max(240, min(3600, n_linhas // 10))
+        LIMITE_ITERACOES = 60
+        for iteracao in range(1, LIMITE_ITERACOES + 1):
+            elapsed = time.time() - inicio
+            if elapsed > ORCAMENTO_SEGUNDOS:
+                return False, (f"Auto-inferencia excedeu {ORCAMENTO_SEGUNDOS}s "
+                               f"(fonte grande demais para inferir automaticamente "
+                               f"neste tempo) - ultimo erro: {result.stderr.strip()[:400]}"), None
+            undefined = extrair_undefined(result.stderr)
+            # so os que ainda nao tentamos declarar (evita loop infinito)
+            novos = [u for u in undefined if u.upper() not in vistos]
+
+            # acumula grupos qualificados (X IN/OF Y) tambem entre iteracoes.
+            # Importante: um MESMO campo pode ser membro de grupos diferentes
+            # (ex: TAX-VALOR IN DB02 e TAX-VALOR IN DB03 sao registros
+            # distintos). Como extrair_undefined despe o qualificador, o nome
+            # "puro" pode ja estar em vistos por causa de UM grupo enquanto a
+            # associacao com OUTRO grupo ainda e nova - por isso o loop nao
+            # pode parar so por causa de "novos" vazio; tambem precisa checar
+            # se surgiu par (grupo, membro) inedito.
+            for chave, info in extrair_qualificados(result.stderr).items():
+                acc = qualificados_acumulado.setdefault(
+                    chave, {"nome": info["nome"], "membros": set()})
+                acc["membros"].update(info["membros"])
+            pares_atuais = {(chave, m.upper()) for chave, info in qualificados_acumulado.items()
+                            for m in info["membros"]}
+            novos_pares = pares_atuais - pares_vistos
+
+            if on_progress:
+                try:
+                    on_progress({
+                        "iteracao": iteracao,
+                        "limite_iteracoes": LIMITE_ITERACOES,
+                        "elapsed": round(elapsed, 1),
+                        "orcamento_segundos": ORCAMENTO_SEGUNDOS,
+                        "simbolos_novos": len(novos) + len(novos_pares),
+                        "simbolos_total": len(vistos) + len(novos),
+                    })
+                except Exception:
+                    pass  # progresso e so informativo, nao pode derrubar a compilacao
+
+            if not novos and not novos_pares:
+                break
+            vistos.update(u.upper() for u in novos)
+            pares_vistos |= novos_pares
+
+            # gerar_copybook_inferido/_paragrafos_inferidos SOBRESCREVEM o
+            # .cpy a cada chamada; passar so "novos" perderia os simbolos
+            # ja resolvidos em iteracoes anteriores. Passa o acumulado.
+            _cpy, resumo = gerar_copybook_inferido(
+                nome_convertido, sorted(vistos), codigo_proc, COPY_DIR,
+                qualificados=qualificados_acumulado)
+            gerar_paragrafos_inferidos(nome_convertido, resumo["paragrafos"], COPY_DIR)
+            injetar_copys(
+                compile_source, nome_convertido,
+                tem_dados=bool(resumo["campos"]),
+                tem_paragrafos=bool(resumo["paragrafos"]),
+            )
+            codigo_proc = compile_source.read_text(encoding='latin-1', errors='ignore')
+
+            # remove o .dll antigo para nao pegar cache e recompila
+            try:
+                if dll.exists():
+                    dll.unlink()
+            except Exception:
+                pass
+            result = _compilar()
+            if result.returncode == 0:
+                return True, "Compilado (com simbolos inferidos)", str(dll)
+
+        # ainda falhou: retorna o erro (agora com mais contexto)
+        return False, f"Erro compilacao: {result.stderr.strip()[:600]}", None
     except subprocess.TimeoutExpired:
         return False, "Timeout compilacao", None
     except FileNotFoundError:
@@ -293,11 +404,180 @@ def compilar_modulo(nome_convertido: str) -> tuple:
         return False, str(e), None
 
 
+_TOKEN_TO_ENV = [
+    # (fragmento no nome do campo, variavel de ambiente com o dado de teste)
+    # ordem importa: checar CNPJ antes de CPF evita falso-positivo se algum
+    # campo combinar os dois nomes.
+    ('CNPJ', 'COB_CNPJ'),
+    ('CPF', 'COB_CPF'),
+    ('CHASS', 'COB_CHASSI'),
+    ('PLACA', 'COB_PLACA'),
+]
+_FRAGMENTOS_SAIDA = ('RETORNO', 'RET', 'SIT', 'COD', 'STATUS', 'FLAG', 'BLQ')
+
+
+def _extrair_using_params(content: str) -> list:
+    """Extrai os nomes dos parametros de 'PROCEDURE DIVISION USING p1 p2.'.
+
+    A clausula frequentemente quebra linha no formato fixo sem hifen de
+    continuacao (ex: FGAA012D), por isso a busca e feita com DOTALL ate o
+    primeiro ponto final.
+    """
+    m = re.search(r'(?i)PROCEDURE\s+DIVISION\s+USING\s+(.*?)\.', content, re.DOTALL)
+    if not m:
+        return []
+    bruto = re.sub(r'(?i)\bBY\s+(REFERENCE|VALUE|CONTENT)\b', ' ', m.group(1))
+    return re.findall(r'[A-Za-z][\w-]*', bruto)
+
+
+def _extrair_bloco_linkage(content: str, nome_param: str) -> str | None:
+    """Extrai o bloco '01 NOME_PARAM. ...' da LINKAGE SECTION, verbatim
+    (preserva REDEFINES/OCCURS/colunas), ate o proximo '01' de topo ou
+    PROCEDURE DIVISION."""
+    linhas = content.split('\n')
+    idx_linkage = next((i for i, ln in enumerate(linhas)
+                         if re.match(r'(?i)^\s*LINKAGE\s+SECTION\b', ln)), None)
+    if idx_linkage is None:
+        return None
+    tok = r'(?<![A-Za-z0-9-])' + re.escape(nome_param) + r'(?![A-Za-z0-9-])'
+    idx_inicio = next((i for i in range(idx_linkage + 1, len(linhas))
+                        if re.match(r'(?i)^\s*01\s+' + tok, linhas[i])), None)
+    if idx_inicio is None:
+        return None
+    idx_fim = len(linhas)
+    for i in range(idx_inicio + 1, len(linhas)):
+        if re.match(r'(?i)^\s*01\s+[A-Za-z]', linhas[i]) or re.match(r'(?i)^\s*PROCEDURE\s+DIVISION', linhas[i]):
+            idx_fim = i
+            break
+    return '\n'.join(linhas[idx_inicio:idx_fim]).rstrip()
+
+
+def _extrair_campos_pic(bloco: str) -> list:
+    """Lista (nivel, nome, pic) dos campos com PIC de um bloco LINKAGE,
+    ignorando comentarios, FILLER, REDEFINES (aliases, nao alvos de MOVE)
+    e 88-niveis (condition-names, sem PIC)."""
+    campos = []
+    for ln in bloco.split('\n'):
+        if len(ln) >= 7 and ln[6] in ('*', '/'):
+            continue
+        if re.search(r'(?i)\bREDEFINES\b', ln):
+            continue
+        m = re.match(r'^\s*(\d\d)\s+([A-Za-z][\w-]*)\s+.*?PIC(?:TURE)?\s+(?:IS\s+)?([9XASV(),.\-]+)',
+                     ln, re.IGNORECASE)
+        if m and m.group(2).upper() != 'FILLER':
+            campos.append((m.group(1), m.group(2), m.group(3)))
+    return campos
+
+
+def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | None:
+    """Gera um driver que passa dados REAIS de teste para programas com
+    'PROCEDURE DIVISION USING ...' (a maioria dos programas nao segue o
+    padrao LC-PARM/LC-PLACA de validador de placa, e sem isso o driver
+    generico chamava o programa SEM nenhum parametro - o dado do roteiro
+    nunca chegava dentro do programa, so' o RETURN-CODE (sempre 0) era
+    exibido, fazendo todo programa "dar o mesmo resultado").
+
+    Copia o(s) bloco(s) LINKAGE verbatim para WORKING-STORAGE (mesma tecnica
+    ja usada no driver hardcoded de LC-PARM), preenche por heuristica de
+    nome os campos de entrada reconhecidos (chassi/placa/cpf/cnpj, vindos
+    de variaveis de ambiente) e, apos o CALL, exibe tambem um campo de
+    retorno real do programa (heuristica por nome no bloco de saida) alem
+    do RETURN-CODE - assim o resultado reflete a execucao de verdade.
+
+    Retorna None (deixa o chamador cair no driver generico sem parametros)
+    quando a estrutura foge do padrao observado (mais de 2 parametros,
+    bloco LINKAGE nao encontrado, ou nenhum campo de entrada reconhecivel -
+    nesse ultimo caso gerar um driver "as cegas" nao ajudaria).
+    """
+    params = _extrair_using_params(content)
+    if not params or len(params) > 2:
+        return None
+
+    blocos = []
+    for p in params:
+        bloco = _extrair_bloco_linkage(content, p)
+        if not bloco:
+            return None
+        blocos.append((p, bloco))
+
+    # qual parametro e entrada e qual e saida: heuristica pelo nome (contem
+    # RET) com fallback posicional (1o = entrada, 2o = saida), que e a
+    # convencao observada em todos os programas reais (AX-LIB-*/AX-*-ENVL*
+    # antes, AX-*-RET*/AX-RET-* depois).
+    idx_saida = next((i for i, (nome, _) in enumerate(blocos) if 'RET' in nome.upper()), None)
+    if idx_saida is None:
+        idx_saida = len(blocos) - 1
+    idx_entrada = 0 if idx_saida != 0 else (1 if len(blocos) > 1 else 0)
+
+    campos_entrada = _extrair_campos_pic(blocos[idx_entrada][1])
+    moves = []
+    envs_usadas = []
+    for _nivel, nome_campo, _pic in campos_entrada:
+        for fragmento, envvar in _TOKEN_TO_ENV:
+            if fragmento in nome_campo.upper():
+                if envvar not in envs_usadas:
+                    envs_usadas.append(envvar)
+                moves.append((envvar, nome_campo))
+                break
+    if not moves:
+        # nenhum campo reconhecivel para preencher - gerar um driver que so
+        # chama sem dados nao teria vantagem sobre o generico
+        return None
+
+    campos_saida = _extrair_campos_pic(blocos[idx_saida][1]) if len(blocos) > 1 else campos_entrada
+    campo_saida = None
+    for fragmento in _FRAGMENTOS_SAIDA:
+        campo_saida = next((nome for _n, nome, _p in campos_saida if fragmento in nome.upper()), None)
+        if campo_saida:
+            break
+
+    linhas = [
+        '       IDENTIFICATION DIVISION.',
+        '       PROGRAM-ID. DRIVER-%s.' % nome_convertido,
+        '',
+        '       ENVIRONMENT DIVISION.',
+        '       CONFIGURATION SECTION.',
+        '       REPOSITORY.',
+        '           FUNCTION ALL INTRINSIC.',
+        '',
+        '       DATA DIVISION.',
+        '       WORKING-STORAGE SECTION.',
+    ]
+    for envvar in envs_usadas:
+        campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
+        linhas.append('       01  %-30s PIC X(040).' % campo_ws)
+    linhas.append('       01  WS-RETURN-CODE     PIC 9(004) VALUE 0.')
+    for _nome, bloco in blocos:
+        linhas.append(bloco)
+    linhas.append('')
+    linhas.append('       PROCEDURE DIVISION.')
+    linhas.append('       MAIN-PARA.')
+    for envvar in envs_usadas:
+        campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
+        linhas.append('           ACCEPT %s FROM ENVIRONMENT "%s"' % (campo_ws, envvar))
+    for envvar, nome_campo in moves:
+        campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
+        linhas.append('           MOVE UPPER-CASE(%s) TO %s' % (campo_ws, nome_campo))
+    nomes_params = [nome for nome, _ in blocos]
+    linhas.append('           CALL "%s" USING %s' % (nome_convertido, nomes_params[0]))
+    for extra in nomes_params[1:]:
+        linhas.append('               %s' % extra)
+    linhas.append('           MOVE RETURN-CODE TO WS-RETURN-CODE')
+    linhas.append('           DISPLAY WS-RETURN-CODE')
+    if campo_saida:
+        linhas.append('           DISPLAY "RESULT=" %s' % campo_saida)
+    linhas.append('           STOP RUN.')
+    return '\n'.join(linhas) + '\n'
+
+
 def _gerar_driver(nome_convertido: str, driver_path: Path):
     """
-    Gera automaticamente um driver .cob generico para chamar o modulo convertido.
-    O driver passa dados via variavel de ambiente COB_PLACA (para programas de placa)
-    ou apenas chama o modulo com um parametro generico.
+    Gera automaticamente um driver .cob para chamar o modulo convertido.
+    Prioridade: (1) padrao LC-PARM/LC-PLACA hardcoded (validador de placa),
+    (2) driver com parametros reais inferidos da LINKAGE SECTION para
+    programas com PROCEDURE DIVISION USING, (3) driver generico sem
+    parametros (programas CICS que recebem dado via canal/container, nao
+    por CALL - continuam corretamente sem input aqui).
     """
     # Ler o fonte convertido para extrair a LINKAGE SECTION
     source = CONVERTIDOS_DIR / nome_convertido
@@ -308,6 +588,10 @@ def _gerar_driver(nome_convertido: str, driver_path: Path):
 
     # Verificar se tem LINKAGE com LC-PARM (padrao de placas)
     has_lc_parm = "LC-PARM" in content and "LC-PLACA" in content
+
+    driver_code = None
+    if not has_lc_parm:
+        driver_code = _gerar_driver_com_parametros(nome_convertido, content)
 
     if has_lc_parm:
         # Driver para programas tipo validador de placa
@@ -347,8 +631,10 @@ def _gerar_driver(nome_convertido: str, driver_path: Path):
            DISPLAY LC-RETORNO
            STOP RUN.
 """
-    else:
-        # Driver generico - apenas chama e exibe return code
+    elif driver_code is None:
+        # Driver generico - apenas chama e exibe return code (programas sem
+        # PROCEDURE DIVISION USING, ex: CICS que recebe dado por canal, ou
+        # cuja LINKAGE nao tem campo de entrada reconhecivel)
         driver_code = f"""       IDENTIFICATION DIVISION.
        PROGRAM-ID. DRIVER-{nome_convertido}.
 
@@ -389,7 +675,8 @@ def compilar_driver(nome_convertido: str) -> tuple:
     env = _get_env()
     try:
         result = subprocess.run(
-            [_cobc(), "-x", str(driver_source), "-o", str(driver_exe)],
+            [_cobc(), "-x", str(driver_source), "-o", str(driver_exe),
+             "-w", "-frelax-syntax-checks"] + _flag_larger_redefines(),
             capture_output=True, text=True, env=env, timeout=30,
             cwd=str(PROJECT_ROOT),
         )
@@ -407,6 +694,27 @@ def compilar_driver(nome_convertido: str) -> tuple:
 # =============================================================================
 # EXECUCAO - FLUXO ORIGINAL
 # =============================================================================
+
+def _parsear_resultado_driver(output: str) -> tuple:
+    """Extrai (codigo, descricao) da saida do driver.
+
+    Layout: 1a linha sempre e o RETURN-CODE; quando o driver conseguiu
+    identificar um campo de retorno real do programa (heuristica em
+    _gerar_driver_com_parametros), uma 2a linha 'RESULT=<valor>' traz esse
+    valor - e essa e a que importa para o teste (o RETURN-CODE sozinho quase
+    sempre fica 0). Mantem compatibilidade com o layout antigo (so
+    RETURN-CODE, sem RESULT=), usado pelo driver de placa e pelo generico.
+    """
+    linhas = [l.strip() for l in (output or '').split('\n') if l.strip()]
+    if not linhas:
+        return 0, ''
+    resultado = next((l.split('=', 1)[1].strip() for l in linhas if l.upper().startswith('RESULT=')), None)
+    alvo = resultado if resultado is not None else linhas[0]
+    try:
+        return int(alvo), ''
+    except ValueError:
+        return 0, alvo
+
 
 def executar_original(programa: str, env_vars: Dict[str, str] = None) -> ResultadoCOBOL:
     """
@@ -436,9 +744,11 @@ def executar_original(programa: str, env_vars: Dict[str, str] = None) -> Resulta
         )
         elapsed = (time.time() - start) * 1000
         output = result.stdout.strip()
+        codigo, descricao = _parsear_resultado_driver(output)
 
         return ResultadoCOBOL(
             programa=programa, fluxo="original", sucesso=True,
+            codigo=codigo, descricao=descricao,
             output=output, executado_cobol=True,
             exe_path=exe_path,
             fonte_path=str(STANDALONE_DIR / f"{nome_standalone}.cob"),
@@ -494,9 +804,11 @@ def executar_convertido(nome_convertido: str, env_vars: Dict[str, str] = None) -
         )
         elapsed = (time.time() - start) * 1000
         output = result.stdout.strip()
+        codigo, descricao = _parsear_resultado_driver(output)
 
         return ResultadoCOBOL(
             programa=nome_convertido, fluxo="convertido", sucesso=True,
+            codigo=codigo, descricao=descricao,
             output=output, executado_cobol=True,
             exe_path=driver_exe,
             fonte_path=str(CONVERTIDOS_DIR / nome_convertido),
