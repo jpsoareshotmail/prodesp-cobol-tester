@@ -10,6 +10,7 @@ Estrutura de arquivos:
   cobol_build/                    -> executaveis, drivers, dlls compilados
   cobol_build/copy/               -> copybooks stubs (WSGL, PDGL, etc)
 """
+from __future__ import annotations
 
 import os
 import re
