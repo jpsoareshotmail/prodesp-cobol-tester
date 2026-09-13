@@ -242,7 +242,8 @@
        GRAVAMESDS-ST.
            CONTINUE.
        HANDLE-DMTERMINATE.
-           CONTINUE.
+           MOVE 99 TO RETURN-CODE
+           GOBACK.
        HANDLE-SQL-ERRORS.
            CONTINUE.
        INSPECAODS-DB2DMS.

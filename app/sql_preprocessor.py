@@ -237,19 +237,28 @@ def preprocessar_sql(source_content: str) -> str:
             # Comentar PERFORMs e CALLs de paragrafos de DB (Micro Focus syntax)
             if 'PERFORM' in line.upper() or 'CALL' in line.upper():
                 upper_line = line.upper().strip()
-                if any(x in upper_line for x in ['DATABASE-OPEN', 'DATABASE-CLOSE',
-                        'DATABASE-TERMINATE', 'HANDLE-DMTERMINATE', 'HANDLE-SQL',
-                        'SYSTEM  DMTERMINATE', 'SYSTEM DMTERMINATE',
-                        '-STEN', ':TRUE)']):
+                # Rotinas de TERMINACAO fatal (DMS aborta o run-unit nesse ponto no
+                # mainframe real): virar CONTINUE (no-op) faz o controle voltar e
+                # o loop que esperava o abend nunca terminar - trava para sempre
+                # gerando saida infinita (visto em FGAT006D/FGAT030D). Precisa
+                # realmente encerrar a execucao (GOBACK), nao so pular a linha.
+                termina_run_unit = any(x in upper_line for x in [
+                        'DATABASE-TERMINATE', 'HANDLE-DMTERMINATE',
+                        'SYSTEM  DMTERMINATE', 'SYSTEM DMTERMINATE'])
+                eh_dm_generico = termina_run_unit or any(x in upper_line for x in [
+                        'DATABASE-OPEN', 'DATABASE-CLOSE', 'HANDLE-SQL',
+                        '-STEN', ':TRUE)'])
+                if eh_dm_generico:
                     result.append(_comment_line(line))
-                    if line.strip().endswith('.') or 'END-EXEC.' in line.upper():
+                    tem_ponto = (line.strip().endswith('.') or 'END-EXEC.' in line.upper())
+                    if tem_ponto:
                         code_area = line[6:72] if len(line) > 72 else line[6:]
-                        if code_area.rstrip().endswith('.'):
-                            result.append('           CONTINUE.')
-                        else:
-                            result.append('           CONTINUE')
+                        tem_ponto = code_area.rstrip().endswith('.')
+                    if termina_run_unit:
+                        result.append('           MOVE 99 TO RETURN-CODE')
+                        result.append('           GOBACK.' if tem_ponto else '           GOBACK')
                     else:
-                        result.append('           CONTINUE')
+                        result.append('           CONTINUE.' if tem_ponto else '           CONTINUE')
                     i += 1
                     continue
 

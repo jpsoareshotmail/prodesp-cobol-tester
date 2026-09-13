@@ -710,7 +710,10 @@ def _parsear_resultado_driver(output: str) -> tuple:
     if not linhas:
         return 0, ''
     resultado = next((l.split('=', 1)[1].strip() for l in linhas if l.upper().startswith('RESULT=')), None)
-    alvo = resultado if resultado is not None else linhas[0]
+    # RESULT= vazio (ex: GOBACK antecipado por erro fatal, antes do campo de
+    # saida ser preenchido) cai de volta no RETURN-CODE em vez de zerar o
+    # codigo e esconder que a execucao terminou de forma anormal.
+    alvo = resultado if resultado else linhas[0]
     try:
         return int(alvo), ''
     except ValueError:
