@@ -79,5 +79,9 @@ data/.secret_key
 # Historico de execucoes do roteiro de testes - estado de runtime
 data/roteiro_historico.json
 
+# Mapa original->convertido reconstruido dos fontes presentes no disco -
+# estado derivado por maquina, nao codigo (cai no PROGRAM_MAP hardcoded se ausente)
+data/program_map.json
+
 # Imagens extraidas dos roteiros (.docx) - temporarias
 _imgs_roteiros/
