@@ -48,7 +48,9 @@ O script `deploy-ec2.sh` faz na EC2:
 - clona/atualiza o repositorio
 - instala as dependencias de `requirements.txt` (inclui **gunicorn**)
 - gera um **SECRET_KEY** fixo (para a sessao de login nao cair a cada restart)
-- sobe o servidor com **gunicorn** (modo producao) na porta 5000
+- instala um **servico systemd** (`cobol-tester.service`) que sobe o **gunicorn**
+  (modo producao) na porta 5000, habilitado para iniciar sozinho a cada boot
+  da instancia (nohup nao sobrevive a reboot - por isso o servico existe)
 
 ---
 
@@ -79,27 +81,38 @@ Depois, reinicie o servidor (ver secao "Reiniciar").
 
 ## Operacao
 
+O servidor roda como servico systemd (`cobol-tester`) - sobe sozinho a cada
+boot da instancia (nao depende de ninguem estar com uma sessao SSH aberta,
+nem de rodar o deploy de novo apos um reboot).
+
 **Ver o log:**
 ```bash
 tail -f /tmp/cobol-tester.log
+# ou, via journal do systemd:
+sudo journalctl -u cobol-tester -f
 ```
 
-**Parar:**
+**Status:**
 ```bash
-kill $(cat /tmp/cobol-tester.pid)
+sudo systemctl status cobol-tester
+```
+
+**Parar / iniciar:**
+```bash
+sudo systemctl stop cobol-tester
+sudo systemctl start cobol-tester
 ```
 
 **Reiniciar (apos git pull ou envio de fontes):**
 ```bash
 cd ~/prodesp-cobol-tester && git pull
-kill $(cat /tmp/cobol-tester.pid) 2>/dev/null
-export $(grep -v '^#' .env.deploy | xargs)
-export PATH="$HOME/.local/bin:$PATH"
-nohup gunicorn web_app:app --bind 0.0.0.0:5000 --workers 2 --timeout 120 > /tmp/cobol-tester.log 2>&1 &
-echo $! > /tmp/cobol-tester.pid
+# se algum copybook compartilhado (cobol_build/copy/*.cpy) mudou, limpar o
+# cache de compilacao para forcar recompilar com a versao nova:
+rm -f cobol_build/*.so cobol_build/*.dll cobol_build/*_processed cobol_build/DRIVER-*
+sudo systemctl restart cobol-tester
 ```
 
-Ou simplesmente rode de novo o `deploy-ec2.sh` (ele reinicia sozinho).
+Ou simplesmente rode de novo o `deploy-ec2.sh` (ele reinstala o servico e reinicia sozinho).
 
 ---
 
@@ -110,9 +123,14 @@ Ou simplesmente rode de novo o `deploy-ec2.sh` (ele reinicia sozinho).
   para `.so` no Linux (em vez de `.dll`).
 - **Persistencia de usuarios:** `data/users.json` fica so na EC2 (nao versionado).
   Se recriar a instancia, o admin inicial e recriado com a senha padrao.
-- **Producao real:** para uso serio, considere: servico systemd (em vez de nohup),
-  nginx como proxy reverso, HTTPS (certificado), e um SECRET_KEY/senha admin vindos
-  de variavel de ambiente segura.
+- **IP publico:** se a instancia nao tem Elastic IP associado, um stop/start
+  (nao um reboot simples) troca o IP publico - o servico sobe sozinho de
+  qualquer forma, mas o endereco de acesso pode mudar. Para um IP fixo,
+  aloque um Elastic IP no console AWS e associe a instancia.
+- **Producao real:** para uso serio, considere tambem: nginx como proxy
+  reverso, HTTPS (certificado), e um SECRET_KEY/senha admin vindos de
+  variavel de ambiente segura (o servico systemd ja cobre o restart
+  automatico).
 - **Banco DB2:** a feature de execucao com banco depende dos artefatos ainda pendentes
   (ver docs/EMAIL_SOLICITACAO_PRODESP.md). A geracao de DDL/massa (aba Estrutura de Dados)
   funciona com o que ja existe.

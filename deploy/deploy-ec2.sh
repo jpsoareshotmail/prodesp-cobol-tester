@@ -67,20 +67,45 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 export $(grep -v '^#' "$ENV_FILE" | xargs)
 
-# 6. Subir o servidor com gunicorn (producao), matando instancia anterior
-echo "[6/6] Iniciando servidor (gunicorn) na porta $PORT..."
-[ -f /tmp/cobol-tester.pid ] && kill "$(cat /tmp/cobol-tester.pid)" 2>/dev/null || true
-cd "$APP_DIR"
-nohup "$HOME/.local/bin/gunicorn" web_app:app \
-    --bind "0.0.0.0:$PORT" --workers 1 --timeout 120 \
-    > /tmp/cobol-tester.log 2>&1 &
-echo $! > /tmp/cobol-tester.pid
+# 6. Subir o servidor com gunicorn via systemd (sobrevive a reboot da EC2 -
+# nohup nao sobrevive: some ao reiniciar a instancia). AmbientCapabilities
+# permite rodar na porta 80 (privilegiada) sem precisar de root.
+echo "[6/6] Instalando/reiniciando o servico systemd na porta $PORT..."
+sudo tee /etc/systemd/system/cobol-tester.service > /dev/null <<UNIT
+[Unit]
+Description=COBOL Tester (gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=$USER
+Group=$USER
+WorkingDirectory=$APP_DIR
+EnvironmentFile=$ENV_FILE
+Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+ExecStart=$HOME/.local/bin/gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+Restart=always
+RestartSec=3
+StandardOutput=append:/tmp/cobol-tester.log
+StandardError=append:/tmp/cobol-tester.log
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+sudo systemctl daemon-reload
+sudo systemctl enable cobol-tester
+sudo systemctl restart cobol-tester
 
 sleep 3
 echo ""
 echo "=== DEPLOY COMPLETO ==="
-echo "URL:   http://<IP-DA-EC2>:$PORT"
-echo "Login: admin / prodesp_2026  (troque a senha no primeiro acesso)"
-echo "Log:   tail -f /tmp/cobol-tester.log"
-echo "PID:   $(cat /tmp/cobol-tester.pid)"
-echo "Parar: kill \$(cat /tmp/cobol-tester.pid)"
+echo "URL:    http://<IP-DA-EC2>:$PORT"
+echo "Login:  admin / prodesp_2026  (troque a senha no primeiro acesso)"
+echo "Log:    tail -f /tmp/cobol-tester.log"
+echo "Status: sudo systemctl status cobol-tester"
+echo "Parar:  sudo systemctl stop cobol-tester"
+echo ""
+echo "OBS: se a EC2 nao tem Elastic IP, o IP publico muda a cada"
+echo "stop/start (mas nao a cada reboot simples). O servico agora sobe"
+echo "sozinho de qualquer forma - so o IP de acesso pode mudar."
