@@ -84,7 +84,16 @@ WorkingDirectory=$APP_DIR
 EnvironmentFile=$ENV_FILE
 Environment=PATH=$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin
 AmbientCapabilities=CAP_NET_BIND_SERVICE
-ExecStart=$HOME/.local/bin/gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+
+# --workers 1 (nao mais): web_app.py usa dicts globais em memoria
+# (import_state, test_state) para o padrao de progresso/polling de jobs
+# em background - com --workers N>1 cada PROCESSO teria sua propria copia
+# e o polling quebraria (a leitura pode cair num worker diferente do que
+# iniciou o job). --threads 4 com --worker-class gthread da concorrencia
+# real (varias requisicoes ao mesmo tempo) mantendo um so processo/memoria
+# compartilhada - sem isso, uma unica compilacao/teste demorado travava
+# o site inteiro (nem a pagina de login respondia) ate o timeout.
+ExecStart=$HOME/.local/bin/gunicorn web_app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --worker-class gthread --timeout 120
 Restart=always
 RestartSec=3
 StandardOutput=append:/tmp/cobol-tester.log
