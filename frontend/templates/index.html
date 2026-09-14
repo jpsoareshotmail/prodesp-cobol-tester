@@ -902,6 +902,16 @@ function bannerInferencia(inferidos) {
         '</div>';
 }
 
+// Extrai os nomes de copybook referenciados por 'COPY NOME.' no fonte
+function extrairCopiesDoFonte(codigo) {
+    if (!codigo) return [];
+    const nomes = new Set();
+    const re = /^\s*COPY\s+([A-Za-z0-9\-]+)/gim;
+    let m;
+    while ((m = re.exec(codigo)) !== null) nomes.add(m[1].toUpperCase());
+    return Array.from(nomes).sort();
+}
+
 function ideMostrar(modo) {
     document.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
     const btn = document.getElementById('ide-tab-' + modo);
@@ -921,10 +931,56 @@ function ideMostrar(modo) {
     // Visao unica do codigo fonte: mostra o convertido (o que roda);
     // se nao houver convertido, cai no original.
     const fonte = IDE_CODE.convertido || IDE_CODE.original;
+    const copies = extrairCopiesDoFonte(fonte ? fonte.codigo : '');
+    let copiesBar = '';
+    if (copies.length) {
+        copiesBar = '<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fafafa">' +
+            '<span style="font-size:11px;color:var(--text-muted);font-weight:600">COPYBOOKS (' + copies.length + '):</span>' +
+            copies.map(c => '<button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px" onclick="abrirCopybook(\'' +
+                c.replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</button>').join('') +
+            '</div>';
+    }
     const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>CODIGO FONTE</span><span>' +
         (fonte ? escapeHtml(fonte.arquivo) + ' - ' + fonte.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
+        copiesBar +
         '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div></div>';
     wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + pane + '</div>';
+}
+
+// Modal de visualizacao do codigo-fonte de um copybook (.cpy)
+async function abrirCopybook(nome) {
+    let ov = document.getElementById('copybook-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'copybook-modal';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+        ov.onclick = function(e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div id="copybook-modal-box" style="background:#fff;border-radius:10px;max-width:95%;max-height:90%;width:900px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3)">' +
+            '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">' +
+            '<strong id="copybook-modal-title" style="font-size:14px"></strong>' +
+            '<button class="btn btn-outline btn-sm" onclick="fecharCopybookModal()">Fechar</button></div>' +
+            '<div id="copybook-modal-body" class="ide-code" style="overflow:auto;flex:1"></div></div>';
+        document.body.appendChild(ov);
+    }
+    document.getElementById('copybook-modal-title').textContent = nome;
+    document.getElementById('copybook-modal-body').innerHTML = '<div style="padding:16px"><span class="spinner"></span> Carregando ' + escapeHtml(nome) + '...</div>';
+    ov.style.display = 'flex';
+    try {
+        const r = await fetch('/api/copybook-fonte/' + encodeURIComponent(nome));
+        const d = await r.json();
+        if (d.error) {
+            document.getElementById('copybook-modal-body').innerHTML = '<div class="result-box diff" style="margin:16px">' + escapeHtml(d.error) + '</div>';
+            return;
+        }
+        document.getElementById('copybook-modal-title').textContent = d.arquivo + ' - ' + d.linhas + ' linhas';
+        document.getElementById('copybook-modal-body').innerHTML = renderCodigoNumerado(d.codigo);
+    } catch(e) {
+        document.getElementById('copybook-modal-body').innerHTML = '<div class="result-box diff" style="margin:16px">Erro: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+function fecharCopybookModal() {
+    const ov = document.getElementById('copybook-modal');
+    if (ov) ov.style.display = 'none';
 }
 
 // Codigo fonte - renderiza no layout IDE

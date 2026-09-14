@@ -483,6 +483,39 @@ def get_codigo_fonte_dual(programa):
 
     return jsonify(resultado)
 
+
+@app.route('/api/copybook-fonte/<nome>', methods=['GET'])
+def get_copybook_fonte(nome):
+    """Retorna o codigo-fonte de um copybook (.cpy) usado por um programa
+    (COPY WSGL. / COPY PDGL. / etc), para visualizacao no editor."""
+    import re as _re
+    from cobol_runner import COPY_DIR
+    try:
+        nome_limpo = _re.sub(r'[^A-Za-z0-9_\-]', '', nome)
+        if not nome_limpo:
+            return jsonify({"error": "nome de copybook invalido"}), 400
+
+        caminho = COPY_DIR / f"{nome_limpo}.cpy"
+        if not caminho.exists():
+            # busca case-insensitive (nomes de COPY no fonte nem sempre batem
+            # exatamente a caixa do arquivo em disco)
+            caminho = next((f for f in COPY_DIR.glob('*.cpy')
+                             if f.stem.upper() == nome_limpo.upper()), None)
+        if not caminho or not caminho.exists():
+            return jsonify({"error": f"Copybook '{nome}' nao encontrado"}), 404
+
+        codigo = caminho.read_text(encoding='latin-1', errors='ignore')
+        return jsonify({
+            "nome": caminho.stem,
+            "arquivo": caminho.name,
+            "codigo": codigo,
+            "linhas": len(codigo.split('\n')),
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/results', methods=['GET'])
 def get_results():
     """Retorna resultados dos últimos testes"""
