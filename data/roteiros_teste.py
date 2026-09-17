@@ -15,26 +15,51 @@ AMBIENTE = {
     "plataforma": "Unisys ClearPath MCP (Web Enabler)",
 }
 
-# Transacoes citadas nos roteiros -> descricao, tela real (dos prints) e programa COBOL relacionado
+# Transacoes citadas nos roteiros -> descricao, tela real (dos prints) e programa COBOL relacionado.
+#
+# Associacao tela->programa feita cruzando os prints de tela reais (frontend/
+# static/roteiros/*/*.png) com comentarios de cabecalho e o literal da
+# transacao gravado no codigo (ex: MOVE "CAV2" TO TAX-TRANSACAO) - nao e'
+# uma inferencia de nome, e' o proprio fonte se identificando. "programa"/
+# "fonte" so' aparecem quando essa evidencia direta foi encontrada; varias
+# transacoes (901, TXUT, PTRE, PEST, CEST) sao de sistemas externos (BIN/
+# Serpro) ou telas cujo programa de fato nao esta entre os 42 fontes
+# entregues - ficam sem "programa" de proposito, nao e' lacuna de busca.
 TRANSACOES = {
     "901":  {"descricao": "Consulta veiculo por chassi na BIN/Serpro", "sistema": "BIN",
              "tela": "PER1 - Pesquisa de veiculos cadastrados no sistema RENAVAM"},
-    "RAUT": {"descricao": "Inclusao de taxa (recebimento SEFAZ)", "window": "WDGAA35"},
+    "RAUT": {"descricao": "Inclusao de taxa (recebimento SEFAZ)", "window": "WDGAA35",
+             "programa": "OGAA920D", "fonte": "PF-GAA-T920-DB"},
     "GAA/B100/DB": {"descricao": "Batch de contingencia - recebimento de taxa", "programa": "PGAA100D", "fonte": "PF-GAA-B100-DB"},
     "TXUT": {"descricao": "Consulta de taxa (Cadastro de Certificados Emitidos)",
              "tela": "TXUT - Pesquisa de taxas por CPF/CNPJ (COD.SERV 06, situacao 0-Aguarda Uso)"},
-    "PGER": {"descricao": "Consulta/situacao da ficha (GEVER - situacao de registro em GEVERDS)",
+    "CAV1": {"descricao": "Verificacao de bloqueios/debitos/incompatibilidades no cadastro (opcao 1)",
+             "tela": "CAV1 - Verificacao de bloqueios, debitos e incompatibilidades / Primeiro Emplacamento (veiculo zero)",
+             "programa": "OGAA013D", "fonte": "PF-GAA-T013-DB"},
+    "CAFI": {"descricao": "Acesso a ficha de emplacamento por numero+ano (comando CAFI+ficha,ano)",
+             "tela": "PGE4/GEVER - status do registro (acessado digitando CAFI+NRO-FICHA+ANO-FICHA)",
+             "programa": "OGEV005D", "fonte": "PF-GEV-T005-DB"},
+    "PGER": {"descricao": "Consulta/situacao da ficha (GEVER - situacao de registro em GEVERDS); "
+             "acessada na pratica pelo comando CAFI (ver transacao CAFI)",
              "tela": "PGE4/GEVER - status do registro (STATUS REG 01->05)"},
-    "DHAB": {"descricao": "Processamento diario (habilitacao)"},
+    "DHAB": {"descricao": "Processamento diario (habilitacao) - nao e' um programa proprio: e' uma "
+             "mensagem (MOVE \"DHAB\" TO MENSCODE) enviada por OGAA013D/OGAA018D/OGAA640D"},
     "PEPM": {"descricao": "Cadastro da placa na base estadual (Detran)",
-             "tela": "CAV2 - Cadastro de Certificados Emitidos / Primeiro Emplacamento"},
+             "tela": "CAV2 - Cadastro de Certificados Emitidos / Primeiro Emplacamento",
+             "programa": "OGAA018D", "fonte": "PF-GAA-T018-DB"},
     "PTRE": {"descricao": "Base fabril da BIN", "tela": "PTRE"},
     "EDUT": {"descricao": "Emissao do Documento Unico de Transito (CRV)",
-             "tela": "DUT1 - Emissao do documento unico de transito (1a via)"},
-    "CDAV": {"descricao": "Consulta dados ampliados do veiculo na RENAVAM",
+             "tela": "DUT1 - Emissao do documento unico de transito (1a via)",
+             "programa": "OGAA640D", "fonte": "PF-GAA-T640-DB"},
+    "CDAV": {"descricao": "Consulta dados ampliados do veiculo na RENAVAM (TR.227); dado alimentado "
+             "por OGAA255D (transacoes internas AUMI/AUCA), mas a tela de consulta CDAV em si "
+             "nao esta entre os 42 fontes entregues",
              "tela": "CDAV - IND.CRV ELETR=SIM, numero CRV gerado"},
-    "PJOF": {"descricao": "Cadastro de CNPJ oficial",
+    "PJOF": {"descricao": "Cadastro de CNPJ oficial - a tela de manutencao (PJO1/PJO2) nao esta entre "
+             "os 42 fontes; OGAA013D/OGAA018D/OGAA792D/OGEV050D apenas leem CNPJOFICIALDS para validar",
              "tela": "PJO1 (menu: 1-Inclusao, 2-Exclusao, 3-Pesquisa) / PJO2 (inclusao: CNPJ, categoria M/E/U, nome, atividade)"},
+    "PESQ10": {"descricao": "Pesquisa de veiculos de uso exclusivo do Detran - nao esta entre os 42 fontes entregues",
+               "tela": "PESQ10 - Cadastro de veiculos, pesquisa de uso exclusivo do Detran"},
     "PEST": {"descricao": "Consulta de estampagem"},
     "CEST": {"descricao": "Cancelamento de estampagem"},
 }

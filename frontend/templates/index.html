@@ -908,6 +908,14 @@ function renderTesteInfoBox(info) {
         }
         return html + '</div>';
     }
+    if (info.transacao) {
+        return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
+            'Este programa implementa a transacao <strong>' + escapeHtml(info.transacao) + '</strong>' +
+            (info.transacao_descricao ? ' (' + escapeHtml(info.transacao_descricao) + ')' : '') +
+            (info.transacao_tela ? ', tela real: <strong>' + escapeHtml(info.transacao_tela) + '</strong>' : '') + '. ' +
+            'No mainframe, o dado chegaria pela tela do terminal (BMS map) - essa definicao de tela nao veio no fonte convertido, ' +
+            'entao nao ha como injetar esse dado neste ambiente de teste. O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao.</div>';
+    }
     return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
         'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (ex: recebe via canal/container do CICS, que nao e simulado aqui). ' +
         'O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio garantido.</div>';

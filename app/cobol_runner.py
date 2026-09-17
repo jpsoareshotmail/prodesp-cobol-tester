@@ -606,7 +606,24 @@ def info_parametros_teste(nome_convertido: str) -> dict:
     info = _analisar_parametros(content)
     if not info:
         tem_using = bool(_extrair_using_params(content))
-        return {"tipo": "parametrizado_sem_dado" if tem_using else "generico"}
+        resultado = {"tipo": "parametrizado_sem_dado" if tem_using else "generico"}
+        # programas sem LINKAGE/USING (transacao CICS) nao tem como receber
+        # dado de teste aqui, mas quando a transacao/tela real foi
+        # identificada (roteiros_teste.TRANSACOES, cruzando prints de tela
+        # reais com o codigo) mostra pra UI qual seria o dado esperado no
+        # mainframe de verdade, em vez de uma mensagem generica sem contexto.
+        try:
+            from data.roteiros_teste import get_transacoes
+        except Exception:
+            get_transacoes = None
+        if get_transacoes:
+            for cod, dados in get_transacoes().items():
+                if dados.get('programa') == nome_convertido:
+                    resultado['transacao'] = cod
+                    resultado['transacao_tela'] = dados.get('tela')
+                    resultado['transacao_descricao'] = dados.get('descricao')
+                    break
+        return resultado
 
     # quando o campo nao foi reconhecido por nome (chassi/placa/cpf/cnpj),
     # _analisar_parametros usa a variavel generica COB_VALOR - nesse caso o
