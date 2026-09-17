@@ -870,6 +870,44 @@ function valorExemplo(prog) {
 
 // guarda o codigo carregado para trocar de aba sem refazer fetch
 let IDE_CODE = { original: null, convertido: null, prog: '', inferidos: [] };
+// como o programa atual e testado (campos de entrada reconhecidos, legenda do resultado)
+let IDE_TESTE_INFO = { tipo: 'generico' };
+
+function rotuloEntradaTeste(info) {
+    if (info && info.entradas && info.entradas.length) {
+        return info.entradas.map(e => e.rotulo).join(' / ');
+    }
+    return 'Entrada de teste';
+}
+
+// Explica, acima do campo de entrada, o que o teste manual realmente faz
+// com este programa (que dado ele espera e o que o resultado significa)
+function renderTesteInfoBox(info) {
+    if (!info) return '';
+    if (info.tipo === 'placa' || info.tipo === 'parametrizado') {
+        const rotulos = (info.entradas || []).map(e => e.rotulo).join(', ') || '-';
+        let html = '<div style="border:1px solid var(--info);background:#EFF6FF;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1E3A8A">' +
+            '<strong>Como este teste funciona:</strong> o valor digitado abaixo e enviado como <strong>' + escapeHtml(rotulos) +
+            '</strong> diretamente para os campos de entrada do programa' +
+            (info.campo_saida ? ', que retorna o resultado no campo <code>' + escapeHtml(info.campo_saida) + '</code>.' : '.');
+        if (info.legenda_saida && Object.keys(info.legenda_saida).length) {
+            html += '<div style="margin-top:8px"><strong>Significado dos codigos de resultado:</strong>' +
+                '<ul style="margin:4px 0 0 18px">' +
+                Object.entries(info.legenda_saida).map(([cod, desc]) =>
+                    '<li><code>' + escapeHtml(cod) + '</code> &ndash; ' + escapeHtml(desc) + '</li>').join('') +
+                '</ul></div>';
+        }
+        return html + '</div>';
+    }
+    if (info.tipo === 'parametrizado_sem_dado') {
+        return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
+            'Este programa recebe parametro(s) de entrada, mas nenhum campo reconhecivel (chassi/placa/cpf/cnpj) foi identificado na estrutura de dados dele. ' +
+            'O teste abaixo roda o programa sem um dado real de entrada; o resultado mostrado e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio.</div>';
+    }
+    return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
+        'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (ex: recebe via canal/container do CICS, que nao e simulado aqui). ' +
+        'O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio garantido.</div>';
+}
 
 // numera as linhas do codigo em uma tabela
 function renderCodigoNumerado(codigo) {
@@ -995,6 +1033,13 @@ async function carregarCodigo() {
         const d = await r.json();
         IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog, inferidos: d.inferidos || [] };
 
+        // como este programa e testado (campos de entrada reconhecidos, legenda do resultado)
+        IDE_TESTE_INFO = { tipo: 'generico' };
+        try {
+            const ri = await fetch('/api/teste-info/' + prog);
+            IDE_TESTE_INFO = await ri.json();
+        } catch (e) { /* segue com o generico se a chamada falhar */ }
+
         let html = '';
         // barra de titulo + abas (codigo + testes)
         html += '<div class="ide-tabs">';
@@ -1006,8 +1051,9 @@ async function carregarCodigo() {
         // painel de Testes (exibido quando a aba Testes esta ativa)
         html += '<div id="ide-testes" style="display:none;flex:1;overflow:auto;padding:16px">';
         html += bannerInferencia(d.inferidos || []);
+        html += renderTesteInfoBox(IDE_TESTE_INFO);
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
-        html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">Entrada de teste:</span>';
+        html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">' + escapeHtml(rotuloEntradaTeste(IDE_TESTE_INFO)) + ':</span>';
         html += '<input type="text" id="test-input" value="' + valorExemplo(prog) + '" placeholder="ex: ABC1D23" style="min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarTesteFonte(\'' + prog + '\')">';
         html += '<button class="btn btn-outline btn-sm" onclick="executarTesteFonte(\'' + prog + '\')">Executar teste</button>';
         html += '<button class="btn btn-dark btn-sm" onclick="validarRoteiro(\'' + prog + '\')">Validar com roteiro de teste</button>';
@@ -1060,6 +1106,11 @@ async function executarTesteFonte(prog) {
     const div = document.getElementById('test-result');
     div.innerHTML = '<span class="spinner"></span> Executando ' + prog + '...';
 
+    // envia o mesmo valor digitado para todas as variaveis que este programa
+    // reconhece (chassi/placa/cpf/cnpj) - o programa so' usa a(s) que precisa
+    const envVars = { 'COB_PLACA': entrada, 'COB_CHASSI': entrada };
+    (IDE_TESTE_INFO.entradas || []).forEach(e => { envVars[e.variavel] = entrada; });
+
     try {
         const r = await fetch('/api/executar-fluxo', {
             method: 'POST',
@@ -1067,7 +1118,7 @@ async function executarTesteFonte(prog) {
             body: JSON.stringify({
                 programa: prog,
                 fluxo: 'convertido',
-                env_vars: { 'COB_PLACA': entrada }
+                env_vars: envVars
             })
         });
         const d = await r.json();
@@ -1079,15 +1130,17 @@ async function executarTesteFonte(prog) {
 
         // resultado esperado (codigo) ou erro
         const temResultado = d.codigo !== null && d.codigo !== undefined && d.sucesso;
+        const legenda = (IDE_TESTE_INFO.legenda_saida || {})[String(d.codigo)];
         if (temResultado) {
             div.innerHTML = '<div class="result-box match">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
                 '<span style="font-size:14px">Entrada: <strong>' + escapeHtml(entrada || '(vazio)') + '</strong></span>' +
                 '<span class="badge badge-green">RESULTADO ESPERADO</span></div>' +
                 '<div class="compare-col" style="border-color:var(--green)">' +
-                '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado</div>' +
+                '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado' +
+                (IDE_TESTE_INFO.campo_saida ? ' (' + escapeHtml(IDE_TESTE_INFO.campo_saida) + ')' : '') + '</div>' +
                 '<div class="code-val" style="color:var(--green-dark)">' + escapeHtml(String(d.codigo)) + '</div>' +
-                '<div class="desc">' + escapeHtml(d.descricao || '') + '</div>' +
+                '<div class="desc">' + escapeHtml(legenda || d.descricao || '') + '</div>' +
                 (d.output ? '<div style="font-size:11px;color:var(--text-3);margin-top:6px;font-family:monospace;white-space:pre-wrap">' + escapeHtml(d.output) + '</div>' : '') +
                 '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + (d.tempo_ms != null ? d.tempo_ms.toFixed(0) + 'ms' : '') + '</div></div></div>';
         } else {

@@ -484,6 +484,22 @@ def get_codigo_fonte_dual(programa):
     return jsonify(resultado)
 
 
+@app.route('/api/teste-info/<programa>', methods=['GET'])
+def get_teste_info(programa):
+    """Descreve como o programa e' exercitado no teste manual: quais campos
+    de entrada ele reconhece (chassi/placa/cpf/cnpj) e o que o resultado
+    (RETURN-CODE / campo de saida) significa, quando o fonte documenta."""
+    try:
+        from cobol_runner import info_parametros_teste
+        from data.program_mapping import get_converted_name
+        nome_conv = get_converted_name(programa) or programa
+        return jsonify(info_parametros_teste(nome_conv))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/copybook-fonte/<nome>', methods=['GET'])
 def get_copybook_fonte(nome):
     """Retorna o codigo-fonte de um copybook (.cpy) usado por um programa

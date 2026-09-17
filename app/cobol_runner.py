@@ -470,25 +470,32 @@ def _extrair_campos_pic(bloco: str) -> list:
     return campos
 
 
-def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | None:
-    """Gera um driver que passa dados REAIS de teste para programas com
-    'PROCEDURE DIVISION USING ...' (a maioria dos programas nao segue o
-    padrao LC-PARM/LC-PLACA de validador de placa, e sem isso o driver
-    generico chamava o programa SEM nenhum parametro - o dado do roteiro
-    nunca chegava dentro do programa, so' o RETURN-CODE (sempre 0) era
-    exibido, fazendo todo programa "dar o mesmo resultado").
+def _eh_placa_lc_parm(content: str) -> bool:
+    """Confirma que LC-PARM/LC-PLACA sao o proprio parametro de entrada do
+    programa (PROCEDURE DIVISION USING LC-PARM), nao apenas uma estrutura
+    de WORKING-STORAGE usada internamente para chamar OUTRO subprograma -
+    caso do OGAA013D, que declara um LC-PARM/LC-PLACA proprios so' para
+    invocar FGAA007 (um validador de placa de verdade) no meio da sua
+    logica, sem ser ele mesmo um validador de placa. Uma busca ingenua por
+    substring no arquivo inteiro (o que este codigo fazia antes) da falso
+    positivo nesses casos e gera um driver com o parametro errado.
+    """
+    params = [p.upper() for p in _extrair_using_params(content)]
+    if 'LC-PARM' not in params:
+        return False
+    bloco = _extrair_bloco_linkage(content, 'LC-PARM')
+    return bool(bloco and 'LC-PLACA' in bloco.upper())
 
-    Copia o(s) bloco(s) LINKAGE verbatim para WORKING-STORAGE (mesma tecnica
-    ja usada no driver hardcoded de LC-PARM), preenche por heuristica de
-    nome os campos de entrada reconhecidos (chassi/placa/cpf/cnpj, vindos
-    de variaveis de ambiente) e, apos o CALL, exibe tambem um campo de
-    retorno real do programa (heuristica por nome no bloco de saida) alem
-    do RETURN-CODE - assim o resultado reflete a execucao de verdade.
 
-    Retorna None (deixa o chamador cair no driver generico sem parametros)
-    quando a estrutura foge do padrao observado (mais de 2 parametros,
-    bloco LINKAGE nao encontrado, ou nenhum campo de entrada reconhecivel -
-    nesse ultimo caso gerar um driver "as cegas" nao ajudaria).
+def _analisar_parametros(content: str) -> dict | None:
+    """Analisa a PROCEDURE DIVISION USING/LINKAGE SECTION de um fonte e
+    decide como preenche-lo com dados reais de teste. Compartilhado entre
+    _gerar_driver_com_parametros (gera o driver .cob) e
+    info_parametros_teste (descreve os campos pra UI de testes).
+
+    Retorna None quando a estrutura foge do padrao observado (mais de 2
+    parametros, bloco LINKAGE nao encontrado, ou nenhum campo de entrada
+    reconhecivel por nome).
     """
     params = _extrair_using_params(content)
     if not params or len(params) > 2:
@@ -531,6 +538,102 @@ def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | No
         campo_saida = next((nome for _n, nome, _p in campos_saida if fragmento in nome.upper()), None)
         if campo_saida:
             break
+
+    return {
+        "blocos": blocos, "moves": moves, "envs_usadas": envs_usadas,
+        "campo_saida": campo_saida,
+    }
+
+
+_ENV_ROTULO = {
+    'COB_CNPJ': 'CNPJ', 'COB_CPF': 'CPF', 'COB_CHASSI': 'Chassi', 'COB_PLACA': 'Placa',
+}
+
+
+def _extrair_legenda_saida(content: str, campo_saida: str) -> dict:
+    """Best-effort: extrai uma legenda 'codigo -> descricao' de comentarios
+    logo apos a declaracao do campo de saida (padrao comum nestes fontes:
+    '*====> AX-GAA-RET = 0 -> NENHUM REGISTRO...' seguido de mais linhas
+    'N -> descricao'). Retorna {} se o fonte nao documentar dessa forma -
+    nem todo programa tem esse comentario, entao a ausencia e' esperada.
+    """
+    if not campo_saida:
+        return {}
+    linhas = content.split('\n')
+    idx_inicio = next((i for i, ln in enumerate(linhas)
+                        if len(ln) >= 7 and ln[6] == '*' and campo_saida in ln and '->' in ln), None)
+    if idx_inicio is None:
+        return {}
+    legenda = {}
+    padrao = re.compile(r'(\d{1,3})\s*->\s*([A-Za-zÀ-Úà-ú0-9][^\n]{1,80})')
+    for ln in linhas[idx_inicio:idx_inicio + 40]:
+        if not (len(ln) >= 7 and ln[6] == '*'):
+            break
+        m = padrao.search(ln)
+        if m:
+            legenda[m.group(1)] = m.group(2).strip().rstrip('.*').strip()
+        elif legenda:
+            break  # sequencia de comentarios com legenda terminou
+    return legenda
+
+
+def info_parametros_teste(nome_convertido: str) -> dict:
+    """Descreve, para a UI de testes, como este programa e' exercitado:
+    quais variaveis de ambiente/campos de entrada ele reconhece e o que
+    o campo de saida representa (com legenda, quando o fonte documenta).
+    """
+    source = CONVERTIDOS_DIR / nome_convertido
+    if not source.exists():
+        return {"tipo": "desconhecido"}
+    content = source.read_text(encoding='latin-1', errors='ignore')
+
+    has_lc_parm = _eh_placa_lc_parm(content)
+    if has_lc_parm:
+        return {
+            "tipo": "placa",
+            "entradas": [{"campo": "LC-PLACA", "variavel": "COB_PLACA", "rotulo": "Placa"}],
+            "campo_saida": "LC-RETORNO", "legenda_saida": {},
+        }
+
+    info = _analisar_parametros(content)
+    if not info:
+        tem_using = bool(_extrair_using_params(content))
+        return {"tipo": "parametrizado_sem_dado" if tem_using else "generico"}
+
+    entradas = [{"campo": campo, "variavel": envvar, "rotulo": _ENV_ROTULO.get(envvar, envvar)}
+                for envvar, campo in info["moves"]]
+    legenda = _extrair_legenda_saida(content, info["campo_saida"]) if info["campo_saida"] else {}
+    return {
+        "tipo": "parametrizado",
+        "entradas": entradas,
+        "campo_saida": info["campo_saida"],
+        "legenda_saida": legenda,
+    }
+
+
+def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | None:
+    """Gera um driver que passa dados REAIS de teste para programas com
+    'PROCEDURE DIVISION USING ...' (a maioria dos programas nao segue o
+    padrao LC-PARM/LC-PLACA de validador de placa, e sem isso o driver
+    generico chamava o programa SEM nenhum parametro - o dado do roteiro
+    nunca chegava dentro do programa, so' o RETURN-CODE (sempre 0) era
+    exibido, fazendo todo programa "dar o mesmo resultado").
+
+    Copia o(s) bloco(s) LINKAGE verbatim para WORKING-STORAGE (mesma tecnica
+    ja usada no driver hardcoded de LC-PARM), preenche por heuristica de
+    nome os campos de entrada reconhecidos (chassi/placa/cpf/cnpj, vindos
+    de variaveis de ambiente) e, apos o CALL, exibe tambem um campo de
+    retorno real do programa (heuristica por nome no bloco de saida) alem
+    do RETURN-CODE - assim o resultado reflete a execucao de verdade.
+
+    Retorna None (deixa o chamador cair no driver generico sem parametros)
+    quando _analisar_parametros nao reconhece a estrutura.
+    """
+    info = _analisar_parametros(content)
+    if not info:
+        return None
+    blocos, moves, envs_usadas, campo_saida = (
+        info["blocos"], info["moves"], info["envs_usadas"], info["campo_saida"])
 
     linhas = [
         '       IDENTIFICATION DIVISION.',
@@ -588,7 +691,7 @@ def _gerar_driver(nome_convertido: str, driver_path: Path):
     content = source.read_text(encoding='latin-1')
 
     # Verificar se tem LINKAGE com LC-PARM (padrao de placas)
-    has_lc_parm = "LC-PARM" in content and "LC-PLACA" in content
+    has_lc_parm = _eh_placa_lc_parm(content)
 
     driver_code = None
     if not has_lc_parm:
