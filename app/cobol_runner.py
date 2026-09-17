@@ -830,28 +830,63 @@ def compilar_driver(nome_convertido: str) -> tuple:
 # EXECUCAO - FLUXO ORIGINAL
 # =============================================================================
 
-def _parsear_resultado_driver(output: str) -> tuple:
-    """Extrai (codigo, descricao) da saida do driver.
+# RETURN-CODE que o driver grava quando uma rotina de TERMINACAO fatal do
+# DMS (HANDLE-DMTERMINATE/DATABASE-TERMINATE) e' acionada - ver sql_
+# preprocessor.py e o stub em cobol_build/copy/PDGLDB.cpy. Nenhum destes
+# programas usa RETURN-CODE=99 para sinalizar negocio de verdade (o
+# registrador quase sempre fica 0 quando nao passa por essa rotina), entao
+# e' seguro tratar como sentinela: o programa abriu mao da execucao normal
+# (ex: tabela indisponivel neste ambiente) ANTES de calcular o resultado
+# de negocio - o campo de saida (RESULT=), se houver, e' so' o valor
+# default/nao-inicializado, nao uma resposta valida.
+_RETURN_CODE_TERMINACAO_FATAL = 99
 
-    Layout: 1a linha sempre e o RETURN-CODE; quando o driver conseguiu
-    identificar um campo de retorno real do programa (heuristica em
-    _gerar_driver_com_parametros), uma 2a linha 'RESULT=<valor>' traz esse
-    valor - e essa e a que importa para o teste (o RETURN-CODE sozinho quase
-    sempre fica 0). Mantem compatibilidade com o layout antigo (so
-    RETURN-CODE, sem RESULT=), usado pelo driver de placa e pelo generico.
+
+def _parsear_resultado_driver(output: str) -> tuple:
+    """Extrai (codigo, descricao, falha_fatal) da saida do driver.
+
+    Layout esperado: uma linha com o RETURN-CODE (sempre 4 digitos - o
+    driver declara WS-RETURN-CODE PIC 9(004), exceto o driver hardcoded de
+    placa que usa LC-RETORNO PIC 9(002)/2 digitos) e, quando o driver
+    identificou um campo de retorno real (heuristica em
+    _gerar_driver_com_parametros), uma linha extra 'RESULT=<valor>'.
+
+    IMPORTANTE: a linha do RETURN-CODE nao e' necessariamente a primeira -
+    quando o proprio programa de negocio faz DISPLAY de mensagens (ex:
+    'PC/GAA/L115/DB - ERRO ABERTURA TDBBLOQUEIOS', comum nos que tentam
+    abrir uma tabela/arquivo indisponivel neste ambiente), essas mensagens
+    aparecem ANTES do DISPLAY WS-RETURN-CODE do driver. Por isso a linha e'
+    identificada pelo formato (4 digitos puros), nao pela posicao - uma
+    versao anterior assumia "sempre a 1a linha" e mostrava "0 - sucesso"
+    para execucoes que na verdade tinham abortado.
     """
     linhas = [l.strip() for l in (output or '').split('\n') if l.strip()]
     if not linhas:
-        return 0, ''
+        return 0, '', False
+    linha_rc = next((l for l in linhas if re.fullmatch(r'\d{4}', l)), None)
+    return_code = int(linha_rc) if linha_rc is not None else None
+    if return_code == _RETURN_CODE_TERMINACAO_FATAL:
+        # RESULT=, se houver, e' ignorado: e' so' o valor default do campo,
+        # nunca setado porque o programa terminou antes de chegar la'.
+        detalhe = next((l for l in linhas if l != linha_rc and not l.upper().startswith('RESULT=')), '')
+        descricao = ('Execucao abortada: rotina de terminacao do DMS acionada '
+                     '(provavelmente tabela/arquivo indisponivel neste ambiente)'
+                     + (' - ' + detalhe if detalhe else ''))
+        return return_code, descricao, True
     resultado = next((l.split('=', 1)[1].strip() for l in linhas if l.upper().startswith('RESULT=')), None)
-    # RESULT= vazio (ex: GOBACK antecipado por erro fatal, antes do campo de
-    # saida ser preenchido) cai de volta no RETURN-CODE em vez de zerar o
-    # codigo e esconder que a execucao terminou de forma anormal.
-    alvo = resultado if resultado else linhas[0]
+    if resultado:
+        try:
+            return int(resultado), '', False
+        except ValueError:
+            return 0, resultado, False
+    if linha_rc is not None:
+        return return_code, '', False
+    # fallback: layout inesperado (sem linha de 4 digitos reconhecivel) -
+    # tenta a 1a linha, mantendo compatibilidade com formatos antigos
     try:
-        return int(alvo), ''
+        return int(linhas[0]), '', False
     except ValueError:
-        return 0, alvo
+        return 0, linhas[0], False
 
 
 def executar_original(programa: str, env_vars: Dict[str, str] = None) -> ResultadoCOBOL:
@@ -882,11 +917,12 @@ def executar_original(programa: str, env_vars: Dict[str, str] = None) -> Resulta
         )
         elapsed = (time.time() - start) * 1000
         output = result.stdout.strip()
-        codigo, descricao = _parsear_resultado_driver(output)
+        codigo, descricao, falha_fatal = _parsear_resultado_driver(output)
 
         return ResultadoCOBOL(
-            programa=programa, fluxo="original", sucesso=True,
+            programa=programa, fluxo="original", sucesso=not falha_fatal,
             codigo=codigo, descricao=descricao,
+            erro=descricao if falha_fatal else None,
             output=output, executado_cobol=True,
             exe_path=exe_path,
             fonte_path=str(STANDALONE_DIR / f"{nome_standalone}.cob"),
@@ -942,11 +978,12 @@ def executar_convertido(nome_convertido: str, env_vars: Dict[str, str] = None) -
         )
         elapsed = (time.time() - start) * 1000
         output = result.stdout.strip()
-        codigo, descricao = _parsear_resultado_driver(output)
+        codigo, descricao, falha_fatal = _parsear_resultado_driver(output)
 
         return ResultadoCOBOL(
-            programa=nome_convertido, fluxo="convertido", sucesso=True,
+            programa=nome_convertido, fluxo="convertido", sucesso=not falha_fatal,
             codigo=codigo, descricao=descricao,
+            erro=descricao if falha_fatal else None,
             output=output, executado_cobol=True,
             exe_path=driver_exe,
             fonte_path=str(CONVERTIDOS_DIR / nome_convertido),
