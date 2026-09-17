@@ -107,14 +107,21 @@ _PASSOS_PARTICULAR = [
 
 
 def _passos_oficial():
-    """Fluxo do orgao oficial: sem taxa 06, com verificacao de CNPJ oficial (PJOF)."""
-    # remove os passos de taxa (2 e 3) e renumera de forma limpa
+    """Fluxo do orgao oficial: sem taxa 06, com verificacao de CNPJ oficial (PJOF).
+
+    Posicao do passo de CNPJ validada contra o texto real do documento
+    'PrimeiroEmplacamento_orgao_oficial.docx': a verificacao/inclusao do
+    CNPJ oficial (PJOF) acontece DEPOIS de "Processar (DHAB)" e ANTES de
+    "Inicio do processamento do primeiro emplacamento" - nao logo apos
+    consultar o chassi, como uma versao anterior deste arquivo tinha.
+    """
+    # remove os passos de taxa (2 e 3)
     base = [p for p in _PASSOS_PARTICULAR if p["ordem"] not in (2, 3)]
     passo_cnpj = {"titulo": "Verificar/incluir CNPJ oficial", "camada": "Mainframe", "transacao": "PJOF",
                   "descricao": "PJO1 opcao 3 pesquisa o CNPJ; se retornar 'CNPJ NAO CADASTRADO', usa-se PJO1 opcao 1 -> PJO2 para incluir (categoria M/E/U, nome do orgao, atividade economica).",
                   "resultado_esperado": "CNPJ oficial presente no cadastro (pesquisa OK) ou incluido com sucesso via PJO2."}
-    # inserir o passo de CNPJ logo apos consultar chassi
-    ordenados = base[:1] + [passo_cnpj] + base[1:]
+    idx_dhab = next(i for i, p in enumerate(base) if p["titulo"].startswith("Processar (DHAB)"))
+    ordenados = base[:idx_dhab + 1] + [passo_cnpj] + base[idx_dhab + 1:]
     # renumerar 1..N
     for i, p in enumerate(ordenados, start=1):
         p = dict(p)
