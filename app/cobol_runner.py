@@ -600,7 +600,8 @@ def info_parametros_teste(nome_convertido: str) -> dict:
         return {
             "tipo": "placa",
             "entradas": [{"campo": "LC-PLACA", "variavel": "COB_PLACA", "rotulo": "Placa"}],
-            "campo_saida": "LC-RETORNO", "legenda_saida": {},
+            "campo_saida": "LC-RETORNO",
+            "legenda_saida": {str(k): v for k, v in CODIGOS_PLACA.items()},
         }
 
     info = _analisar_parametros(content)
