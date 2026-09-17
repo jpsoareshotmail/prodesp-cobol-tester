@@ -908,11 +908,6 @@ function renderTesteInfoBox(info) {
         }
         return html + '</div>';
     }
-    if (info.tipo === 'parametrizado_sem_dado') {
-        return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
-            'Este programa recebe parametro(s) de entrada, mas nenhum campo reconhecivel (chassi/placa/cpf/cnpj) foi identificado na estrutura de dados dele. ' +
-            'O teste abaixo roda o programa sem um dado real de entrada; o resultado mostrado e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio.</div>';
-    }
     return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
         'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (ex: recebe via canal/container do CICS, que nao e simulado aqui). ' +
         'O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio garantido.</div>';

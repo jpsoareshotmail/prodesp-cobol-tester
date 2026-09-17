@@ -528,9 +528,17 @@ def _analisar_parametros(content: str) -> dict | None:
                 moves.append((envvar, nome_campo))
                 break
     if not moves:
-        # nenhum campo reconhecivel para preencher - gerar um driver que so
-        # chama sem dados nao teria vantagem sobre o generico
-        return None
+        # nenhum campo com nome reconhecido (chassi/placa/cpf/cnpj) - usa o
+        # primeiro campo que NAO parece ser de controle/retorno (RETORNO/
+        # RET/SIT/COD/STATUS/FLAG/BLQ) como alvo genérico de texto livre,
+        # para o programa continuar testavel (e o usuario continuar vendo
+        # qual campo real esta sendo preenchido) mesmo sem heuristica de nome.
+        fallback = next((c for c in campos_entrada
+                          if not any(frag in c[1].upper() for frag in _FRAGMENTOS_SAIDA)), None)
+        if not fallback:
+            return None
+        moves = [('COB_VALOR', fallback[1])]
+        envs_usadas = ['COB_VALOR']
 
     campos_saida = _extrair_campos_pic(blocos[idx_saida][1]) if len(blocos) > 1 else campos_entrada
     campo_saida = None
@@ -600,7 +608,12 @@ def info_parametros_teste(nome_convertido: str) -> dict:
         tem_using = bool(_extrair_using_params(content))
         return {"tipo": "parametrizado_sem_dado" if tem_using else "generico"}
 
-    entradas = [{"campo": campo, "variavel": envvar, "rotulo": _ENV_ROTULO.get(envvar, envvar)}
+    # quando o campo nao foi reconhecido por nome (chassi/placa/cpf/cnpj),
+    # _analisar_parametros usa a variavel generica COB_VALOR - nesse caso o
+    # rotulo mostrado e' o proprio nome do campo (nao ha um nome de dominio
+    # conhecido pra ele).
+    entradas = [{"campo": campo, "variavel": envvar,
+                 "rotulo": _ENV_ROTULO.get(envvar, campo)}
                 for envvar, campo in info["moves"]]
     legenda = _extrair_legenda_saida(content, info["campo_saida"]) if info["campo_saida"] else {}
     return {
