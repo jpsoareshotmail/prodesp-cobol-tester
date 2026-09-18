@@ -968,6 +968,18 @@ function extrairCopiesDoFonte(codigo) {
     return Array.from(nomes).sort();
 }
 
+// Extrai as tabelas DB2 (SCHEMA.TABELA) referenciadas em FROM/UPDATE/INSERT
+// INTO dentro dos blocos EXEC SQL do fonte - e' assim que o programa declara
+// de qual tabela um cursor le (ver DECLARE CURSOR ... SELECT ... FROM).
+function extrairTabelasDoFonte(codigo) {
+    if (!codigo) return [];
+    const tabelas = new Set();
+    const re = /\b(?:FROM|UPDATE|INTO)\s+([A-Za-z0-9_]+\.[A-Za-z0-9_]+)\b/gi;
+    let m;
+    while ((m = re.exec(codigo)) !== null) tabelas.add(m[1].toUpperCase());
+    return Array.from(tabelas).sort();
+}
+
 function ideMostrar(modo) {
     document.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
     const btn = document.getElementById('ide-tab-' + modo);
@@ -996,9 +1008,18 @@ function ideMostrar(modo) {
                 c.replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</button>').join('') +
             '</div>';
     }
+    const tabelas = extrairTabelasDoFonte(fonte ? fonte.codigo : '');
+    let tabelasBar = '';
+    if (tabelas.length) {
+        tabelasBar = '<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fafafa">' +
+            '<span style="font-size:11px;color:var(--text-muted);font-weight:600">TABELAS (' + tabelas.length + '):</span>' +
+            tabelas.map(t => '<span class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px;cursor:default" title="Tabela DB2 referenciada em EXEC SQL">' +
+                escapeHtml(t) + '</span>').join('') +
+            '</div>';
+    }
     const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>CODIGO FONTE</span><span>' +
         (fonte ? escapeHtml(fonte.arquivo) + ' - ' + fonte.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
-        copiesBar +
+        copiesBar + tabelasBar +
         '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div></div>';
     wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + pane + '</div>';
 }
