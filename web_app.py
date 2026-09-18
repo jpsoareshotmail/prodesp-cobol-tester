@@ -492,8 +492,15 @@ def get_teste_info(programa):
     try:
         from cobol_runner import info_parametros_teste
         from data.program_mapping import get_converted_name
+        from cenarios_teste import cenarios_disponiveis
         nome_conv = get_converted_name(programa) or programa
-        return jsonify(info_parametros_teste(nome_conv))
+        info = info_parametros_teste(nome_conv)
+        # cenarios de teste simulados (COB_CENARIO) - so' existe pros
+        # programas parametrizados sem DB2 real (ver app/cenarios_teste.py);
+        # a UI usa isso pra oferecer "sucesso (nada consta)" x "encontrado/
+        # restricao" em vez de sempre cair no mesmo resultado generico.
+        info['cenarios'] = cenarios_disponiveis(nome_conv)
+        return jsonify(info)
     except Exception as e:
         import traceback
         traceback.print_exc()

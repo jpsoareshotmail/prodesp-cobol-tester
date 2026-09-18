@@ -50,6 +50,7 @@
         .badge-green { background: #ECFDF5; color: #065F46; }
         .badge-red { background: #FEF2F2; color: #991B1B; }
         .badge-blue { background: #EFF6FF; color: #1E40AF; }
+        .badge-amber { background: #FFFBEB; color: #92400E; }
         /* Impressao/PDF do relatorio de roteiro: esconde tudo, exceto o modal */
         @media print {
             body.printing-roteiro > *:not(#roteiro-relatorio-modal) { display: none !important; }
@@ -898,6 +899,25 @@ function rotuloEntradaTeste(info) {
     return 'Entrada de teste';
 }
 
+// Seletor de cenario de teste (COB_CENARIO) - so' aparece pros programas
+// parametrizados sem DB2 real que tem cenarios simulados cadastrados (ver
+// app/cenarios_teste.py). Sem isso, todo teste manual "acha nada" sempre
+// (FETCH neutralizado sempre responde NOTFOUND) - o seletor permite
+// escolher, alem do sucesso padrao, um cenario especifico "encontrado"
+// (ex: "1 - Roubo", "31 - Veiculo bloqueado pelo Detran") pra exercitar de
+// verdade a logica de negocio do programa com cada codigo de resultado.
+function renderSeletorCenario(info) {
+    if (!info || !info.cenarios || !info.cenarios.length) return '';
+    let html = '<select id="test-cenario" title="Cenario de teste simulado (nenhum banco DB2 real neste ambiente)" ' +
+        'style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">';
+    html += '<option value="">Sucesso - nada consta</option>';
+    info.cenarios.forEach(c => {
+        html += '<option value="' + escapeHtml(c.codigo) + '">' + escapeHtml(c.codigo) + ' - ' + escapeHtml(c.rotulo) + ' (encontrado)</option>';
+    });
+    html += '</select>';
+    return html;
+}
+
 // Explica, acima do campo de entrada, o que o teste manual realmente faz
 // com este programa (que dado ele espera e o que o resultado significa)
 function renderTesteInfoBox(info) {
@@ -1105,6 +1125,7 @@ async function carregarCodigo() {
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
         html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">' + escapeHtml(rotuloEntradaTeste(IDE_TESTE_INFO)) + ':</span>';
         html += '<input type="text" id="test-input" value="' + valorExemplo(prog) + '" placeholder="ex: ABC1D23" style="min-width:160px;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px" onkeypress="if(event.key===\'Enter\')executarTesteFonte(\'' + prog + '\')">';
+        html += renderSeletorCenario(IDE_TESTE_INFO);
         html += '<button class="btn btn-outline btn-sm" onclick="executarTesteFonte(\'' + prog + '\')">Executar teste</button>';
         html += '<button class="btn btn-dark btn-sm" onclick="validarRoteiro(\'' + prog + '\')">Validar com roteiro de teste</button>';
         html += '</div>';
@@ -1163,6 +1184,12 @@ async function executarTesteFonte(prog) {
     const envVars = { 'COB_PLACA': entrada, 'COB_CHASSI': entrada };
     (IDE_TESTE_INFO.entradas || []).forEach(e => { envVars[e.variavel] = entrada; });
 
+    // cenario de teste simulado (COB_CENARIO) - so' existe o seletor quando
+    // ha' cenarios cadastrados pra este programa (ver renderSeletorCenario).
+    // Vazio = deixa o FETCH neutralizado responder o generico "nao encontrado".
+    const cenarioSel = document.getElementById('test-cenario');
+    if (cenarioSel && cenarioSel.value) envVars['COB_CENARIO'] = cenarioSel.value;
+
     try {
         const r = await fetch('/api/executar-fluxo', {
             method: 'POST',
@@ -1183,15 +1210,25 @@ async function executarTesteFonte(prog) {
         // resultado esperado (codigo) ou erro
         const temResultado = d.codigo !== null && d.codigo !== undefined && d.sucesso;
         const legenda = (IDE_TESTE_INFO.legenda_saida || {})[String(d.codigo)];
+        // codigo 0 = "nada consta" (sucesso/liberado); qualquer outro codigo
+        // documentado = achou uma restricao/ocorrencia real (o cenario de
+        // teste "de erro" que o seletor de cenario acima permite simular) -
+        // reflete isso na cor do badge em vez de sempre mostrar verde.
+        const encontrouRestricao = temResultado && !!IDE_TESTE_INFO.cenarios && !!IDE_TESTE_INFO.cenarios.length && d.codigo !== 0;
         if (temResultado) {
+            const corBorda = encontrouRestricao ? '#F59E0B' : 'var(--green)';
+            const corValor = encontrouRestricao ? '#92400E' : 'var(--green-dark)';
+            const badge = encontrouRestricao
+                ? '<span class="badge badge-amber">RESTRICAO ENCONTRADA</span>'
+                : '<span class="badge badge-green">RESULTADO ESPERADO</span>';
             div.innerHTML = '<div class="result-box match">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">' +
                 '<span style="font-size:14px">Entrada: <strong>' + escapeHtml(entrada || '(vazio)') + '</strong></span>' +
-                '<span class="badge badge-green">RESULTADO ESPERADO</span></div>' +
-                '<div class="compare-col" style="border-color:var(--green)">' +
+                badge + '</div>' +
+                '<div class="compare-col" style="border-color:' + corBorda + '">' +
                 '<div style="font-size:11px;color:var(--text-muted);margin-bottom:2px">Resultado' +
                 (IDE_TESTE_INFO.campo_saida ? ' (' + escapeHtml(IDE_TESTE_INFO.campo_saida) + ')' : '') + '</div>' +
-                '<div class="code-val" style="color:var(--green-dark)">' + escapeHtml(String(d.codigo)) + '</div>' +
+                '<div class="code-val" style="color:' + corValor + '">' + escapeHtml(String(d.codigo)) + '</div>' +
                 '<div class="desc">' + escapeHtml(legenda || d.descricao || '') + '</div>' +
                 (d.output ? '<div style="font-size:11px;color:var(--text-3);margin-top:6px;font-family:monospace;white-space:pre-wrap">' + escapeHtml(d.output) + '</div>' : '') +
                 '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + (d.tempo_ms != null ? d.tempo_ms.toFixed(0) + 'ms' : '') + '</div></div></div>';
