@@ -1286,11 +1286,28 @@ def testar_com_roteiro(programa):
                             env['COB_CPF'] = dt['cpf']
                         if dt.get('cnpj'):
                             env['COB_CNPJ'] = dt['cnpj']
-                    caso['parametros_entrada'] = [
-                        {'rotulo': rotulos_entrada.get(var) or ROTULO_PADRAO_VAR.get(var, var),
-                         'variavel': var, 'valor': valor}
-                        for var, valor in env.items()
-                    ]
+                    if entrada_reconhecida:
+                        caso['parametros_entrada'] = [
+                            {'rotulo': rotulos_entrada.get(var) or ROTULO_PADRAO_VAR.get(var, var),
+                             'variavel': var, 'valor': valor}
+                            for var, valor in env.items()
+                        ]
+                    else:
+                        # COB_PLACA e COB_CHASSI aqui recebem o MESMO valor
+                        # (o chassi do roteiro - nao ha placa real no roteiro,
+                        # pois o processo e' justamente o da PRIMEIRA emissao
+                        # de placa). Mostrar como 2 campos de entrada
+                        # diferentes ("Placa: <chassi>" e "Chassi: <chassi>")
+                        # sugeriria que ha' um valor de placa real quando nao
+                        # ha' - entao mostra como um unico campo generico.
+                        caso['parametros_entrada'] = [
+                            {'rotulo': 'Chassi (enviado tambem como placa - campo de entrada real do programa nao identificado)',
+                             'variavel': 'COB_CHASSI/COB_PLACA', 'valor': entrada},
+                        ]
+                        if dt.get('cpf'):
+                            caso['parametros_entrada'].append({'rotulo': 'CPF', 'variavel': 'COB_CPF', 'valor': dt['cpf']})
+                        if dt.get('cnpj'):
+                            caso['parametros_entrada'].append({'rotulo': 'CNPJ', 'variavel': 'COB_CNPJ', 'valor': dt['cnpj']})
                     if entrada_reconhecida:
                         caso['descricao_execucao'] = (
                             'Executa o fonte convertido "%s" com os parametros de entrada abaixo (reconhecidos '
