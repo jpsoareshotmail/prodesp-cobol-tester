@@ -585,26 +585,40 @@ _ENV_ROTULO = {
 }
 
 
+_LEGENDA_SETAS = re.compile(r'(\d{1,3})\s*->\s*([A-Za-zÀ-Úà-ú0-9][^\n]{1,80})')
+# variante ':' (ex: FGAA007 - '*====> AX-RET-TIPO =  0 : PLACA INVALIDA' seguido
+# de '*                     1 : PLACA DE MOTO 2 LETRAS' etc). '(?<!\w)' antes
+# do digito evita casar o final de um numero maior (ex: "L1990:"); a
+# descricao comecar por letra evita casar coisas tipo "20:30" (hora) ou
+# datas. Verificado sem falsos positivos nos 56 fontes convertidos.
+_LEGENDA_DOISPONTOS = re.compile(r'(?<!\w)(\d{1,3})\s*:\s*([A-Za-zÀ-Úà-ú][^\n]{1,80})')
+
+
 def _extrair_legenda_saida(content: str, campo_saida: str) -> dict:
-    """Best-effort: extrai uma legenda 'codigo -> descricao' de comentarios
-    logo apos a declaracao do campo de saida (padrao comum nestes fontes:
-    '*====> AX-GAA-RET = 0 -> NENHUM REGISTRO...' seguido de mais linhas
-    'N -> descricao'). Retorna {} se o fonte nao documentar dessa forma -
-    nem todo programa tem esse comentario, entao a ausencia e' esperada.
+    """Best-effort: extrai uma legenda 'codigo -> descricao' (ou 'codigo :
+    descricao') de comentarios logo apos a declaracao do campo de saida
+    (padrao comum nestes fontes: '*====> AX-GAA-RET = 0 -> NENHUM
+    REGISTRO...' ou '*====> AX-RET-TIPO = 0 : PLACA INVALIDA', seguido de
+    mais linhas 'N -> descricao'/'N : descricao'). Retorna {} se o fonte
+    nao documentar dessa forma - nem todo programa tem esse comentario,
+    entao a ausencia e' esperada.
     """
     if not campo_saida:
         return {}
     linhas = content.split('\n')
+
+    def _eh_linha_legenda(ln):
+        return '->' in ln or bool(re.search(r'\d{1,3}\s*:\s*[A-Za-zÀ-Úà-ú]', ln))
+
     idx_inicio = next((i for i, ln in enumerate(linhas)
-                        if len(ln) >= 7 and ln[6] == '*' and campo_saida in ln and '->' in ln), None)
+                        if len(ln) >= 7 and ln[6] == '*' and campo_saida in ln and _eh_linha_legenda(ln)), None)
     if idx_inicio is None:
         return {}
     legenda = {}
-    padrao = re.compile(r'(\d{1,3})\s*->\s*([A-Za-zÀ-Úà-ú0-9][^\n]{1,80})')
     for ln in linhas[idx_inicio:idx_inicio + 40]:
         if not (len(ln) >= 7 and ln[6] == '*'):
             break
-        m = padrao.search(ln)
+        m = _LEGENDA_SETAS.search(ln) or _LEGENDA_DOISPONTOS.search(ln)
         if m:
             legenda[m.group(1)] = m.group(2).strip().rstrip('.*').strip()
         elif legenda:
