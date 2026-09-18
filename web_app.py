@@ -532,6 +532,34 @@ def get_copybook_fonte(nome):
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/tabela-estrutura/<programa>/<path:tabela>', methods=['GET'])
+def get_tabela_estrutura(programa, tabela):
+    """Retorna a estrutura (coluna DB2 -> campo COBOL -> PIC) de uma tabela
+    referenciada pelo fonte do programa, para o modal aberto ao clicar numa
+    tabela na aba Projeto - ver cobol_runner.estrutura_tabela."""
+    from cobol_runner import estrutura_tabela
+    from data.program_registry import carregar_mapa
+    try:
+        mapa = carregar_mapa()
+        reverso = {v: k for k, v in mapa.items() if v}
+        if programa in reverso:
+            nome_convertido = programa
+        elif programa in mapa:
+            nome_convertido = mapa[programa] or programa
+        else:
+            try:
+                from data.program_mapping import get_converted_name
+                nome_convertido = get_converted_name(programa) or programa
+            except Exception:
+                nome_convertido = programa
+        return jsonify(estrutura_tabela(nome_convertido, tabela))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/api/results', methods=['GET'])
 def get_results():
     """Retorna resultados dos últimos testes"""

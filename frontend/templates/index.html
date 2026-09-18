@@ -1016,8 +1016,8 @@ function ideMostrar(modo) {
     if (tabelas.length) {
         tabelasBar = '<div class="ide-deps-row">' +
             '<span style="font-size:11px;color:var(--text-muted);font-weight:600">TABELAS (' + tabelas.length + '):</span>' +
-            tabelas.map(t => '<span class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px;cursor:default" title="Tabela DB2 referenciada em EXEC SQL">' +
-                escapeHtml(t) + '</span>').join('') +
+            tabelas.map(t => '<button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px" title="Ver estrutura" onclick="abrirTabela(\'' +
+                t.replace(/'/g, "\\'") + '\')">' + escapeHtml(t) + '</button>').join('') +
             '</div>';
     }
     // codigo-fonte sempre em cima (com seu proprio scroll interno); COPYBOOKS
@@ -1067,6 +1067,66 @@ async function abrirCopybook(nome) {
 }
 function fecharCopybookModal() {
     const ov = document.getElementById('copybook-modal');
+    if (ov) ov.style.display = 'none';
+}
+
+// Modal de estrutura de uma tabela DB2 referenciada pelo fonte (coluna ->
+// campo COBOL -> PIC), reconstruida a partir do proprio DECLARE CURSOR +
+// FETCH INTO do programa (ver backend cobol_runner.estrutura_tabela)
+async function abrirTabela(nome) {
+    let ov = document.getElementById('tabela-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'tabela-modal';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+        ov.onclick = function(e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div style="background:#fff;border-radius:10px;max-width:95%;max-height:90%;width:720px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3)">' +
+            '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">' +
+            '<strong id="tabela-modal-title" style="font-size:14px"></strong>' +
+            '<button class="btn btn-outline btn-sm" onclick="fecharTabelaModal()">Fechar</button></div>' +
+            '<div id="tabela-modal-body" style="overflow:auto;flex:1;padding:0"></div></div>';
+        document.body.appendChild(ov);
+    }
+    document.getElementById('tabela-modal-title').textContent = nome;
+    document.getElementById('tabela-modal-body').innerHTML = '<div style="padding:16px"><span class="spinner"></span> Carregando ' + escapeHtml(nome) + '...</div>';
+    ov.style.display = 'flex';
+    const prog = (IDE_CODE.prog || '').trim();
+    try {
+        const r = await fetch('/api/tabela-estrutura/' + encodeURIComponent(prog) + '/' + encodeURIComponent(nome));
+        const d = await r.json();
+        if (d.error) {
+            document.getElementById('tabela-modal-body').innerHTML = '<div class="result-box diff" style="margin:16px">' + escapeHtml(d.error) + '</div>';
+            return;
+        }
+        if (!d.colunas || !d.colunas.length) {
+            document.getElementById('tabela-modal-body').innerHTML =
+                '<div style="padding:16px;color:#888">Nao foi possivel identificar as colunas desta tabela no fonte.</div>';
+            return;
+        }
+        const cursoresTxt = (d.cursores || []).map(c => c.cursor).join(', ');
+        let html = '<div style="padding:10px 20px;font-size:11px;color:var(--text-muted);border-bottom:1px solid var(--border)">' +
+            d.colunas.length + ' colunas &middot; lida por ' + (d.cursores || []).length +
+            ' cursor(es): ' + escapeHtml(cursoresTxt) + '</div>';
+        html += '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+            '<thead><tr style="background:#FBFBFC;border-bottom:1px solid var(--border)">' +
+            '<th style="text-align:left;padding:8px 20px;font-size:11px;color:var(--text-muted)">COLUNA (DB2)</th>' +
+            '<th style="text-align:left;padding:8px 12px;font-size:11px;color:var(--text-muted)">CAMPO COBOL</th>' +
+            '<th style="text-align:left;padding:8px 20px;font-size:11px;color:var(--text-muted)">PIC</th>' +
+            '</tr></thead><tbody>' +
+            d.colunas.map(c => '<tr style="border-bottom:1px solid var(--border)">' +
+                '<td style="padding:6px 20px;font-family:\'JetBrains Mono\',monospace">' + escapeHtml(c.coluna) + '</td>' +
+                '<td style="padding:6px 12px;font-family:\'JetBrains Mono\',monospace;color:var(--text-muted)">' + escapeHtml(c.campo || '-') + '</td>' +
+                '<td style="padding:6px 20px;font-family:\'JetBrains Mono\',monospace">' +
+                (c.pic ? escapeHtml(c.pic) : '<span style="color:#bbb" title="Campo nao usado fora do FETCH neste ambiente - copybook original nao entregue">n/d</span>') +
+                '</td></tr>').join('') +
+            '</tbody></table>';
+        document.getElementById('tabela-modal-body').innerHTML = html;
+    } catch(e) {
+        document.getElementById('tabela-modal-body').innerHTML = '<div class="result-box diff" style="margin:16px">Erro: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+function fecharTabelaModal() {
+    const ov = document.getElementById('tabela-modal');
     if (ov) ov.style.display = 'none';
 }
 
