@@ -533,32 +533,6 @@ def get_copybook_fonte(nome):
         return jsonify({"error": str(e)}), 500
 
 
-@app.route('/api/tabela-estrutura/<programa>/<path:tabela>', methods=['GET'])
-def get_tabela_estrutura(programa, tabela):
-    """Retorna a estrutura (coluna DB2 -> campo COBOL -> PIC) de uma tabela
-    referenciada pelo fonte do programa, para o modal aberto ao clicar numa
-    tabela na aba Projeto - ver cobol_runner.estrutura_tabela."""
-    from cobol_runner import estrutura_tabela
-    from data.program_registry import carregar_mapa
-    try:
-        mapa = carregar_mapa()
-        reverso = {v: k for k, v in mapa.items() if v}
-        if programa in reverso:
-            nome_convertido = programa
-        elif programa in mapa:
-            nome_convertido = mapa[programa] or programa
-        else:
-            try:
-                from data.program_mapping import get_converted_name
-                nome_convertido = get_converted_name(programa) or programa
-            except Exception:
-                nome_convertido = programa
-        return jsonify(estrutura_tabela(nome_convertido, tabela))
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-
 
 @app.route('/api/results', methods=['GET'])
 def get_results():
@@ -1159,18 +1133,21 @@ def gerar_banco_endpoint():
 
 @app.route('/api/estrutura/tabela/<tabela>', methods=['GET'])
 def get_registros_tabela(tabela):
-    """Retorna os registros de teste de uma tabela do banco SQLite (para o modal)."""
+    """Retorna a estrutura (coluna -> tipo/PIC/origem) e os registros de
+    teste de uma tabela do banco SQLite (para o modal)."""
     try:
-        from tooling.orchestrator import ler_registros_tabela, gerar_banco_local
+        from tooling.orchestrator import ler_registros_tabela, gerar_banco_local, estrutura_colunas_tabela
         db = 'saida_estrutura/prodesp_teste.db'
+        pastas_copy = ['cobol_build/copy']
+        amostra = Path('entregas/copybook-Amostragem POC  - Fontes Convertidos/Originais')
+        if amostra.exists():
+            pastas_copy.append(str(amostra))
         # se o banco ainda nao foi materializado, gera agora
         if not Path(db).exists():
-            pastas_copy = ['cobol_build/copy']
-            amostra = Path('entregas/copybook-Amostragem POC  - Fontes Convertidos/Originais')
-            if amostra.exists():
-                pastas_copy.append(str(amostra))
             gerar_banco_local('fontes_convertidos/Convertidos', pastas_copy, db_path=db, n_massa=10)
         resultado = ler_registros_tabela(db, tabela, limite=100)
+        resultado['estrutura'] = estrutura_colunas_tabela(
+            'fontes_convertidos/Convertidos', pastas_copy, tabela)['colunas']
         return jsonify(resultado)
     except FileNotFoundError as e:
         return jsonify({"error": str(e)}), 404

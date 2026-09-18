@@ -135,6 +135,38 @@ def resolver_colunas(ti: TableInfo, copy_idx: dict):
     return resolvidas
 
 
+def estrutura_colunas_tabela(pasta_programas, pastas_copybooks: list, tabela: str) -> dict:
+    """Estrutura resolvida (coluna -> tipo/PIC/origem) de UMA tabela, para o
+    modal de registros da aba Estrutura de Dados mostrar tipo/tamanho/
+    fidelidade junto com os dados de teste (nao so' os valores crus das
+    linhas). Reusa a mesma resolucao (copybook real x fallback inferido)
+    usada para gerar a DDL/massa - ver resolver_colunas.
+    """
+    tabelas = coletar_tabelas(pasta_programas)
+    alvo = tabela.strip().upper()
+    ti = tabelas.get(alvo)
+    if ti is None:
+        return {"tabela": alvo, "colunas": [], "programas": []}
+    copy_idx = indexar_copybooks(pastas_copybooks)
+    resolvidas = resolver_colunas(ti, copy_idx)
+    return {
+        "tabela": ti.full_name,
+        "colunas": [
+            {
+                "coluna": col,
+                "campo": hv or None,
+                "pic": pic.raw,
+                "tipo_sql": sql_type(pic),
+                "origem": origem,
+                "chave": col in ti.keys,
+                "nullable": nullable,
+            }
+            for col, pic, origem, nullable, hv in resolvidas
+        ],
+        "programas": sorted(ti.programs),
+    }
+
+
 def gerar_ddl_tabela(ti: TableInfo, copy_idx: dict) -> str:
     resolvidas = resolver_colunas(ti, copy_idx)
     itens = []
