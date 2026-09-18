@@ -160,6 +160,29 @@ def _reparar_literais_partidos(content: str) -> str:
     return '\n'.join(saida)
 
 
+def _stub_sql(texto_bloco_upper: str, tem_ponto: bool) -> str:
+    """Escolhe o stub para um bloco EXEC SQL neutralizado, de acordo com o
+    verbo usado - sem isso, todo bloco virava CONTINUE puro e DMSTATUS-S
+    nunca mudava de valor. Dois problemas praticos disso: (1) um FETCH
+    "sem mais linhas" nunca sinalizava NOTFOUND, entao um loop tipo
+    'PERFORM ... UNTIL DMSTATUS-S = "NOTFOUND"' (ou uma flag derivada dele)
+    ficava preso reprocessando a mesma linha (nunca atualizada) para
+    sempre - travamento real visto em FGAT006D/FGAT030D; (2) um OPEN nunca
+    sinalizava OK, entao o codigo que abre a tabela sempre caia no
+    tratamento de erro, mesmo sem nenhuma relacao com os dados de teste
+    (visto em FGAA012D/032D/050D/115D/FGEV006D - "ERRO ABERTURA X").
+
+    Depende de DMSTATUS-S caber "NOTFOUND" (8 chars) - ver o tamanho do
+    campo em cobol_build/copy/WSGLDB.cpy.
+    """
+    ponto = '.' if tem_ponto else ''
+    if re.search(r'\bFETCH\b', texto_bloco_upper):
+        return '           MOVE "NOTFOUND" TO DMSTATUS-S' + ponto
+    if re.search(r'\bOPEN\b', texto_bloco_upper):
+        return '           MOVE "OK" TO DMSTATUS-S' + ponto
+    return '           CONTINUE' + ponto
+
+
 def preprocessar_sql(source_content: str) -> str:
     """
     Remove blocos EXEC SQL/CICS do fonte COBOL, substituindo por stubs.
@@ -171,6 +194,7 @@ def preprocessar_sql(source_content: str) -> str:
     result = []
     in_exec_sql = False
     exec_sql_lines = []
+    bloco_eh_sql = False
     in_procedure_div = False
 
     i = 0
@@ -189,15 +213,15 @@ def preprocessar_sql(source_content: str) -> str:
                 if in_procedure_div:
                     # Checar se termina com ponto (area B, colunas 8-72)
                     code_area = line[6:72] if len(line) > 72 else line[6:]
-                    if '.' in code_area and code_area.strip().rstrip().endswith('.'):
-                        result.append('           CONTINUE.')
-                    elif 'END-EXEC.' in line.upper():
-                        result.append('           CONTINUE.')
-                    else:
-                        result.append('           CONTINUE')
+                    tem_ponto = (('.' in code_area and code_area.strip().rstrip().endswith('.'))
+                                 or 'END-EXEC.' in line.upper())
+                    is_sql = 'EXEC SQL' in line.upper()
+                    result.append(_stub_sql(line.upper(), tem_ponto) if is_sql
+                                  else ('           CONTINUE.' if tem_ponto else '           CONTINUE'))
                 i += 1
                 continue
             in_exec_sql = True
+            bloco_eh_sql = 'EXEC SQL' in line.upper()
             exec_sql_lines = [line]
             i += 1
             continue
@@ -214,10 +238,12 @@ def preprocessar_sql(source_content: str) -> str:
                     # Se a ultima linha do bloco terminava com ponto, adicionar ponto
                     last_line = exec_sql_lines[-1]
                     code_area = last_line[6:72] if len(last_line) > 72 else last_line[6:]
-                    if 'END-EXEC.' in last_line.upper() or code_area.rstrip().endswith('.'):
-                        result.append('           CONTINUE.')
+                    tem_ponto = 'END-EXEC.' in last_line.upper() or code_area.rstrip().endswith('.')
+                    if bloco_eh_sql:
+                        texto_bloco = ' '.join(exec_sql_lines).upper()
+                        result.append(_stub_sql(texto_bloco, tem_ponto))
                     else:
-                        result.append('           CONTINUE')
+                        result.append('           CONTINUE.' if tem_ponto else '           CONTINUE')
                 exec_sql_lines = []
             i += 1
             continue
@@ -245,9 +271,21 @@ def preprocessar_sql(source_content: str) -> str:
                 termina_run_unit = any(x in upper_line for x in [
                         'DATABASE-TERMINATE', 'HANDLE-DMTERMINATE',
                         'SYSTEM  DMTERMINATE', 'SYSTEM DMTERMINATE'])
-                eh_dm_generico = termina_run_unit or any(x in upper_line for x in [
-                        'DATABASE-OPEN', 'DATABASE-CLOSE', 'HANDLE-SQL',
-                        '-STEN', ':TRUE)'])
+                # PERFORM DATABASE-OPEN sempre e' seguido de 'IF DMSTATUS-S
+                # NOT = "OK"' (confirmado em FGAA012D/032D/050D/115D,
+                # FGAT006D/030D, FGEV006D - mesmo padrao em todos). Virar
+                # CONTINUE puro deixa DMSTATUS-S no default da WORKING-
+                # STORAGE ("00", nunca "OK"), entao esse IF da erro em
+                # 100% das execucoes, mesmo sem relacao nenhuma com os
+                # dados de teste - nao e' "tabela nao existe para este
+                # chassi", e' a abertura nunca sendo marcada como sucedida.
+                # Simula um OPEN bem-sucedido (equivalente a "tabela abriu,
+                # vazia") para o programa seguir ate' a logica real de
+                # FETCH/cursor, que ja' costuma tratar "nao encontrado"
+                # graciosamente (ex: DMSTATUS-S = 'NOTFOUND' em FGAT030D).
+                abre_database = 'DATABASE-OPEN' in upper_line
+                eh_dm_generico = termina_run_unit or abre_database or any(x in upper_line for x in [
+                        'DATABASE-CLOSE', 'HANDLE-SQL', '-STEN', ':TRUE)'])
                 if eh_dm_generico:
                     result.append(_comment_line(line))
                     tem_ponto = (line.strip().endswith('.') or 'END-EXEC.' in line.upper())
@@ -257,6 +295,8 @@ def preprocessar_sql(source_content: str) -> str:
                     if termina_run_unit:
                         result.append('           MOVE 99 TO RETURN-CODE')
                         result.append('           GOBACK.' if tem_ponto else '           GOBACK')
+                    elif abre_database:
+                        result.append('           MOVE "OK" TO DMSTATUS-S' + ('.' if tem_ponto else ''))
                     else:
                         result.append('           CONTINUE.' if tem_ponto else '           CONTINUE')
                     i += 1

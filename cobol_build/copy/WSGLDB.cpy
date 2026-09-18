@@ -19,7 +19,14 @@
        01  WS-SQLCODE                PIC S9(009) COMP VALUE ZEROS.
        01  WS-ROWCOUNT               PIC 9(009) VALUE ZEROS.
        01  ROWCOUNT                  PIC 9(009) VALUE ZEROS.
-       01  DMSTATUS-S                PIC X(002) VALUE "00".
+      * PIC X(002) era insuficiente: o codigo compara DMSTATUS-S contra
+      * palavras como "NOTFOUND"/"DEADLOCK"/"SECURITYERROR" (ate 13 chars)
+      * em todos os 42 programas - com 2 chars essas comparacoes eram
+      * estruturalmente impossiveis (sempre falsas), inclusive causando
+      * loops de FETCH que nunca terminavam (a condicao de saida nunca
+      * era satisfeita). VALUE SPACES em vez de "00": um valor de 2 chars
+      * nao faria mais sentido como "estado inicial" de um campo de 15.
+       01  DMSTATUS-S                PIC X(015) VALUE SPACES.
        01  DMSTATUS                  PIC S9(004) COMP VALUE ZEROS.
        01  DM-STATUS                 PIC X(002) VALUE "00".
        01  ROUTINE-REF               PIC X(030) VALUE SPACES.
