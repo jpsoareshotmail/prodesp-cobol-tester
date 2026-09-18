@@ -745,6 +745,18 @@ def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | No
     for envvar, nome_campo in moves:
         campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
         linhas.append('           MOVE UPPER-CASE(%s) TO %s' % (campo_ws, nome_campo))
+    # campos auxiliares conhecidos que o programa exige preenchidos (ao lado
+    # do campo de entrada principal) pra sequer tentar validar - sem valor,
+    # ficam no default da WORKING-STORAGE (SPACES) e o programa sai pelo
+    # atalho de "formato invalido" ANTES de rodar a logica real (visto em
+    # FGAA015: AX-LIB-TIPO = 'P'/'N' discrimina qual algoritmo de chassi
+    # usar; 'N' - "CHASSIS NORMAL", comentario no fonte - roda o caminho
+    # mais simples/comum e resulta em validacao de verdade). Caso isolado
+    # (nenhum outro programa parametrizado tem esse padrao) - lista curta
+    # e explicita em vez de heuristica generica.
+    for campo, valor in (('AX-LIB-TIPO', 'N'),):
+        if any(campo in bloco for _n, bloco in blocos):
+            linhas.append('           MOVE "%s" TO %s' % (valor, campo))
     linhas.append('           CALL "%s" USING %s' % (nome_convertido, nomes_params[0]))
     for extra in nomes_params[1:]:
         linhas.append('               %s' % extra)
