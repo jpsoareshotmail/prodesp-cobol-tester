@@ -123,6 +123,9 @@
         .ide-code table { border-collapse: collapse; width: 100%; }
         .ide-code .ln { text-align: right; color: #6A6A6A; padding: 0 10px; user-select: none; width: 1%; white-space: nowrap; border-right: 1px solid #333; }
         .ide-code .lc { padding: 0 12px; white-space: pre; color: #C8E6C9; }
+        .ide-deps { flex: 0 0 auto; max-height: 130px; overflow-y: auto; border-top: 1px solid var(--border); background: #fafafa; }
+        .ide-deps-row { padding: 6px 14px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .ide-deps-row + .ide-deps-row { border-top: 1px solid var(--border); }
         @media (max-width: 900px) { .ide-split { grid-template-columns: 1fr; } .ide { height: auto; } }
         .prog-list { max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; }
         .prog-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; }
@@ -1002,7 +1005,7 @@ function ideMostrar(modo) {
     const copies = extrairCopiesDoFonte(fonte ? fonte.codigo : '');
     let copiesBar = '';
     if (copies.length) {
-        copiesBar = '<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fafafa">' +
+        copiesBar = '<div class="ide-deps-row">' +
             '<span style="font-size:11px;color:var(--text-muted);font-weight:600">COPYBOOKS (' + copies.length + '):</span>' +
             copies.map(c => '<button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px" onclick="abrirCopybook(\'' +
                 c.replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</button>').join('') +
@@ -1011,16 +1014,23 @@ function ideMostrar(modo) {
     const tabelas = extrairTabelasDoFonte(fonte ? fonte.codigo : '');
     let tabelasBar = '';
     if (tabelas.length) {
-        tabelasBar = '<div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center;background:#fafafa">' +
+        tabelasBar = '<div class="ide-deps-row">' +
             '<span style="font-size:11px;color:var(--text-muted);font-weight:600">TABELAS (' + tabelas.length + '):</span>' +
             tabelas.map(t => '<span class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px;cursor:default" title="Tabela DB2 referenciada em EXEC SQL">' +
                 escapeHtml(t) + '</span>').join('') +
             '</div>';
     }
+    // codigo-fonte sempre em cima (com seu proprio scroll interno); COPYBOOKS
+    // e TABELAS ficam numa faixa fixa embaixo, com scroll proprio - antes,
+    // essas faixas ficavam ACIMA do codigo e cresciam sem limite (flex-wrap)
+    // em fontes com muitos COPY/tabelas, empurrando/espremendo o codigo pra
+    // fora da tela (parecia "travado": a area de codigo sumia ou ficava
+    // minuscula).
+    const depsBar = (copiesBar || tabelasBar) ? '<div class="ide-deps">' + copiesBar + tabelasBar + '</div>' : '';
     const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>CODIGO FONTE</span><span>' +
         (fonte ? escapeHtml(fonte.arquivo) + ' - ' + fonte.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
-        copiesBar + tabelasBar +
-        '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div></div>';
+        '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div>' +
+        depsBar + '</div>';
     wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + pane + '</div>';
 }
 
