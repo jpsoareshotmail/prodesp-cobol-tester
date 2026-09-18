@@ -417,6 +417,44 @@ def _detectar_copybooks_inferidos(codigo_convertido: str):
     return inferidos
 
 
+def _detectar_copybooks_stub(codigo_convertido: str):
+    """Detecta copybooks que sao STUBS VAZIOS (nem sequer inferidos).
+
+    Bem no inicio do projeto, quando so' os programas principais foram
+    entregues (sem a arvore completa de copybooks do mainframe), foi gerado
+    um placeholder de 1-2 linhas ('* Stub: NOME (Working-Storage/Procedure
+    Division)') para cada COPY que nao existia, so' pra o compilador nao
+    falhar por include ausente. Diferente dos copybooks 'inferidos' (que ao
+    menos deduzem campos a partir do uso no codigo), esses stubs NAO tem
+    nenhuma estrutura real - sao so' um filler. Isso e' invisivel na lista de
+    COPYBOOKS da aba Codigo fonte, que so' lista os nomes referenciados por
+    COPY sem distinguir stub de copybook real/entregue.
+    """
+    import re
+    from cobol_runner import COPY_DIR
+
+    if not codigo_convertido:
+        return []
+
+    nomes = set()
+    for m in re.finditer(r'(?im)^\s*COPY\s+([A-Z0-9\-]+)', codigo_convertido):
+        nomes.add(m.group(1).strip().upper())
+
+    stubs = []
+    for nome in sorted(nomes):
+        cpy = COPY_DIR / f"{nome}.cpy"
+        if not cpy.exists():
+            continue
+        try:
+            txt = cpy.read_text(encoding='latin-1', errors='ignore')
+        except Exception:
+            continue
+        primeira_linha = next((ln for ln in txt.split('\n') if ln.strip()), '')
+        if re.match(r'^\s*\*\s*Stub:', primeira_linha):
+            stubs.append(nome)
+    return stubs
+
+
 @app.route('/api/codigo-fonte/<programa>', methods=['GET'])
 def get_codigo_fonte_dual(programa):
     """Retorna codigo fonte do programa em ambas versoes (original e convertido)"""
@@ -424,7 +462,7 @@ def get_codigo_fonte_dual(programa):
     from data.program_registry import carregar_mapa
 
     resultado = {"programa": programa, "original": None, "convertido": None,
-                 "inferidos": []}
+                 "inferidos": [], "stubs": []}
 
     # Determinar nomes a partir do registro dinamico (original -> convertido)
     mapa = carregar_mapa()
@@ -478,6 +516,8 @@ def get_codigo_fonte_dual(programa):
                 }
                 # copybooks inferidos usados por este programa
                 resultado["inferidos"] = _detectar_copybooks_inferidos(codigo)
+                # copybooks que sao stub vazio (nem inferido - sem estrutura nenhuma)
+                resultado["stubs"] = _detectar_copybooks_stub(codigo)
             except:
                 pass
 

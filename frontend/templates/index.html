@@ -919,7 +919,7 @@ function valorExemplo(prog) {
 }
 
 // guarda o codigo carregado para trocar de aba sem refazer fetch
-let IDE_CODE = { original: null, convertido: null, prog: '', inferidos: [] };
+let IDE_CODE = { original: null, convertido: null, prog: '', inferidos: [], stubs: [] };
 // como o programa atual e testado (campos de entrada reconhecidos, legenda do resultado)
 let IDE_TESTE_INFO = { tipo: 'generico' };
 
@@ -1004,25 +1004,31 @@ function renderCodigoNumerado(codigo) {
     return '<table>' + rows + '</table>';
 }
 
-// Monta o banner de aviso quando o programa depende de copybooks inferidos.
-// Deixa claro que a estrutura de dados foi deduzida para permitir a execucao.
-function bannerInferencia(inferidos) {
-    if (!inferidos || !inferidos.length) return '';
-    let itens = inferidos.map(i =>
-        '<li style="margin:2px 0"><code style="font-weight:700">' + escapeHtml(i.copybook) +
-        '</code> &ndash; ' + escapeHtml(i.descricao) + '</li>').join('');
-    return '<div style="border:1px solid #F59E0B;background:#FFFBEB;border-radius:8px;padding:12px 14px;margin-bottom:14px">' +
+// Monta o banner de aviso quando o programa depende de copybooks inferidos
+// e/ou de copybooks-stub (vazios). Deixa claro que a estrutura de dados foi
+// deduzida (ou nem existe) para permitir a execucao.
+function bannerInferencia(inferidos, stubs) {
+    if ((!inferidos || !inferidos.length) && (!stubs || !stubs.length)) return '';
+    let html = '<div style="border:1px solid #F59E0B;background:#FFFBEB;border-radius:8px;padding:12px 14px;margin-bottom:14px">' +
         '<div style="display:flex;align-items:center;gap:8px;font-weight:700;color:#92400E;font-size:13px">' +
-        '<span style="font-size:16px">&#9888;</span> Estrutura de dados inferida</div>' +
+        '<span style="font-size:16px">&#9888;</span> Copybooks nao entregues pelo mainframe</div>' +
         '<div style="font-size:12px;color:#78350F;margin-top:6px">' +
-        'Este programa usa copybooks de tabela que <strong>nao foram entregues</strong> com os fontes. ' +
-        'Para permitir a compilacao e execucao do teste, a estrutura desses dados foi <strong>inferida</strong> ' +
-        'a partir do uso no proprio codigo (host variables dos EXEC SQL e MOVEs). ' +
-        'Os tipos e tamanhos sao uma <strong>aproximacao</strong> e podem nao ser fieis ao dicionario DB2 original.' +
-        '</div>' +
-        '<div style="font-size:12px;color:#78350F;margin-top:8px">Copybooks inferidos:</div>' +
-        '<ul style="margin:4px 0 0 18px;font-size:12px;color:#78350F">' + itens + '</ul>' +
+        'Este programa depende de copybooks que <strong>nao vieram junto com os fontes</strong>. ' +
+        'Para permitir compilar e executar o teste, cada um foi tratado de um jeito diferente conforme o que foi possivel deduzir:' +
         '</div>';
+    if (inferidos && inferidos.length) {
+        const itens = inferidos.map(i =>
+            '<li style="margin:2px 0"><code style="font-weight:700">' + escapeHtml(i.copybook) +
+            '</code> &ndash; ' + escapeHtml(i.descricao) + '</li>').join('');
+        html += '<div style="font-size:12px;color:#78350F;margin-top:8px"><strong>Inferidos</strong> (estrutura deduzida a partir do uso no codigo - host variables dos EXEC SQL e MOVEs; tipos/tamanhos sao uma aproximacao, podem nao ser fieis ao dicionario DB2 original):</div>' +
+            '<ul style="margin:4px 0 0 18px;font-size:12px;color:#78350F">' + itens + '</ul>';
+    }
+    if (stubs && stubs.length) {
+        const itensStub = stubs.map(s => '<li style="margin:2px 0"><code style="font-weight:700">' + escapeHtml(s) + '</code></li>').join('');
+        html += '<div style="font-size:12px;color:#78350F;margin-top:8px"><strong>Stub vazio</strong> (nem sequer inferido - sao so\' um placeholder de 1-2 linhas pra o compilador nao falhar por include ausente; nao tem NENHUM campo real):</div>' +
+            '<ul style="margin:4px 0 0 18px;font-size:12px;color:#78350F">' + itensStub + '</ul>';
+    }
+    return html + '</div>';
 }
 
 // Extrai os nomes de copybook referenciados por 'COPY NOME.' no fonte
@@ -1067,12 +1073,24 @@ function ideMostrar(modo) {
     // se nao houver convertido, cai no original.
     const fonte = IDE_CODE.convertido || IDE_CODE.original;
     const copies = extrairCopiesDoFonte(fonte ? fonte.codigo : '');
+    const stubsSet = new Set(IDE_CODE.stubs || []);
     let copiesBar = '';
     if (copies.length) {
+        const nStubs = copies.filter(c => stubsSet.has(c)).length;
         copiesBar = '<div class="ide-deps-row">' +
-            '<span style="font-size:11px;color:var(--text-muted);font-weight:600">COPYBOOKS (' + copies.length + '):</span>' +
-            copies.map(c => '<button class="btn btn-outline btn-sm" style="padding:3px 10px;font-size:11px" onclick="abrirCopybook(\'' +
-                c.replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + '</button>').join('') +
+            '<span style="font-size:11px;color:var(--text-muted);font-weight:600">COPYBOOKS (' + copies.length +
+            (nStubs ? ', ' + nStubs + ' stub' : '') + '):</span>' +
+            copies.map(c => {
+                const isStub = stubsSet.has(c);
+                const style = isStub
+                    ? 'padding:3px 10px;font-size:11px;border-color:#F59E0B;color:#92400E;background:#FFFBEB'
+                    : 'padding:3px 10px;font-size:11px';
+                const titulo = isStub
+                    ? ' title="STUB: copybook nao entregue pelo mainframe - este arquivo e\' so\' um placeholder vazio (sem estrutura real), gerado apenas pra o compilador nao falhar por include ausente"'
+                    : '';
+                return '<button class="btn btn-outline btn-sm" style="' + style + '"' + titulo + ' onclick="abrirCopybook(\'' +
+                    c.replace(/'/g, "\\'") + '\')">' + escapeHtml(c) + (isStub ? ' <small>(stub)</small>' : '') + '</button>';
+            }).join('') +
             '</div>';
     }
     const tabelas = extrairTabelasDoFonte(fonte ? fonte.codigo : '');
@@ -1145,7 +1163,7 @@ async function carregarCodigo() {
     try {
         const r = await fetch('/api/codigo-fonte/' + prog);
         const d = await r.json();
-        IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog, inferidos: d.inferidos || [] };
+        IDE_CODE = { original: d.original, convertido: d.convertido, prog: prog, inferidos: d.inferidos || [], stubs: d.stubs || [] };
 
         // como este programa e testado (campos de entrada reconhecidos, legenda do resultado)
         IDE_TESTE_INFO = { tipo: 'generico' };
@@ -1164,7 +1182,7 @@ async function carregarCodigo() {
         html += '<div class="ide-editor-wrap" id="ide-editor-wrap"></div>';
         // painel de Testes (exibido quando a aba Testes esta ativa)
         html += '<div id="ide-testes" style="display:none;flex:1;overflow:auto;padding:16px">';
-        html += bannerInferencia(d.inferidos || []);
+        html += bannerInferencia(d.inferidos || [], d.stubs || []);
         html += renderTesteInfoBox(IDE_TESTE_INFO);
         html += '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">';
         html += '<span style="font-size:13px;font-weight:700;color:var(--text-3)">' + escapeHtml(rotuloEntradaTeste(IDE_TESTE_INFO)) + ':</span>';
