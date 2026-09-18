@@ -17,6 +17,73 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+_MAPAS_TELA_CACHE: set | None = None
+
+
+def _mapas_tela(copy_dir: Path) -> set:
+    """Nomes (sem extensao, maiusculo) dos copybooks em copy_dir que
+    declaram '01 X REDEFINES C-MAPA' - as telas de terminal (BMS/TIP) que
+    varios programas CICS compartilham o mesmo buffer C-MAPA. Cacheado
+    (o conjunto de copybooks disponiveis nao muda durante o processo)."""
+    global _MAPAS_TELA_CACHE
+    if _MAPAS_TELA_CACHE is None:
+        nomes = set()
+        if copy_dir.is_dir():
+            for f in copy_dir.glob('*.cpy'):
+                try:
+                    txt = f.read_text(encoding='latin-1', errors='ignore')
+                except Exception:
+                    continue
+                # so' conta codigo de verdade (col 7 != '*'/'/') - senao um
+                # comentario que so' MENCIONA "REDEFINES C-MAPA" (como este
+                # aqui, ou o de WSGL.cpy) classificaria o proprio copybook
+                # errado como tela.
+                codigo = '\n'.join(ln for ln in txt.split('\n')
+                                    if not (len(ln) >= 7 and ln[6] in ('*', '/')))
+                if re.search(r'(?i)REDEFINES\s+C-MAPA\b', codigo):
+                    nomes.add(f.stem.upper())
+        _MAPAS_TELA_CACHE = nomes
+    return _MAPAS_TELA_CACHE
+
+
+def _agrupar_copies_mapa_tela(content: str, copy_dir: Path) -> str:
+    """Move os 'COPY <mapa>.' de copybooks de tela (01 X REDEFINES C-MAPA)
+    para logo apos 'COPY WSGL.' (onde C-MAPA e' declarado por ultimo de
+    proposito - ver comentario em cobol_build/copy/WSGL.cpy).
+
+    COBOL exige que um REDEFINES venha IMEDIATAMENTE apos o item original,
+    sem nenhum outro 01-level no meio. Cada programa CICS usa varias telas
+    (uma por transacao que trata), cada uma copiada no ponto do codigo que
+    a usa - ou seja, espalhadas pelo fonte, nunca adjacentes ao C-MAPA nem
+    umas as outras. Sem esse reagrupamento, o compilador rejeita com
+    'REDEFINES must follow the original definition' assim que o programa
+    referencia mais de uma tela (o caso comum - a maioria trata varias
+    transacoes num so' dispatcher). Mover COPY statements nao muda logica
+    nenhuma: e' so' inclusao textual em tempo de compilacao.
+    """
+    mapas = _mapas_tela(copy_dir)
+    if not mapas:
+        return content
+    linhas = content.split('\n')
+
+    relocadas = []
+    mantidas = []
+    for ln in linhas:
+        m = re.match(r'(?i)^\s*COPY\s+([A-Za-z0-9\-]+)\b', ln)
+        if m and m.group(1).upper() in mapas:
+            relocadas.append(ln)
+        else:
+            mantidas.append(ln)
+    if not relocadas:
+        return content
+
+    idx_wsgl = next((i for i, ln in enumerate(mantidas)
+                      if re.match(r'(?i)^\s*COPY\s+WSGL\b', ln)), None)
+    if idx_wsgl is None:
+        return content  # sem COPY WSGL. - C-MAPA nao viria de la' mesmo
+    mantidas[idx_wsgl + 1:idx_wsgl + 1] = relocadas
+    return '\n'.join(mantidas)
+
 
 def _reparar_literais_partidos(content: str) -> str:
     """Reparos de conversao seguros aplicados antes de compilar.
@@ -341,6 +408,56 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                     i += 1
                     continue
 
+            # CALLs a rotinas de sistema Unisys ClearPath que nao existem
+            # neste ambiente ("module X not found" em runtime - so' aparece
+            # ao rodar de verdade, o programa compila normalmente porque a
+            # resolucao de CALL por literal e' so' em tempo de execucao):
+            #   - ENABLEX/DISABLEX: configuram/desligam timeout de leitura de
+            #     terminal - infraestrutura pura, sem efeito em logica de
+            #     negocio.
+            #   - SENDX/RECEIVEX: enviam/recebem mensagem de um sistema
+            #     remoto (ex: RENAVAM/BIN) por um buffer proprio (nao e' o
+            #     C-MAPA da tela local) - equivalente a um FETCH de DB2 sem
+            #     banco real: simula "completou sem erro" limpando o campo
+            #     de status (ultimo parametro do USING, testado logo depois
+            #     com "IF ... = 'X'" pra decidir abortar) - a logica real de
+            #     negocio roda sobre o buffer de resposta vazio (= "nao
+            #     encontrado", igual ao FETCH neutralizado).
+            #   - DIGITCPF/DIGITCGC: validador de digito verificador de
+            #     CPF/CNPJ (rotina separada, nao entre os fontes entregues) -
+            #     simula "digito valido" (AX-LIB-DC-CONS = 1) pra nao travar
+            #     essa checagem especifica; a validacao de digito em si fica
+            #     fora do escopo do teste (nao temos o algoritmo real).
+            # A clausula USING pode vir na(s) linha(s) seguinte(s) (sem ponto
+            # final na propria linha do CALL) - consome ate' achar o ponto.
+            m_syscall = re.match(
+                r"(?i)^\s*CALL\s+['\"](ENABLEX|DISABLEX|SENDX|RECEIVEX|DIGITCPF|DIGITCGC)['\"]", line)
+            if m_syscall:
+                rotina = m_syscall.group(1).upper()
+                result.append(_comment_line(line))
+                tem_ponto_proprio = line.strip().endswith('.')
+                linhas_using = [line]
+                i += 1
+                if not tem_ponto_proprio:
+                    while i < len(lines) and not lines[i].strip().endswith('.'):
+                        linhas_using.append(lines[i])
+                        result.append(_comment_line(lines[i]))
+                        i += 1
+                    if i < len(lines):
+                        linhas_using.append(lines[i])
+                        result.append(_comment_line(lines[i]))
+                        i += 1
+                if rotina in ('SENDX', 'RECEIVEX'):
+                    texto = ' '.join(l.strip() for l in linhas_using).upper()
+                    mcampo = re.search(r'([A-Z][\w-]*)\s*\.\s*$', texto)
+                    result.append('           MOVE SPACES TO %s.' % mcampo.group(1)
+                                  if mcampo else '           CONTINUE.')
+                elif rotina in ('DIGITCPF', 'DIGITCGC'):
+                    result.append('           MOVE 1 TO AX-LIB-DC-CONS.')
+                else:
+                    result.append('           CONTINUE.')
+                continue
+
             # Comentar PERFORMs e CALLs de paragrafos de DB (Micro Focus syntax)
             if 'PERFORM' in line.upper() or 'CALL' in line.upper():
                 upper_line = line.upper().strip()
@@ -352,19 +469,23 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                 termina_run_unit = any(x in upper_line for x in [
                         'DATABASE-TERMINATE', 'HANDLE-DMTERMINATE',
                         'SYSTEM  DMTERMINATE', 'SYSTEM DMTERMINATE'])
-                # PERFORM DATABASE-OPEN sempre e' seguido de 'IF DMSTATUS-S
-                # NOT = "OK"' (confirmado em FGAA012D/032D/050D/115D,
-                # FGAT006D/030D, FGEV006D - mesmo padrao em todos). Virar
+                # PERFORM DATABASE-OPEN/TRANSACTION-BEGIN sempre e' seguido
+                # de 'IF DMSTATUS-S NOT = "OK"' (confirmado em FGAA012D/032D/
+                # 050D/115D, FGAT006D/030D, FGEV006D - mesmo padrao em
+                # todos; TRANSACTION-BEGIN e' o mesmo padrao usado em 25
+                # programas CICS pra abrir escopo de transacao antes de um
+                # UPDATE, ex: OGAA013D/018D/640D/920D/PGAA100D). Virar
                 # CONTINUE puro deixa DMSTATUS-S no default da WORKING-
                 # STORAGE ("00", nunca "OK"), entao esse IF da erro em
                 # 100% das execucoes, mesmo sem relacao nenhuma com os
                 # dados de teste - nao e' "tabela nao existe para este
                 # chassi", e' a abertura nunca sendo marcada como sucedida.
-                # Simula um OPEN bem-sucedido (equivalente a "tabela abriu,
-                # vazia") para o programa seguir ate' a logica real de
+                # Simula um OPEN/BEGIN bem-sucedido (equivalente a "tabela
+                # abriu, vazia") para o programa seguir ate' a logica real de
                 # FETCH/cursor, que ja' costuma tratar "nao encontrado"
                 # graciosamente (ex: DMSTATUS-S = 'NOTFOUND' em FGAT030D).
-                abre_database = 'DATABASE-OPEN' in upper_line
+                abre_database = ('DATABASE-OPEN' in upper_line or 'TRANSACTION-BEGIN' in upper_line
+                                  or 'TRANSACTION-END' in upper_line)
                 eh_dm_generico = termina_run_unit or abre_database or any(x in upper_line for x in [
                         'DATABASE-CLOSE', 'HANDLE-SQL', '-STEN', ':TRUE)'])
                 if eh_dm_generico:
@@ -463,6 +584,7 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
     """
     try:
         content = source_path.read_text(encoding='latin-1')
+        content = _agrupar_copies_mapa_tela(content, Path(output_path).parent / 'copy')
 
         if 'EXEC SQL' not in content.upper() and 'EXEC CICS' not in content.upper():
             # Nao tem SQL, copiar direto

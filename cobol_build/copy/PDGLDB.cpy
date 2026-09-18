@@ -18,7 +18,7 @@
        AUTENTICACAODS-DL.
            CONTINUE.
        AUTENTICACAODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        AUTENTICACAODS-ST.
            CONTINUE.
        AVARIADOSDS-DB2DMS.
@@ -26,7 +26,7 @@
        AVARIADOSDS-DL.
            CONTINUE.
        AVARIADOSDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        AVARIAHISTDS-CR.
            CONTINUE.
        AVARIAHISTDS-DB2DMS.
@@ -56,7 +56,7 @@
        BLOQUEIODS-DL.
            CONTINUE.
        BLOQUEIODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        BLOQUEIODS-ST.
            CONTINUE.
        CAMBIODS-CR.
@@ -76,7 +76,7 @@
        CODSEGCRLVDS-DL.
            CONTINUE.
        CODSEGCRLVDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        CODSEGCRLVDS-ST.
            CONTINUE.
        CODSEGCRVDS-CR.
@@ -86,7 +86,7 @@
        CODSEGCRVDS-DL.
            CONTINUE.
        CODSEGCRVDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        CODSEGCRVDS-ST.
            CONTINUE.
        COMVENDHISDS-DB2DMS.
@@ -106,7 +106,7 @@
        CSVCERTDS-DL.
            CONTINUE.
        CSVCERTDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        CSVHISTDS-CR.
            CONTINUE.
        CSVHISTDS-ST.
@@ -136,7 +136,7 @@
        ECRVAUTENTICADS-DL.
            CONTINUE.
        ECRVAUTENTICADS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        ECRVAUTENTICADS-ST.
            CONTINUE.
        ECRVAUTENTICASS1-STBG.
@@ -154,7 +154,7 @@
        ESCPLACDS-DB2DMS.
            CONTINUE.
        ESCPLACDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        ESCPLACDS-ST.
            CONTINUE.
        ESPELHODS-CR.
@@ -170,7 +170,7 @@
        ESTAMPAGEMDS-DL.
            CONTINUE.
        ESTAMPAGEMDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        ESTAMPAGEMDS-ST.
            CONTINUE.
        ESTAMPAGEMSE6-STEN.
@@ -194,7 +194,7 @@
        GEVERDS-DL.
            CONTINUE.
        GEVERDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        GEVERDS-ST.
            CONTINUE.
        GEVEXCLUIDODS-CR.
@@ -222,7 +222,7 @@
        GEVMODIFDS-DL.
            CONTINUE.
        GEVMODIFDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        GEVMODIFDS-ST.
            CONTINUE.
        GRACHASSISE-STBG.
@@ -238,7 +238,7 @@
        GRAVAMESDS-DL.
            CONTINUE.
        GRAVAMESDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        GRAVAMESDS-ST.
            CONTINUE.
        HANDLE-DMTERMINATE.
@@ -251,7 +251,7 @@
        INSPECAODS-DL.
            CONTINUE.
        INSPECAODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        INSPECAOHISTDS-CR.
            CONTINUE.
        INSPECAOHISTDS-ST.
@@ -261,7 +261,7 @@
        LACRACAODS-DB2DMS.
            CONTINUE.
        LACRACAODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        LACRACAODS-ST.
            CONTINUE.
        LICAENVIARDS-CR.
@@ -277,7 +277,7 @@
        MODIFICADODS-DB2DMS.
            CONTINUE.
        MODIFICADODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        MODIFICADODS-ST.
            CONTINUE.
        MOTIVODS-CR.
@@ -311,7 +311,7 @@
        NOVAPLACDS-DL.
            CONTINUE.
        NOVAPLACDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        NOVAPLACDS-ST.
            CONTINUE.
        NOVAPLACDS-STBG.
@@ -337,7 +337,7 @@
        NTFISCALDS-DL.
            CONTINUE.
        NTFISCALDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        NTFISCALDS-ST.
            CONTINUE.
        OBSERVCHACODOBS-STBG.
@@ -347,7 +347,7 @@
        OBSERVCRLVDS-DB2DMS.
            CONTINUE.
        OBSERVCRLVDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        OBSERVCRLVDS-ST.
            CONTINUE.
        PRECADCICLODS-DB2DMS.
@@ -355,7 +355,7 @@
        PRECADCICLODS-DL.
            CONTINUE.
        PRECADCICLODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRECADCICLODS-ST.
            CONTINUE.
        PRODARRDS-CR.
@@ -363,7 +363,7 @@
        PRODARRDS-DB2DMS.
            CONTINUE.
        PRODARRDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRODARRDS-ST.
            CONTINUE.
        PRODCHASSIDS-CR.
@@ -379,7 +379,7 @@
        PRODCRVDS-DB2DMS.
            CONTINUE.
        PRODCRVDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRODCRVDS-ST.
            CONTINUE.
        PRODCRVEVENTDS-CR.
@@ -401,7 +401,7 @@
        PRODPLACDS-DB2DMS.
            CONTINUE.
        PRODPLACDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRODPLACDS-ST.
            CONTINUE.
        PRODPLCDS-CR.
@@ -409,7 +409,7 @@
        PRODPLCDS-DB2DMS.
            CONTINUE.
        PRODPLCDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRODPLCDS-ST.
            CONTINUE.
        PRODPLCMSE-STBG.
@@ -419,7 +419,7 @@
        PRODPLIDS-DB2DMS.
            CONTINUE.
        PRODPLIDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PRODPLIDS-ST.
            CONTINUE.
        PRODPLIMSE1-STBG.
@@ -439,7 +439,7 @@
        PROTGEVDS-DB2DMS.
            CONTINUE.
        PROTGEVDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        PROTGEVDS-ST.
            CONTINUE.
        QUEIXADS-DB2DMS.
@@ -455,7 +455,7 @@
        RENAVEDS-DB2DMS.
            CONTINUE.
        RENAVEDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        RENAVEDS-ST.
            CONTINUE.
        RENAVEHISDS-DB2DMS.
@@ -501,7 +501,7 @@
        TAXASDS-DL.
            CONTINUE.
        TAXASDS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        TAXASDS-ST.
            CONTINUE.
        TAXBCDTPSE1-STEN.
@@ -535,7 +535,7 @@
        VALIDACAODS-DL.
            CONTINUE.
        VALIDACAODS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        VALIDACAODS-ST.
            CONTINUE.
        VALIDACAOMSS-STEN.
@@ -557,7 +557,7 @@
        VISTORIADS-DL.
            CONTINUE.
        VISTORIADS-LOCK.
-           CONTINUE.
+           MOVE "OK" TO DMSTATUS-S.
        AUTENTICACAODS-RECR.
            CONTINUE.
        CODSEGCRLVDS-RECR.

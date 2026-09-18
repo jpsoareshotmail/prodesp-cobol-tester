@@ -287,7 +287,7 @@ def compilar_modulo(nome_convertido: str, on_progress=None) -> tuple:
         return subprocess.run(
             [_cobc(), "-m", str(compile_source), "-o", str(dll),
              "-I", str(COPY_DIR), "-w", "-frelax-syntax-checks",
-             "-frelax-level-hierarchy"] + _flag_larger_redefines(),
+             "-frelax-level-hierarchy", "-findirect-redefines"] + _flag_larger_redefines(),
             capture_output=True, text=True, env=env, timeout=60,
             cwd=str(PROJECT_ROOT),
         )

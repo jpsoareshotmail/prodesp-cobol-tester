@@ -495,7 +495,21 @@ def gerar_copybook_inferido(nome_programa: str, undefined: list, codigo: str,
 
 def gerar_paragrafos_inferidos(nome_programa: str, paragrafos: list,
                                copy_dir: Path) -> Path | None:
-    """Gera um copybook de PROCEDURE com stubs de paragrafo (CONTINUE)."""
+    """Gera um copybook de PROCEDURE com stubs de paragrafo (CONTINUE).
+
+    Paragrafos '<TABELA>-LOCK' sao um padrao de DM (Unisys) pra travar um
+    registro antes de atualizar - visto em dezenas de paragrafos assim
+    (ex: PRODCRVDS-LOCK, GEVERDS-LOCK, BLOQUEIODS-LOCK) nos programas CICS
+    "dispatcher" (OGAA013D/018D/640D/etc). Sempre sao seguidos de 'IF
+    DMSTATUS-S NOT = "OK"' - um CONTINUE puro deixa DMSTATUS-S no default
+    da WORKING-STORAGE (nunca "OK"), abortando a execucao ANTES de chegar
+    em qualquer logica de negocio de verdade, mesmo sem relacao nenhuma
+    com o dado de teste. Mesmo raciocinio ja aplicado a DATABASE-OPEN/
+    TRANSACTION-BEGIN em sql_preprocessor.py - aqui e' o mesmo padrao, so'
+    que o alvo e' um paragrafo inteiro (nao um EXEC SQL ou uma linha
+    PERFORM reconhecida por texto fixo), entao o fix e' na propria geracao
+    do stub.
+    """
     if not paragrafos:
         return None
     linhas = []
@@ -503,7 +517,10 @@ def gerar_paragrafos_inferidos(nome_programa: str, paragrafos: list,
     linhas.append('      * @inferido: INFER_PD_%s (paragrafos deduzidos do uso)' % nome_programa)
     for p in sorted(paragrafos):
         linhas.append('       %s.' % p[:30])
-        linhas.append('           CONTINUE.')
+        if p.upper().endswith('-LOCK'):
+            linhas.append('           MOVE "OK" TO DMSTATUS-S.')
+        else:
+            linhas.append('           CONTINUE.')
     cpy = copy_dir / ('INFER_PD_%s.cpy' % nome_programa)
     cpy.write_text('\n'.join(linhas) + '\n', encoding='latin-1')
     return cpy
