@@ -406,13 +406,17 @@ def compilar_modulo(nome_convertido: str, on_progress=None) -> tuple:
 
 
 _TOKEN_TO_ENV = [
-    # (fragmento no nome do campo, variavel de ambiente com o dado de teste)
+    # (regex do nome do campo, variavel de ambiente com o dado de teste)
     # ordem importa: checar CNPJ antes de CPF evita falso-positivo se algum
     # campo combinar os dois nomes.
-    ('CNPJ', 'COB_CNPJ'),
-    ('CPF', 'COB_CPF'),
-    ('CHASS', 'COB_CHASSI'),
-    ('PLACA', 'COB_PLACA'),
+    (re.compile(r'CNPJ'), 'COB_CNPJ'),
+    (re.compile(r'CPF'), 'COB_CPF'),
+    # aceita tanto 'CHASSI/CHASSIS' quanto a abreviacao 'CHAS' (ex:
+    # AX-LIB-CHAS em FGAA015) - mas so' quando 'CHAS' e' o proprio final do
+    # nome do campo (precedido de hifen), nao um pedaco de outra palavra
+    # (ex: FICHAS, GERFICHASE nao devem casar).
+    (re.compile(r'CHASS|(?<=-)CHAS$'), 'COB_CHASSI'),
+    (re.compile(r'PLACA'), 'COB_PLACA'),
 ]
 _FRAGMENTOS_SAIDA = ('RETORNO', 'RET', 'SIT', 'COD', 'STATUS', 'FLAG', 'BLQ')
 
@@ -526,8 +530,8 @@ def _analisar_parametros(content: str) -> dict | None:
     moves = []
     envs_usadas = []
     for _nivel, nome_campo, _pic, _occ in campos_entrada:
-        for fragmento, envvar in _TOKEN_TO_ENV:
-            if fragmento in nome_campo.upper():
+        for padrao, envvar in _TOKEN_TO_ENV:
+            if padrao.search(nome_campo.upper()):
                 if envvar not in envs_usadas:
                     envs_usadas.append(envvar)
                 moves.append((envvar, nome_campo))
