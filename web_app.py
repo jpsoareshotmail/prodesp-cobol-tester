@@ -1174,23 +1174,45 @@ def get_registros_tabela(tabela):
 
 @app.route('/api/testar-roteiro/<programa>', methods=['GET'])
 def testar_com_roteiro(programa):
-    """Executa o programa (original e convertido) usando os dados de teste de
-    cada cenario do roteiro de Primeiro Emplacamento, para validacao."""
+    """Executa o programa (convertido) usando os dados de teste de cada
+    cenario do roteiro de Primeiro Emplacamento, para validacao.
+
+    A comparacao com o fluxo 'original' so' e' feita para o validador de
+    placa (PF-GAA-L004/FGAA004) - e' o UNICO programa com uma versao
+    standalone adaptada pra rodar fora do mainframe (ver
+    cobol_runner.compilar_standalone); pra qualquer outro programa,
+    executar_original() SEMPRE retorna o mesmo erro fixo ("apenas
+    PF-GAA-L004 possui versao standalone adaptada") - chamar isso e
+    tratar o resultado como uma "divergencia real" seria enganoso, entao
+    nem tenta.
+    """
     try:
-        from data.roteiros_teste import get_roteiros
-        from cobol_runner import comparar_placa, executar_original, executar_convertido
+        from data.roteiros_teste import get_roteiros, get_transacoes
+        from cobol_runner import comparar_placa, executar_convertido, info_parametros_teste
         from data.program_mapping import get_converted_name
 
         is_placa = ('L004' in programa.upper() or programa.upper() == 'FGAA004'
                     or 'PF-GAA-L004' in programa.upper())
 
+        nome_conv = get_converted_name(programa) or programa
+        info = info_parametros_teste(nome_conv) if not is_placa else {}
+
+        # se este programa implementa uma transacao conhecida do roteiro
+        # (ver roteiros_teste.TRANSACOES), acha o(s) passo(s) que a citam
+        # pra mostrar o resultado_esperado real ao lado do resultado obtido
+        # - sem isso, o teste so' mostra "rodou sem erro", sem nenhum
+        # parametro de comparacao com o que o roteiro documenta.
+        transacoes_do_programa = [cod for cod, dados in get_transacoes().items()
+                                   if dados.get('programa') == nome_conv]
+
         casos = []
         for rot in get_roteiros():
             dt = rot.get('dados_teste', {})
-            # entrada de teste: para validador de placa nao ha placa no roteiro (usa chassi
-            # apenas como identificador); para os demais, usamos o chassi como entrada.
             entrada = dt.get('chassi', '')
             ident = dt.get('cpf') or dt.get('cnpj') or ''
+
+            passos_relevantes = [p for p in rot.get('passos', [])
+                                  if p.get('transacao') in transacoes_do_programa]
 
             caso = {
                 'cenario': rot['cenario'],
@@ -1199,6 +1221,7 @@ def testar_com_roteiro(programa):
                 'identificador': ident,
                 'entrada': entrada,
                 'passos': rot.get('passos', []),
+                'passos_relevantes': passos_relevantes,
             }
 
             try:
@@ -1218,19 +1241,35 @@ def testar_com_roteiro(programa):
                     }
                     caso['iguais'] = comp.resultados_iguais
                 else:
-                    env = {'COB_PLACA': entrada, 'COB_CHASSI': entrada}
-                    if dt.get('cpf'):
-                        env['COB_CPF'] = dt['cpf']
-                    if dt.get('cnpj'):
-                        env['COB_CNPJ'] = dt['cnpj']
-                    ro = executar_original(programa, env)
-                    nome_conv = get_converted_name(programa) or programa
+                    # monta o env so' com as variaveis que este programa
+                    # realmente reconhece (ver info_parametros_teste) - em
+                    # vez de mandar SEMPRE placa+chassi+cpf+cnpj pra
+                    # qualquer programa, o que mascarava campos nao
+                    # reconhecidos e nunca refletia o roteiro corretamente
+                    # pra programas com campo de entrada generico.
+                    env = {}
+                    for e in (info.get('entradas') or []):
+                        var = e.get('variavel')
+                        if var == 'COB_CHASSI':
+                            env[var] = entrada
+                        elif var == 'COB_PLACA':
+                            env[var] = entrada
+                        elif var == 'COB_CPF' and dt.get('cpf'):
+                            env[var] = dt['cpf']
+                        elif var == 'COB_CNPJ' and dt.get('cnpj'):
+                            env[var] = dt['cnpj']
+                    if not env:
+                        # programa sem campo de entrada reconhecido (ex:
+                        # CICS "dispatcher") - manda os 4 possiveis mesmo
+                        # assim, sem risco (o programa so' le' o que precisa).
+                        env = {'COB_PLACA': entrada, 'COB_CHASSI': entrada}
+                        if dt.get('cpf'):
+                            env['COB_CPF'] = dt['cpf']
+                        if dt.get('cnpj'):
+                            env['COB_CNPJ'] = dt['cnpj']
                     rc = executar_convertido(nome_conv, env)
-                    caso['original'] = {'codigo': ro.codigo, 'descricao': ro.descricao or ro.output,
-                                        'sucesso': ro.sucesso, 'erro': ro.erro}
                     caso['convertido'] = {'codigo': rc.codigo, 'descricao': rc.descricao or rc.output,
                                           'sucesso': rc.sucesso, 'erro': rc.erro}
-                    caso['iguais'] = (ro.output == rc.output) and ro.sucesso and rc.sucesso
             except Exception as ex:
                 caso['erro'] = str(ex)
 

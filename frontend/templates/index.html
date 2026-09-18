@@ -1180,6 +1180,15 @@ async function validarRoteiro(prog) {
             if (c.erro) {
                 html += '<tr><td colspan="4" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
             }
+            // passo(s) do roteiro que citam a transacao deste programa - mostra
+            // o que o roteiro ESPERA de negocio, pra comparar manualmente com o
+            // resultado tecnico acima (o programa nao valida sozinho se o
+            // resultado bate com a regra de negocio real).
+            (c.passos_relevantes || []).forEach(p => {
+                html += '<tr><td colspan="4" style="padding:4px 8px 8px;font-size:11px;color:var(--text-3);background:var(--card-hover)">' +
+                    '<strong>Roteiro (' + escapeHtml(p.transacao || '') + ' - ' + escapeHtml(p.titulo || '') + '):</strong> esperado: ' +
+                    escapeHtml(p.resultado_esperado || '-') + '</td></tr>';
+            });
         });
         html += '</table>';
         div.innerHTML = html;
