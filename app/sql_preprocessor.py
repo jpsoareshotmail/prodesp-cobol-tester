@@ -85,6 +85,59 @@ def _agrupar_copies_mapa_tela(content: str, copy_dir: Path) -> str:
     return '\n'.join(mantidas)
 
 
+def _injetar_simulacao_forcada(content: str) -> tuple:
+    """Simulacao FORCADA de sucesso/erro pra programas CICS 'dispatcher'
+    sem PROCEDURE DIVISION USING (recebem dado por tela/C-MAPA, nao por
+    parametro de chamada).
+
+    Diferente do mecanismo de cenarios_teste.py (FETCH stub -> simula um
+    registro achado -> deixa a logica REAL do programa calcular o
+    resultado), aqui NAO HA' derivacao de regra de negocio nenhuma: a
+    investigacao de OGAA013D/CAV1 mostrou que esses programas tem uma
+    cadeia de portoes (autorizacao de operador, locks com verificacao de
+    data, varias tabelas de referencia) profunda demais pra modelar com
+    confianca. Em vez de arriscar simular "sucesso"/"erro" errado e
+    passar a falsa impressao de que valida algo, isso injeta um atalho
+    HONESTO: se COB_CENARIO estiver setado, pula toda a logica real e
+    devolve esse valor direto como RETURN-CODE - a UI mostra claramente
+    que e' simulado (ver rotulo em cenarios_teste.py).
+
+    So' ativa para 'PROCEDURE DIVISION.' BARE (sem USING) - programas
+    parametrizados ja tem seu proprio mecanismo, mais fiel.
+    """
+    linhas = content.split('\n')
+    idx_proc = next((i for i, l in enumerate(linhas)
+                      if re.match(r'(?i)^\s*PROCEDURE\s+DIVISION\s*\.\s*$', l)), None)
+    if idx_proc is None:
+        return content, False
+
+    # acha a 1a linha de codigo real apos PROCEDURE DIVISION (pulando
+    # vazias/comentarios). Se for uma SECTION, o atalho precisa vir DEPOIS
+    # dela (COBOL nao aceita statement solto antes da 1a SECTION); senao,
+    # injeta logo apos o proprio PROCEDURE DIVISION.
+    idx_insercao = idx_proc
+    for j in range(idx_proc + 1, min(idx_proc + 15, len(linhas))):
+        ln = linhas[j]
+        if not ln.strip():
+            continue
+        if len(ln) >= 7 and ln[6] in ('*', '/'):
+            continue
+        if re.match(r'(?i)^\s*[\w-]+\s+SECTION\s*\.', ln):
+            idx_insercao = j
+        break
+
+    bloco = [
+        '           ACCEPT WS-CENARIO-FORCADO FROM ENVIRONMENT "COB_CENARIO"',
+        '           IF WS-CENARIO-FORCADO NOT = SPACES',
+        '               MOVE WS-CENARIO-FORCADO TO WS-CENARIO-FORCADO-N',
+        '               MOVE WS-CENARIO-FORCADO-N TO RETURN-CODE',
+        '               GOBACK',
+        '           END-IF',
+    ]
+    linhas[idx_insercao + 1:idx_insercao + 1] = bloco
+    return '\n'.join(linhas), True
+
+
 def _reparar_literais_partidos(content: str) -> str:
     """Reparos de conversao seguros aplicados antes de compilar.
 
@@ -585,6 +638,14 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
     try:
         content = source_path.read_text(encoding='latin-1')
         content = _agrupar_copies_mapa_tela(content, Path(output_path).parent / 'copy')
+        content, tem_simulacao_forcada = _injetar_simulacao_forcada(content)
+        if tem_simulacao_forcada:
+            for marker in ['       WORKING-STORAGE SECTION.', '       WORKING-STORAGE  SECTION.']:
+                if marker in content:
+                    content = content.replace(marker, marker +
+                        '\n       01  WS-CENARIO-FORCADO       PIC X(004) VALUE SPACES.'
+                        '\n       01  WS-CENARIO-FORCADO-N     PIC 9(004) VALUE 0.', 1)
+                    break
 
         if 'EXEC SQL' not in content.upper() and 'EXEC CICS' not in content.upper():
             # Nao tem SQL, copiar direto

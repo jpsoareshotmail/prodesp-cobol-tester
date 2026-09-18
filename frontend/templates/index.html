@@ -937,13 +937,26 @@ function renderTesteInfoBox(info) {
         }
         return html + '</div>';
     }
-    if (info.transacao) {
-        return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
-            'Este programa implementa a transacao <strong>' + escapeHtml(info.transacao) + '</strong>' +
-            (info.transacao_descricao ? ' (' + escapeHtml(info.transacao_descricao) + ')' : '') +
-            (info.transacao_tela ? ', tela real: <strong>' + escapeHtml(info.transacao_tela) + '</strong>' : '') + '. ' +
-            'No mainframe, o dado chegaria pela tela do terminal (BMS map) - essa definicao de tela nao veio no fonte convertido, ' +
-            'entao nao ha como injetar esse dado neste ambiente de teste. O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao.</div>';
+    if (info.transacao || info.simulacao_forcada) {
+        let html = '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">';
+        if (info.transacao) {
+            html += 'Este programa implementa a transacao <strong>' + escapeHtml(info.transacao) + '</strong>' +
+                (info.transacao_descricao ? ' (' + escapeHtml(info.transacao_descricao) + ')' : '') +
+                (info.transacao_tela ? ', tela real: <strong>' + escapeHtml(info.transacao_tela) + '</strong>' : '') + '. ' +
+                'No mainframe, o dado chegaria pela tela do terminal (BMS map) - essa definicao de tela nao veio no fonte convertido, ' +
+                'entao nao ha como injetar esse dado neste ambiente de teste.';
+        } else {
+            html += 'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (recebe via tela/canal do CICS, que nao e simulado aqui).';
+        }
+        if (info.simulacao_forcada) {
+            html += ' <strong>A logica de negocio real deste programa e\' complexa demais pra simular com confianca</strong> ' +
+                '(varios portoes de autorizacao/tabelas de referencia encadeados) - o seletor abaixo permite forcar um ' +
+                'resultado de <strong>erro simulado</strong> (pula toda a logica real e devolve o codigo escolhido direto), ' +
+                'so\' pra demonstrar que a execucao e o RETURN-CODE funcionam - nao reflete nenhuma regra de negocio de verdade.';
+        } else {
+            html += ' O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao.';
+        }
+        return html + '</div>';
     }
     return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
         'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (ex: recebe via canal/container do CICS, que nao e simulado aqui). ' +

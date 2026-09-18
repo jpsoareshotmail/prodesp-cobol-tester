@@ -669,6 +669,22 @@ def info_parametros_teste(nome_convertido: str) -> dict:
                     resultado['transacao_tela'] = dados.get('tela')
                     resultado['transacao_descricao'] = dados.get('descricao')
                     break
+        # programas CICS "dispatcher" (PROCEDURE DIVISION bare, sem USING)
+        # recebem dado real por tela (C-MAPA), nao por parametro - a logica
+        # de negocio de verdade tem uma cadeia de portoes (autorizacao de
+        # operador, locks com data, tabelas de referencia) profunda demais
+        # pra simular com confianca (ver investigacao de OGAA013D/CAV1).
+        # Em vez disso, sql_preprocessor._injetar_simulacao_forcada injeta
+        # um atalho HONESTO: setando COB_CENARIO, pula a logica real e
+        # devolve esse valor direto como RETURN-CODE - a UI deixa claro que
+        # e' simulado, nao derivado de regra de negocio.
+        if re.search(r'(?im)^\s*PROCEDURE\s+DIVISION\s*\.\s*$', content):
+            resultado['campo_saida'] = 'RETURN-CODE'
+            resultado['legenda_saida'] = {}
+            resultado['cenarios'] = [
+                {"codigo": "0001", "rotulo": "Erro (simulado - RETURN-CODE forcado)"},
+            ]
+            resultado['simulacao_forcada'] = True
         return resultado
 
     # quando o campo nao foi reconhecido por nome (chassi/placa/cpf/cnpj),

@@ -499,7 +499,13 @@ def get_teste_info(programa):
         # programas parametrizados sem DB2 real (ver app/cenarios_teste.py);
         # a UI usa isso pra oferecer "sucesso (nada consta)" x "encontrado/
         # restricao" em vez de sempre cair no mesmo resultado generico.
-        info['cenarios'] = cenarios_disponiveis(nome_conv)
+        # Nao sobrescreve se info_parametros_teste ja' preencheu 'cenarios'
+        # (caso dos programas CICS com simulacao forcada - ver
+        # sql_preprocessor._injetar_simulacao_forcada) - sao dois mecanismos
+        # diferentes, cenarios_disponiveis() so conhece os 6 programas de
+        # DB2 e devolveria [] aqui, apagando o que ja' era valido.
+        if not info.get('cenarios'):
+            info['cenarios'] = cenarios_disponiveis(nome_conv)
         return jsonify(info)
     except Exception as e:
         import traceback
