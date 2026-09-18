@@ -454,9 +454,13 @@ def _extrair_bloco_linkage(content: str, nome_param: str) -> str | None:
 
 
 def _extrair_campos_pic(bloco: str) -> list:
-    """Lista (nivel, nome, pic) dos campos com PIC de um bloco LINKAGE,
-    ignorando comentarios, FILLER, REDEFINES (aliases, nao alvos de MOVE)
-    e 88-niveis (condition-names, sem PIC)."""
+    """Lista (nivel, nome, pic, tem_occurs) dos campos com PIC de um bloco
+    LINKAGE, ignorando comentarios, FILLER, REDEFINES (aliases, nao alvos
+    de MOVE) e 88-niveis (condition-names, sem PIC). tem_occurs sinaliza
+    campos-tabela (OCCURS) - usado para reconhecer o "verdadeiro" campo de
+    resultado em programas cujo grupo de saida so' tem campos-eco do
+    parametro de entrada (AX-RET-PLAMERC/MUNIC/CHASS) mais uma tabela de
+    codigos (AX-RET-BLOQ) - ver _analisar_parametros."""
     campos = []
     for ln in bloco.split('\n'):
         if len(ln) >= 7 and ln[6] in ('*', '/'):
@@ -466,7 +470,8 @@ def _extrair_campos_pic(bloco: str) -> list:
         m = re.match(r'^\s*(\d\d)\s+([A-Za-z][\w-]*)\s+.*?PIC(?:TURE)?\s+(?:IS\s+)?([9XASV(),.\-]+)',
                      ln, re.IGNORECASE)
         if m and m.group(2).upper() != 'FILLER':
-            campos.append((m.group(1), m.group(2), m.group(3)))
+            tem_occurs = bool(re.search(r'(?i)\bOCCURS\b', ln))
+            campos.append((m.group(1), m.group(2), m.group(3), tem_occurs))
     return campos
 
 
@@ -520,7 +525,7 @@ def _analisar_parametros(content: str) -> dict | None:
     campos_entrada = _extrair_campos_pic(blocos[idx_entrada][1])
     moves = []
     envs_usadas = []
-    for _nivel, nome_campo, _pic in campos_entrada:
+    for _nivel, nome_campo, _pic, _occ in campos_entrada:
         for fragmento, envvar in _TOKEN_TO_ENV:
             if fragmento in nome_campo.upper():
                 if envvar not in envs_usadas:
@@ -541,15 +546,37 @@ def _analisar_parametros(content: str) -> dict | None:
         envs_usadas = ['COB_VALOR']
 
     campos_saida = _extrair_campos_pic(blocos[idx_saida][1]) if len(blocos) > 1 else campos_entrada
-    campo_saida = None
-    for fragmento in _FRAGMENTOS_SAIDA:
-        campo_saida = next((nome for _n, nome, _p in campos_saida if fragmento in nome.upper()), None)
-        if campo_saida:
-            break
+
+    # alguns programas (FGAT006D/FGAT030D) tem no grupo de saida so' campos
+    # "eco" do parametro de entrada (AX-RET-PLAMERC/MUNIC/CHASS, meras copias
+    # de AX-GAT-PLAMERC/MUNIC/CHASS quando a busca da* certo) mais o campo
+    # que de fato representa o resultado (AX-RET-BLOQ). Um match ingenuo por
+    # fragmento ('RET' bate em qualquer AX-RET-*, inclusive nos ecos) pegava
+    # sempre o primeiro campo eco declarado - o resultado real nunca mudava
+    # de valor entre um cenario e outro. Descarta candidatos cujo sufixo
+    # (ultimo pedaco do nome) tambem aparece como sufixo de algum campo de
+    # entrada; se isso zerar os candidatos, usa a lista original (programa
+    # cujo unico campo de saida realmente e' um eco, ou sem overlap nenhum).
+    sufixos_entrada = {nome.upper().rsplit('-', 1)[-1] for _n, nome, _p, _o in campos_entrada}
+    candidatos = [c for c in campos_saida if c[1].upper().rsplit('-', 1)[-1] not in sufixos_entrada]
+    if not candidatos:
+        candidatos = campos_saida
+
+    # entre os candidatos, uma tabela (OCCURS) e' o sinal mais especifico de
+    # "lista de codigos de resultado" que um programa pode ter (ex:
+    # AX-RET-BLOQ, AX-RETL030-RESTRBIN) - mais confiavel que qualquer
+    # fragmento de nome, entao tem prioridade sobre a busca por fragmento.
+    campo_saida = next((nome for _n, nome, _p, occ in candidatos if occ), None)
+    campo_saida_occurs = campo_saida is not None
+    if not campo_saida:
+        for fragmento in _FRAGMENTOS_SAIDA:
+            campo_saida = next((nome for _n, nome, _p, _o in candidatos if fragmento in nome.upper()), None)
+            if campo_saida:
+                break
 
     return {
         "blocos": blocos, "moves": moves, "envs_usadas": envs_usadas,
-        "campo_saida": campo_saida,
+        "campo_saida": campo_saida, "campo_saida_occurs": campo_saida_occurs,
     }
 
 
@@ -665,6 +692,12 @@ def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | No
         return None
     blocos, moves, envs_usadas, campo_saida = (
         info["blocos"], info["moves"], info["envs_usadas"], info["campo_saida"])
+    # campo tabela (OCCURS): sem subscript o DISPLAY mostraria a 1a ocorrencia
+    # sem garantia (ou erro, dependendo do compilador) - o resultado de fato
+    # sempre e' escrito na 1a posicao da tabela nestes programas (ver
+    # comentario de _analisar_parametros sobre AX-RET-BLOQ/RESTRBIN).
+    if campo_saida and info.get("campo_saida_occurs"):
+        campo_saida = '%s(1)' % campo_saida
 
     linhas = [
         '       IDENTIFICATION DIVISION.',
@@ -687,13 +720,13 @@ def _gerar_driver_com_parametros(nome_convertido: str, content: str) -> str | No
     linhas.append('')
     linhas.append('       PROCEDURE DIVISION.')
     linhas.append('       MAIN-PARA.')
+    nomes_params = [nome for nome, _ in blocos]
     for envvar in envs_usadas:
         campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
         linhas.append('           ACCEPT %s FROM ENVIRONMENT "%s"' % (campo_ws, envvar))
     for envvar, nome_campo in moves:
         campo_ws = 'WS-IN-' + envvar.replace('COB_', '')
         linhas.append('           MOVE UPPER-CASE(%s) TO %s' % (campo_ws, nome_campo))
-    nomes_params = [nome for nome, _ in blocos]
     linhas.append('           CALL "%s" USING %s' % (nome_convertido, nomes_params[0]))
     for extra in nomes_params[1:]:
         linhas.append('               %s' % extra)

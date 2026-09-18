@@ -12,6 +12,7 @@ Estrategia:
   MOVE "00" TO WS-DB-STATUS (simula sucesso)
 - EXEC SQL WHENEVER ... END-EXEC -> comentado
 """
+from __future__ import annotations
 
 import re
 from pathlib import Path
@@ -160,7 +161,8 @@ def _reparar_literais_partidos(content: str) -> str:
     return '\n'.join(saida)
 
 
-def _stub_sql(texto_bloco_upper: str, tem_ponto: bool) -> str:
+def _stub_sql(texto_bloco_upper: str, tem_ponto: bool, nome_programa: str | None = None,
+               marcar_cenario: list | None = None) -> str:
     """Escolhe o stub para um bloco EXEC SQL neutralizado, de acordo com o
     verbo usado - sem isso, todo bloco virava CONTINUE puro e DMSTATUS-S
     nunca mudava de valor. Dois problemas praticos disso: (1) um FETCH
@@ -174,21 +176,99 @@ def _stub_sql(texto_bloco_upper: str, tem_ponto: bool) -> str:
 
     Depende de DMSTATUS-S caber "NOTFOUND" (8 chars) - ver o tamanho do
     campo em cobol_build/copy/WSGLDB.cpy.
+
+    Quando um FETCH corresponde a um cursor com cenarios de teste
+    cadastrados (app/cenarios_teste.py), o stub vira um EVALUATE que le a
+    variavel de ambiente COB_CENARIO em runtime: se bater um cenario
+    conhecido PARA ESSE cursor especifico, simula "encontrado" com os
+    campos daquele cenario (permite o programa calcular de verdade um
+    resultado como "1 - Roubo" em vez de sempre "0 - nada consta");
+    senao, simula NOTFOUND como no caso generico. `marcar_cenario`, se
+    fornecido, recebe True anexado quando esse caminho e' usado, para o
+    chamador saber que precisa declarar WS-CENARIO-TESTE.
     """
     ponto = '.' if tem_ponto else ''
     if re.search(r'\bFETCH\b', texto_bloco_upper):
+        regra = _achar_regra_cenario(nome_programa, texto_bloco_upper)
+        if regra:
+            # flag "ja usado" por OCORRENCIA fisica de FETCH, nao global ao
+            # programa: alguns cursores (ex: QXACHASS em FGAA012D/032D) sao
+            # implementados como DOIS FETCHs fisicos distintos em sequencia
+            # (FNDAT-1 + FNDAT-2, ambos precisam simular "OK" na MESMA
+            # chamada para o resultado ser calculado). Uma flag global
+            # marcada pelo 1o FETCH fazia o 2o (mesmo cursor, mesmo cenario)
+            # ver "ja usado" e responder NOTFOUND, quebrando o resultado -
+            # cada ocorrencia precisa da sua propria flag independente.
+            idx_ocorrencia = len(marcar_cenario) if marcar_cenario is not None else 0
+            flag = 'WS-CENARIO-JA-USADO-%d' % idx_ocorrencia
+            if marcar_cenario is not None:
+                marcar_cenario.append(True)
+            # A flag em si (por ocorrencia) continua necessaria pra FETCHs
+            # que SAO chamados repetidamente em loop pela MESMA ocorrencia
+            # (ex: "FETCH NEXT" dentro de PERFORM ... UNTIL CH-NOTFOUND = "S"
+            # em FGAT006D/FGAT030D) - sem ela, simular "OK" sempre que o
+            # cenario bate faz o loop achar o "mesmo" registro pra sempre.
+            linhas = [
+                '           ACCEPT WS-CENARIO-TESTE FROM ENVIRONMENT "COB_CENARIO"',
+                '           IF %s NOT = "S"' % flag,
+                '               EVALUATE WS-CENARIO-TESTE',
+            ]
+            for codigo, campos in regra['cenarios'].items():
+                linhas.append('                   WHEN "%s"' % codigo)
+                linhas.append('                       MOVE "OK" TO DMSTATUS-S')
+                linhas.append('                       MOVE "S" TO %s' % flag)
+                # 'zerar': campos (tipicamente slots de uma tabela OCCURS,
+                # ex: AX-RET-BLOQ(1..6)) que o programa testa com
+                # "IF campo = ZEROS" pra saber se ainda estao livres. No
+                # mainframe real esses slots chegam "vazios" via MOVE SPACES
+                # (move de grupo) e essa comparacao numerica ainda da' certo;
+                # no GnuCOBOL deste ambiente, SPACES movido pra um campo
+                # PIC 9 nao e' igual a ZEROS numericamente (confirmado por
+                # teste isolado) - sem isso o programa nunca considera o
+                # slot livre e o cenario simulado nunca chega ao campo de
+                # saida, mesmo com DMSTATUS-S = "OK".
+                for campo in regra.get('zerar', ()):
+                    linhas.append('                       MOVE ZEROS TO %s' % campo)
+                for campo, valor in campos.items():
+                    linhas.append('                       MOVE "%s" TO %s' % (valor, campo))
+            linhas.append('                   WHEN OTHER')
+            linhas.append('                       MOVE "NOTFOUND" TO DMSTATUS-S')
+            linhas.append('               END-EVALUATE')
+            linhas.append('           ELSE')
+            linhas.append('               MOVE "NOTFOUND" TO DMSTATUS-S')
+            linhas.append('           END-IF' + ponto)
+            return '\n'.join(linhas)
         return '           MOVE "NOTFOUND" TO DMSTATUS-S' + ponto
     if re.search(r'\bOPEN\b', texto_bloco_upper):
         return '           MOVE "OK" TO DMSTATUS-S' + ponto
     return '           CONTINUE' + ponto
 
 
-def preprocessar_sql(source_content: str) -> str:
+def _achar_regra_cenario(nome_programa: str | None, texto_bloco_upper: str):
+    """Acha, em cenarios_teste.CENARIOS, a regra do programa cujo
+    fragmento de nome de cursor aparece no texto deste bloco FETCH."""
+    if not nome_programa:
+        return None
+    try:
+        from cenarios_teste import CENARIOS
+    except ImportError:
+        from app.cenarios_teste import CENARIOS  # type: ignore
+    for regra in CENARIOS.get(nome_programa.upper(), []):
+        if regra['cursor'] in texto_bloco_upper:
+            return regra
+    return None
+
+
+def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> str:
     """
     Remove blocos EXEC SQL/CICS do fonte COBOL, substituindo por stubs.
     Preserva nomes de paragrafos que precedem EXEC SQL.
     Blocos antes da PROCEDURE DIVISION sao apenas comentados.
     Blocos na PROCEDURE DIVISION recebem CONTINUE.
+
+    'nome_programa', se fornecido, habilita os stubs de FETCH a simular
+    cenarios de teste especificos (ver cenarios_teste.py) quando a
+    variavel de ambiente COB_CENARIO for setada em runtime.
     """
     lines = source_content.split('\n')
     result = []
@@ -196,6 +276,7 @@ def preprocessar_sql(source_content: str) -> str:
     exec_sql_lines = []
     bloco_eh_sql = False
     in_procedure_div = False
+    usou_cenario = []
 
     i = 0
     while i < len(lines):
@@ -216,7 +297,7 @@ def preprocessar_sql(source_content: str) -> str:
                     tem_ponto = (('.' in code_area and code_area.strip().rstrip().endswith('.'))
                                  or 'END-EXEC.' in line.upper())
                     is_sql = 'EXEC SQL' in line.upper()
-                    result.append(_stub_sql(line.upper(), tem_ponto) if is_sql
+                    result.append(_stub_sql(line.upper(), tem_ponto, nome_programa, usou_cenario) if is_sql
                                   else ('           CONTINUE.' if tem_ponto else '           CONTINUE'))
                 i += 1
                 continue
@@ -241,7 +322,7 @@ def preprocessar_sql(source_content: str) -> str:
                     tem_ponto = 'END-EXEC.' in last_line.upper() or code_area.rstrip().endswith('.')
                     if bloco_eh_sql:
                         texto_bloco = ' '.join(exec_sql_lines).upper()
-                        result.append(_stub_sql(texto_bloco, tem_ponto))
+                        result.append(_stub_sql(texto_bloco, tem_ponto, nome_programa, usou_cenario))
                     else:
                         result.append('           CONTINUE.' if tem_ponto else '           CONTINUE')
                 exec_sql_lines = []
@@ -316,6 +397,20 @@ def preprocessar_sql(source_content: str) -> str:
         result.append(line)
         i += 1
 
+    if usou_cenario:
+        # Pelo menos um stub de FETCH usou WS-CENARIO-TESTE (ACCEPT FROM
+        # ENVIRONMENT "COB_CENARIO") - precisa declarar o campo, mais uma
+        # flag "ja usado" POR OCORRENCIA (ver comentario em _stub_sql).
+        # Injeta logo apos WORKING-STORAGE SECTION (mesmo padrao ja usado
+        # em app/cobol_runner.py para variaveis auto-inferidas).
+        for idx, ln in enumerate(result):
+            if re.match(r'(?i)^\s*WORKING-STORAGE\s+SECTION\b', ln):
+                for n in range(len(usou_cenario) - 1, -1, -1):
+                    result.insert(idx + 1,
+                                  '       01  WS-CENARIO-JA-USADO-%d      PIC X(001) VALUE SPACES.' % n)
+                result.insert(idx + 1, '       01  WS-CENARIO-TESTE         PIC X(020) VALUE SPACES.')
+                break
+
     return '\n'.join(result)
 
 
@@ -386,7 +481,7 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
         content = _reparar_literais_partidos(content)
 
         # Processar SQL
-        processed = preprocessar_sql(content)
+        processed = preprocessar_sql(content, source_path.stem)
 
         # Se WSGL-DATASETS existe, nao precisa de -TABLES.cpy nem host vars
         master_cpy = Path(output_path).parent / 'copy' / 'WSGL-DATASETS.cpy'
