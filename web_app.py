@@ -1205,6 +1205,16 @@ def testar_com_roteiro(programa):
         transacoes_do_programa = [cod for cod, dados in get_transacoes().items()
                                    if dados.get('programa') == nome_conv]
 
+        # rotulo padrao pra cada variavel de ambiente, usado quando o
+        # programa nao tem um rotulo proprio declarado em 'entradas'
+        # (info_parametros_teste) - so' pra deixar claro no relatorio o que
+        # cada parametro enviado representa.
+        ROTULO_PADRAO_VAR = {
+            'COB_PLACA': 'Placa', 'COB_CHASSI': 'Chassi',
+            'COB_CPF': 'CPF', 'COB_CNPJ': 'CNPJ', 'COB_CENARIO': 'Cenario simulado',
+        }
+        rotulos_entrada = {e.get('variavel'): e.get('rotulo') for e in (info.get('entradas') or [])}
+
         casos = []
         for rot in get_roteiros():
             dt = rot.get('dados_teste', {})
@@ -1228,7 +1238,15 @@ def testar_com_roteiro(programa):
                 if is_placa:
                     # o validador de placa espera uma placa; o roteiro nao tem placa,
                     # entao rodamos com o chassi so para exercitar (resultado indicativo)
-                    comp = comparar_placa(entrada[:7] if entrada else '')
+                    placa_usada = entrada[:7] if entrada else ''
+                    caso['parametros_entrada'] = [
+                        {'rotulo': 'Placa (chassi truncado p/ exercitar)', 'variavel': 'placa', 'valor': placa_usada},
+                    ]
+                    caso['descricao_execucao'] = (
+                        'Executa o validador de placa (original e convertido) com "%s" e compara os dois resultados.'
+                        % placa_usada
+                    )
+                    comp = comparar_placa(placa_usada)
                     caso['original'] = {
                         'codigo': comp.resultado_original.codigo if comp.resultado_original else None,
                         'descricao': comp.resultado_original.descricao if comp.resultado_original else '',
@@ -1258,6 +1276,7 @@ def testar_com_roteiro(programa):
                             env[var] = dt['cpf']
                         elif var == 'COB_CNPJ' and dt.get('cnpj'):
                             env[var] = dt['cnpj']
+                    entrada_reconhecida = bool(env)
                     if not env:
                         # programa sem campo de entrada reconhecido (ex:
                         # CICS "dispatcher") - manda os 4 possiveis mesmo
@@ -1267,6 +1286,22 @@ def testar_com_roteiro(programa):
                             env['COB_CPF'] = dt['cpf']
                         if dt.get('cnpj'):
                             env['COB_CNPJ'] = dt['cnpj']
+                    caso['parametros_entrada'] = [
+                        {'rotulo': rotulos_entrada.get(var) or ROTULO_PADRAO_VAR.get(var, var),
+                         'variavel': var, 'valor': valor}
+                        for var, valor in env.items()
+                    ]
+                    if entrada_reconhecida:
+                        caso['descricao_execucao'] = (
+                            'Executa o fonte convertido "%s" com os parametros de entrada abaixo (reconhecidos '
+                            'a partir da analise do fonte) e le o resultado no campo de saida.' % nome_conv
+                        )
+                    else:
+                        caso['descricao_execucao'] = (
+                            'Nao foi possivel identificar automaticamente o campo de entrada deste programa; '
+                            'executa o fonte convertido "%s" enviando placa/chassi/CPF/CNPJ do roteiro (o programa '
+                            'usa somente o(s) que precisar) e le o RETURN-CODE da execucao.' % nome_conv
+                        )
                     rc = executar_convertido(nome_conv, env)
                     caso['convertido'] = {'codigo': rc.codigo, 'descricao': rc.descricao or rc.output,
                                           'sucesso': rc.sucesso, 'erro': rc.erro}
@@ -1275,7 +1310,25 @@ def testar_com_roteiro(programa):
 
             casos.append(caso)
 
-        return jsonify({'programa': programa, 'is_placa': is_placa, 'casos': casos})
+        if is_placa:
+            from cobol_runner import CODIGOS_PLACA
+            campo_saida = 'LC-RETORNO'
+            legenda_saida = {str(k): v for k, v in CODIGOS_PLACA.items()}
+            simulacao_forcada = False
+        else:
+            campo_saida = info.get('campo_saida')
+            legenda_saida = info.get('legenda_saida', {})
+            simulacao_forcada = bool(info.get('simulacao_forcada'))
+
+        return jsonify({
+            'programa': programa,
+            'nome_convertido': nome_conv,
+            'is_placa': is_placa,
+            'campo_saida': campo_saida,
+            'legenda_saida': legenda_saida,
+            'simulacao_forcada': simulacao_forcada,
+            'casos': casos,
+        })
     except Exception as e:
         import traceback
         traceback.print_exc()

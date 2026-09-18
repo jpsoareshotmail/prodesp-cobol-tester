@@ -553,23 +553,21 @@ async function executarRoteiroSuite() {
             ': <strong>' + escapeHtml(p.original) + '</strong></div>' +
             '<div style="height:8px;border-radius:4px;background:var(--bg-subtle,#eee);overflow:hidden">' +
             '<div style="height:100%;width:' + pct + '%;background:var(--green);transition:width .3s"></div></div>';
-        let campoSaida = null, legendaSaida = {};
-        try {
-            const rti = await fetch('/api/teste-info/' + encodeURIComponent(p.original));
-            const ti = await rti.json();
-            campoSaida = ti.campo_saida || null;
-            legendaSaida = ti.legenda_saida || {};
-        } catch (e) { /* sem info de teste-info, segue sem legenda */ }
         try {
             const r = await fetch('/api/testar-roteiro/' + encodeURIComponent(p.original));
             const d = await r.json();
             if (d.error) {
-                resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: d.error, campoSaida, legendaSaida });
+                resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: d.error });
             } else {
-                resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: d.casos || [], isPlaca: d.is_placa, campoSaida, legendaSaida });
+                resultados.push({
+                    programa: p.original, convertido: p.convertido, categoria: p.categoria,
+                    casos: d.casos || [], isPlaca: d.is_placa,
+                    campoSaida: d.campo_saida || null, legendaSaida: d.legenda_saida || {},
+                    simulacaoForcada: !!d.simulacao_forcada,
+                });
             }
         } catch (e) {
-            resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: e.message, campoSaida, legendaSaida });
+            resultados.push({ programa: p.original, convertido: p.convertido, categoria: p.categoria, casos: [], erroGeral: e.message });
         }
     }
 
@@ -640,6 +638,15 @@ function imprimirRelatorioRoteiro() {
     window.print();
 }
 
+// Monta HTML com a lista de parametros de entrada enviados (rotulo: valor)
+function _htmlParametrosEntrada(parametros) {
+    if (!parametros || !parametros.length) return '<span style="color:var(--text-muted)">-</span>';
+    return parametros.map(p =>
+        '<div><span style="color:var(--text-muted)">' + escapeHtml(p.rotulo || p.variavel) + ':</span> ' +
+        '<code style="font-size:11px">' + escapeHtml(String(p.valor != null && p.valor !== '' ? p.valor : '(vazio)')) + '</code></div>'
+    ).join('');
+}
+
 // Monta e abre o modal com o relatorio consolidado da execucao do roteiro
 function abrirRelatorioRoteiro(resultados) {
     let totalCasos = 0, casosOk = 0, casosErro = 0, programasOk = 0, programasComErro = 0;
@@ -655,24 +662,38 @@ function abrirRelatorioRoteiro(resultados) {
             const resTxt = c.erro ? 'erro' : (temRes ? (r.codigo + ' - ' + (legenda || r.descricao || 'sem descricao')) : '-');
             const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
                         : (temRes ? '<span class="badge badge-green">OK</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
+
+            // passo(s) do roteiro cuja transacao corresponde a este programa - a
+            // comparacao direta entre o que o roteiro espera de negocio e o
+            // resultado tecnico obtido acima.
+            const relevantes = c.passos_relevantes || [];
+            let relevantesHtml = '';
+            if (relevantes.length) {
+                relevantesHtml = '<div style="margin-top:6px;padding:6px 8px;background:#FFFBEB;border-left:3px solid #F59E0B;border-radius:4px;font-size:11px">' +
+                    relevantes.map(p =>
+                        '<div><strong>' + escapeHtml(p.transacao || '') + ' - ' + escapeHtml(p.titulo || '') + ':</strong> esperado ' +
+                        escapeHtml(p.resultado_esperado || '-') + '</div>'
+                    ).join('') + '</div>';
+            }
+
             const passos = c.passos || [];
             let passosHtml = '';
             if (passos.length) {
-                passosHtml = '<tr><td colspan="4" style="padding:6px 8px 10px 24px;background:#fcfcfc">' +
-                    '<div style="font-size:11px;font-weight:600;color:var(--text-3);margin-bottom:4px">Passos do roteiro (' + passos.length + ')</div>' +
-                    '<ol style="margin:0;padding-left:18px;font-size:11px;line-height:1.7">' +
+                passosHtml = '<tr><td colspan="4" style="padding:2px 8px 10px 24px;background:#fcfcfc">' +
+                    '<details><summary style="cursor:pointer;font-size:11px;color:var(--text-muted)">Ver todos os ' + passos.length + ' passo(s) do roteiro neste cenario</summary>' +
+                    '<ol style="margin:6px 0 0;padding-left:18px;font-size:11px;line-height:1.7">' +
                     passos.map(p => {
                         const tbadge = p.transacao ? ' <span class="badge badge-blue" style="font-size:9px;padding:1px 6px">' + escapeHtml(p.transacao) + '</span>' : '';
                         const esperado = p.resultado_esperado ? '<div style="color:var(--text-muted);font-size:10px">Esperado: ' + escapeHtml(p.resultado_esperado) + '</div>' : '';
                         return '<li><strong>' + escapeHtml(p.titulo || '') + '</strong>' + tbadge + esperado + '</li>';
                     }).join('') +
-                    '</ol></td></tr>';
+                    '</ol></details></td></tr>';
             }
             return '<tr style="border-bottom:1px solid var(--border)">' +
-                '<td style="padding:5px 8px"><strong>' + escapeHtml(c.cenario || '') + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria || '') + '</div></td>' +
-                '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(c.chassi || '-') + '</td>' +
-                '<td style="text-align:center;font-size:11px">' + escapeHtml(String(resTxt)) + '</td>' +
-                '<td style="text-align:center">' + badge + '</td></tr>' +
+                '<td style="padding:5px 8px;vertical-align:top"><strong>' + escapeHtml(c.cenario || '') + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria || '') + '</div></td>' +
+                '<td style="font-size:11px;vertical-align:top">' + _htmlParametrosEntrada(c.parametros_entrada) + '</td>' +
+                '<td style="text-align:center;font-size:11px;vertical-align:top">' + escapeHtml(String(resTxt)) + relevantesHtml + '</td>' +
+                '<td style="text-align:center;vertical-align:top">' + badge + '</td></tr>' +
                 (c.erro ? '<tr><td colspan="4" style="padding:2px 8px;font-size:10px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>' : '') +
                 passosHtml;
         }).join('');
@@ -682,6 +703,14 @@ function abrirRelatorioRoteiro(resultados) {
         const progBadge = res.erroGeral ? '<span class="badge badge-red">FALHA</span>'
                          : (errProg === 0 ? '<span class="badge badge-green">OK</span>' : '<span class="badge badge-red">' + errProg + ' com erro</span>');
 
+        const descricaoExec = (res.casos && res.casos[0] && res.casos[0].descricao_execucao) || '';
+        const avisoSimulacao = res.simulacaoForcada
+            ? '<div style="padding:6px 14px;font-size:11px;color:#92400E;background:#FFFBEB;border-bottom:1px solid var(--border)">' +
+              '<strong>Atencao:</strong> este programa usa uma simulacao forcada de sucesso/erro (via RETURN-CODE) porque a ' +
+              'logica de negocio real e complexa demais para reproduzir com confianca aqui - o resultado abaixo NAO reflete ' +
+              'uma validacao real das regras de negocio, apenas confirma que o programa compila e executa.</div>'
+            : '';
+
         return '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:12px;overflow:hidden;break-inside:avoid">' +
             '<div style="background:var(--card-hover);padding:10px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">' +
             '<div><strong style="font-size:13px">' + escapeHtml(res.programa) + '</strong>' +
@@ -690,9 +719,11 @@ function abrirRelatorioRoteiro(resultados) {
             progBadge + '</div>' +
             (res.erroGeral
                 ? '<div style="padding:10px 14px;font-size:12px;color:var(--danger)">' + escapeHtml(res.erroGeral) + '</div>'
-                : (res.campoSaida ? '<div style="padding:6px 14px;font-size:11px;color:var(--text-muted)">Resultado no campo <code>' + escapeHtml(res.campoSaida) + '</code></div>' : '') +
+                : (descricaoExec ? '<div style="padding:8px 14px;font-size:11px;color:var(--text-3)">' + escapeHtml(descricaoExec) + '</div>' : '') +
+                  avisoSimulacao +
+                  (res.campoSaida ? '<div style="padding:6px 14px;font-size:11px;color:var(--text-muted)">Resultado lido no campo <code>' + escapeHtml(res.campoSaida) + '</code></div>' : '') +
                   '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
-                  '<tr style="background:var(--card-hover)"><th style="padding:5px 8px;text-align:left">Cenario</th><th>Chassi</th><th>Resultado</th><th>Status</th></tr>' +
+                  '<tr style="background:var(--card-hover)"><th style="padding:5px 8px;text-align:left">Cenario</th><th style="text-align:left">Parametros de entrada</th><th>Resultado obtido</th><th>Status</th></tr>' +
                   linhasCasos + '</table>') +
             '</div>';
     }).join('');
@@ -1162,8 +1193,15 @@ async function validarRoteiro(prog) {
         if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
         let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Validacao com o roteiro <strong>Primeiro Emplacamento</strong> (' + d.casos.length + ' cenarios)</div>';
         html += renderTesteInfoBox(IDE_TESTE_INFO);
+        const descricaoExec = (d.casos[0] && d.casos[0].descricao_execucao) || '';
+        if (descricaoExec) {
+            html += '<div style="padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text-3);background:var(--card-hover);border-radius:6px">' + escapeHtml(descricaoExec) + '</div>';
+        }
+        if (d.campo_saida) {
+            html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Resultado lido no campo <code>' + escapeHtml(d.campo_saida) + '</code></div>';
+        }
         html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
-        html += '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Cenario</th><th>Entrada (chassi)</th><th>Resultado</th><th>Status</th></tr>';
+        html += '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Cenario</th><th style="text-align:left">Parametros de entrada</th><th>Resultado obtido</th><th>Status</th></tr>';
         d.casos.forEach(c => {
             // usa o resultado da execucao do fonte (convertido); cai no original se preciso
             const res = c.convertido || c.original || {};
@@ -1173,10 +1211,10 @@ async function validarRoteiro(prog) {
             const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
                         : (temRes ? '<span class="badge badge-green">RESULTADO ESPERADO</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
             html += '<tr style="border-bottom:1px solid var(--border)">' +
-                '<td style="padding:6px 8px"><strong>' + escapeHtml(c.cenario) + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria) + '</div></td>' +
-                '<td style="text-align:center;font-family:monospace;font-size:11px">' + escapeHtml(c.chassi || '-') + '</td>' +
-                '<td style="text-align:center">' + escapeHtml(String(resTxt)) + '</td>' +
-                '<td style="text-align:center">' + badge + '</td></tr>';
+                '<td style="padding:6px 8px;vertical-align:top"><strong>' + escapeHtml(c.cenario) + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria) + '</div></td>' +
+                '<td style="font-size:11px;vertical-align:top">' + _htmlParametrosEntrada(c.parametros_entrada) + '</td>' +
+                '<td style="text-align:center;vertical-align:top">' + escapeHtml(String(resTxt)) + '</td>' +
+                '<td style="text-align:center;vertical-align:top">' + badge + '</td></tr>';
             if (c.erro) {
                 html += '<tr><td colspan="4" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
             }
