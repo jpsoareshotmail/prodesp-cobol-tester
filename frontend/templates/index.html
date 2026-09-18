@@ -868,12 +868,18 @@ async function carregarProgramas() {
 
 // Sugere um valor de teste conforme o programa selecionado.
 // Placa para validadores de placa; chassi para programas de veiculo.
+// Valor de exemplo de acordo com o TIPO real de entrada que o programa
+// espera (IDE_TESTE_INFO.entradas, carregado em carregarCodigo antes desta
+// funcao ser chamada) - nao mais um chute pelo nome do programa, que
+// mostrava exemplo de placa para campo de chassi e vice-versa.
 function valorExemplo(prog) {
-    const p = (prog || '').toUpperCase();
-    // validadores de placa (GAA Leitura) - usam placa
-    if (p.indexOf('L004') >= 0 || p.indexOf('FGAA004') >= 0) return 'ABC1D23';
-    if (p.startsWith('PF-GAA-L') || p.startsWith('FGAA')) return 'ABC1D23';
-    // demais programas (veiculo) - chassi de teste dos roteiros
+    const rotulos = ((IDE_TESTE_INFO && IDE_TESTE_INFO.entradas) || []).map(e => (e.rotulo || '').toLowerCase());
+    if (rotulos.some(r => r.includes('cnpj'))) return '08518623000162';
+    if (rotulos.some(r => r.includes('cpf'))) return '09758787861';
+    if (rotulos.some(r => r.includes('chassi'))) return '9C2GAA1SNSP772009';
+    if (rotulos.some(r => r.includes('placa'))) return 'ABC1D23';
+    // campo sem tipo de dominio reconhecido (rotulo = nome cru do campo) -
+    // chassi como valor de teste generico plausivel
     return '9C2GAA1SNSP772009';
 }
 
