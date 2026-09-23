@@ -524,6 +524,294 @@ def get_codigo_fonte_dual(programa):
     return jsonify(resultado)
 
 
+def _resolver_par(programa):
+    """Resolve o par (nome_original, nome_convertido) a partir de um nome
+    (que pode ser o original ou o convertido) usando o registro dinamico.
+    """
+    from data.program_registry import carregar_mapa
+    mapa = carregar_mapa()
+    reverso = {v: k for k, v in mapa.items() if v}
+    if programa in mapa:
+        return programa, (mapa[programa] or None)
+    if programa in reverso:
+        return reverso[programa], programa
+    # fallback hardcoded
+    try:
+        from data.program_mapping import get_converted_name, get_original_name
+        conv = get_converted_name(programa)
+        if conv:
+            return programa, conv
+        orig = get_original_name(programa)
+        return (orig or programa), programa
+    except Exception:
+        return programa, None
+
+
+def _analisar_diferencas(codigo_orig: str, codigo_conv: str):
+    """Analisa o par original x convertido e devolve um resumo estruturado das
+    PRINCIPAIS diferencas da conversao Unisys/MicroFocus -> GnuCOBOL.
+
+    A analise e baseada em padroes conhecidos do conversor (marcadores *GOT*/
+    *GOX*, COPY injetados, EXEC SQL neutralizado, numeros de sequencia, etc.)
+    e em metricas de linhas. Retorna metricas + lista de mudancas categorizadas,
+    cada uma com titulo, descricao, contagem e ate 3 exemplos de linha.
+    """
+    import re
+
+    orig_linhas = (codigo_orig or '').split('\n')
+    conv_linhas = (codigo_conv or '').split('\n')
+
+    def _normalizar(l):
+        """Remove ruido que nao e diferenca real de conteudo: numero de
+        sequencia (col 1-6 se numerico), marcadores *GOT*/*GOX* no fim, e
+        espacos das bordas. Assim a comparacao foca no codigo em si."""
+        s = l
+        if re.match(r'^\d{6}', s):
+            s = s[6:]
+        s = re.sub(r'\*GO[TX]\*\s*$', '', s)
+        return s.strip()
+
+    # --- diff de CONTEUDO (ignorando sequencia/marcadores) ---
+    set_o = {_normalizar(l) for l in orig_linhas if _normalizar(l)}
+    set_c = {_normalizar(l) for l in conv_linhas if _normalizar(l)}
+    so_conv = [l for l in conv_linhas if _normalizar(l) and _normalizar(l) not in set_o]
+    so_orig = [l for l in orig_linhas if _normalizar(l) and _normalizar(l) not in set_c]
+
+    def exemplos(linhas, limite=3):
+        out = []
+        for l in linhas:
+            s = l.strip()
+            if s and not set(s) <= {'*'}:  # ignora linhas so de '*'
+                out.append(l.rstrip()[:90])
+            if len(out) >= limite:
+                break
+        return out
+
+    mudancas = []
+
+    # Diferencas de CONTEUDO entre os dois codigos (linhas exclusivas de cada
+    # lado, ja ignorando ruido de formatacao). Foco: comparar o codigo em si.
+    outras_conv = [l for l in so_conv if l.strip()]
+    outras_orig = [l for l in so_orig if l.strip()]
+    if outras_conv:
+        mudancas.append({
+            "titulo": "Linhas de codigo so no convertido",
+            "descricao": "Trechos de codigo presentes apenas no convertido (nao existem no original).",
+            "contagem": len(outras_conv),
+            "exemplos": exemplos(outras_conv),
+        })
+    if outras_orig:
+        mudancas.append({
+            "titulo": "Linhas de codigo so no original",
+            "descricao": "Trechos de codigo presentes apenas no original (nao existem no convertido).",
+            "contagem": len(outras_orig),
+            "exemplos": exemplos(outras_orig),
+        })
+
+    # =====================================================================
+    # ANALISE ESTRUTURAL / DE LOGICA (comparacao entre os dois codigos)
+    # =====================================================================
+    dif_estrutura = _analisar_estrutura(orig_linhas, conv_linhas)
+    mudancas.extend(dif_estrutura["mudancas"])
+
+    metricas = {
+        "linhas_original": len([l for l in orig_linhas if l.strip()]),
+        "linhas_convertido": len([l for l in conv_linhas if l.strip()]),
+        "linhas_so_convertido": len(so_conv),
+        "linhas_so_original": len(so_orig),
+    }
+    metricas.update(dif_estrutura["metricas"])
+    return {"metricas": metricas, "mudancas": mudancas, "estrutura": dif_estrutura["detalhe"]}
+
+
+def _analisar_estrutura(orig_linhas, conv_linhas):
+    """Compara os elementos ESTRUTURAIS/de logica dos dois programas:
+    paragrafos, secoes, variaveis (itens de dados), divisoes, tabelas SQL,
+    CALLs e PERFORMs. Considera apenas linhas ATIVAS (nao comentadas) para
+    refletir o que de fato muda no comportamento, nao o texto de comentario.
+    """
+    import re
+
+    def ativas(linhas):
+        out = []
+        for l in linhas:
+            # remove numero de sequencia p/ achar a col 7 (indicador)
+            s = l[6:] if re.match(r'^\d{6}', l) else l
+            # linha de comentario: '*' ou '/' na coluna indicadora (7a)
+            corpo = s.rstrip()
+            if not corpo.strip():
+                continue
+            # indicador de comentario: primeiro caractere nao-espaco e '*' ou '/'
+            stripped = s.lstrip()
+            if stripped.startswith('*') or stripped.startswith('/'):
+                continue
+            out.append(s.rstrip())
+        return out
+
+    o = ativas(orig_linhas)
+    c = ativas(conv_linhas)
+    texto_o = '\n'.join(o)
+    texto_c = '\n'.join(c)
+
+    # --- extratores ---
+    _RESERVADAS_PARA = {
+        'SPECIAL-NAMES', 'SECURITY', 'AUTHOR', 'DATE-WRITTEN', 'DATE-COMPILED',
+        'INSTALLATION', 'SOURCE-COMPUTER', 'OBJECT-COMPUTER', 'CONFIGURATION',
+        'INPUT-OUTPUT', 'FILE-CONTROL', 'I-O-CONTROL', 'REPOSITORY',
+    }
+
+    def _corpo_procedure(texto):
+        """Retorna so o trecho a partir de PROCEDURE DIVISION (onde ficam os
+        paragrafos de logica). Se nao achar, retorna o texto todo."""
+        m = re.search(r'(?im)^\s*PROCEDURE\s+DIVISION', texto)
+        return texto[m.start():] if m else texto
+
+    def paragrafos(texto):
+        # nomes de paragrafo (label seguido de '.') dentro da PROCEDURE DIVISION;
+        # indentacao flexivel (o convertido usa Area A na col 8).
+        nomes = set()
+        corpo = _corpo_procedure(texto)
+        for l in corpo.split('\n'):
+            m = re.match(r'^\s{0,11}([A-Z0-9][A-Z0-9\-]+)\s*\.\s*$', l)
+            if m:
+                n = m.group(1).upper()
+                if n.endswith('DIVISION') or n.endswith('SECTION') or n in _RESERVADAS_PARA:
+                    continue
+                if n in ('IDENTIFICATION', 'ENVIRONMENT', 'DATA', 'PROCEDURE'):
+                    continue
+                if n.startswith('END-') or n == 'CONTINUE' or n == 'EXIT':
+                    continue
+                nomes.add(n)
+        return nomes
+
+    def secoes(texto):
+        nomes = set(re.findall(r'(?im)^\s{0,11}([A-Z0-9][A-Z0-9\-]+)\s+SECTION\s*\.', texto))
+        # descarta secoes estruturais fixas (nao sao "logica")
+        return {n for n in nomes if n.upper() not in (
+            'CONFIGURATION', 'INPUT-OUTPUT', 'FILE', 'WORKING-STORAGE',
+            'LINKAGE', 'LOCAL-STORAGE', 'FILE-CONTROL')}
+
+    def variaveis(texto):
+        # itens de dados: nivel 01/03/05/.. seguido de nome (ignora FILLER)
+        nomes = set()
+        for m in re.finditer(r'(?im)^\s{0,20}(\d{2})\s+([A-Z][A-Z0-9\-]+)', texto):
+            nome = m.group(2).upper()
+            if nome != 'FILLER':
+                nomes.add(nome)
+        return nomes
+
+    def tabelas_sql(texto):
+        return set(re.findall(r'(?i)\bFROM\s+([A-Z][A-Z0-9_\.]+)', texto)) | \
+               set(re.findall(r'(?i)\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+([A-Z][A-Z0-9_\.]+)', texto))
+
+    def calls(texto):
+        return set(re.findall(r'(?i)\bCALL\s+["\']?([A-Z0-9\-]+)', texto))
+
+    up_o, up_c = texto_o.upper(), texto_c.upper()
+
+    par_o, par_c = paragrafos(up_o), paragrafos(up_c)
+    sec_o, sec_c = secoes(up_o), secoes(up_c)
+    var_o, var_c = variaveis(up_o), variaveis(up_c)
+    tab_o, tab_c = tabelas_sql(up_o), tabelas_sql(up_c)
+    call_o, call_c = calls(up_o), calls(up_c)
+
+    mudancas = []
+
+    def add_dif(titulo, so_orig_set, so_conv_set, descr_base):
+        so_o = sorted(so_orig_set)
+        so_c = sorted(so_conv_set)
+        if not so_o and not so_c:
+            return
+        partes = []
+        if so_c:
+            partes.append(f"{len(so_c)} so no convertido")
+        if so_o:
+            partes.append(f"{len(so_o)} so no original")
+        ex = []
+        for x in so_c[:3]:
+            ex.append(f"+ {x}  (novo no convertido)")
+        for x in so_o[:3]:
+            ex.append(f"- {x}  (removido/ausente no convertido)")
+        mudancas.append({
+            "titulo": titulo,
+            "descricao": descr_base + " Diferencas: " + ", ".join(partes) + ".",
+            "contagem": len(so_o) + len(so_c),
+            "exemplos": ex,
+        })
+
+    add_dif("Paragrafos (logica) diferentes", par_o - par_c, par_c - par_o,
+            "Rotinas/paragrafos presentes em apenas um dos lados indicam mudanca de "
+            "fluxo ou rotinas geradas pela conversao (ex: rotinas de acesso a dados).")
+    add_dif("Secoes diferentes", sec_o - sec_c, sec_c - sec_o,
+            "Secoes (SECTION) presentes em apenas um dos lados.")
+    add_dif("Variaveis / itens de dados diferentes", var_o - var_c, var_c - var_o,
+            "Campos declarados em apenas um dos lados - podem vir de copybooks "
+            "incluidos no convertido ou de estrutura removida/alterada.")
+    add_dif("Tabelas SQL referenciadas diferentes", tab_o - tab_c, tab_c - tab_o,
+            "Tabelas de banco acessadas em apenas um dos lados.")
+    add_dif("Chamadas CALL diferentes", call_o - call_c, call_c - call_o,
+            "Modulos chamados via CALL presentes em apenas um dos lados.")
+
+    detalhe = {
+        "paragrafos": {"so_original": sorted(par_o - par_c), "so_convertido": sorted(par_c - par_o),
+                        "comuns": len(par_o & par_c)},
+        "secoes": {"so_original": sorted(sec_o - sec_c), "so_convertido": sorted(sec_c - sec_o)},
+        "variaveis": {"so_original": sorted(var_o - var_c)[:50], "so_convertido": sorted(var_c - var_o)[:50],
+                       "comuns": len(var_o & var_c)},
+        "tabelas": {"so_original": sorted(tab_o - tab_c), "so_convertido": sorted(tab_c - tab_o)},
+        "calls": {"so_original": sorted(call_o - call_c), "so_convertido": sorted(call_c - call_o)},
+    }
+    metricas = {
+        "paragrafos_original": len(par_o), "paragrafos_convertido": len(par_c),
+        "paragrafos_comuns": len(par_o & par_c),
+        "variaveis_original": len(var_o), "variaveis_convertido": len(var_c),
+        "tabelas_original": len(tab_o), "tabelas_convertido": len(tab_c),
+    }
+    return {"mudancas": mudancas, "detalhe": detalhe, "metricas": metricas}
+
+
+@app.route('/api/diferencas/<programa>', methods=['GET'])
+def get_diferencas(programa):
+    """Retorna um resumo descritivo das principais diferencas entre o original
+    e o convertido do programa (analise automatica dos padroes de conversao).
+    """
+    from cobol_runner import ORIGINAIS_DIR, CONVERTIDOS_DIR
+
+    nome_original, nome_convertido = _resolver_par(programa)
+
+    codigo_orig = None
+    if nome_original:
+        for ext in ('.C74', '.cob'):
+            f = ORIGINAIS_DIR / f"{nome_original}{ext}"
+            if f.exists():
+                codigo_orig = f.read_text(encoding='latin-1', errors='ignore')
+                break
+
+    codigo_conv = None
+    if nome_convertido:
+        f = CONVERTIDOS_DIR / nome_convertido
+        if f.exists():
+            codigo_conv = f.read_text(encoding='latin-1', errors='ignore')
+
+    if not codigo_orig or not codigo_conv:
+        return jsonify({
+            "ok": False,
+            "programa": programa,
+            "original": nome_original, "convertido": nome_convertido,
+            "tem_par": bool(codigo_orig and codigo_conv),
+            "error": "Par original/convertido incompleto - nao ha o que comparar.",
+        })
+
+    analise = _analisar_diferencas(codigo_orig, codigo_conv)
+    return jsonify({
+        "ok": True,
+        "programa": programa,
+        "original": nome_original, "convertido": nome_convertido,
+        "tem_par": True,
+        **analise,
+    })
+
+
 @app.route('/api/teste-info/<programa>', methods=['GET'])
 def get_teste_info(programa):
     """Descreve como o programa e' exercitado no teste manual: quais campos
@@ -546,6 +834,21 @@ def get_teste_info(programa):
         # DB2 e devolveria [] aqui, apagando o que ja' era valido.
         if not info.get('cenarios'):
             info['cenarios'] = cenarios_disponiveis(nome_conv)
+        # descricao do programa (o que ele faz), quando documentada - mostrada
+        # no topo da aba de teste do codigo-fonte.
+        try:
+            desc = get_program_description(programa) or get_program_description(nome_conv)
+        except Exception:
+            desc = None
+        if desc:
+            info['descricao_programa'] = {
+                'nome': desc.get('nome'),
+                'descricao': desc.get('descricao'),
+                'objetivo': desc.get('objetivo'),
+                'entrada': desc.get('entrada'),
+                'saida': desc.get('saida'),
+                'categoria': desc.get('categoria'),
+            }
         return jsonify(info)
     except Exception as e:
         import traceback
@@ -1227,9 +1530,16 @@ def testar_com_roteiro(programa):
     nem tenta.
     """
     try:
-        from data.roteiros_teste import get_roteiros, get_transacoes
+        from data.roteiros_teste import get_roteiros, get_transacoes, input_do_passo
         from cobol_runner import comparar_placa, executar_convertido, info_parametros_teste
         from data.program_mapping import get_converted_name
+        try:
+            from roteiro_input import info_entrada as _info_entrada
+        except Exception:
+            try:
+                from app.roteiro_input import info_entrada as _info_entrada  # type: ignore
+            except Exception:
+                _info_entrada = None
 
         is_placa = ('L004' in programa.upper() or programa.upper() == 'FGAA004'
                     or 'PF-GAA-L004' in programa.upper())
@@ -1261,8 +1571,28 @@ def testar_com_roteiro(programa):
             entrada = dt.get('chassi', '')
             ident = dt.get('cpf') or dt.get('cnpj') or ''
 
-            passos_relevantes = [p for p in rot.get('passos', [])
+            # enriquece cada passo com o INPUT do cenario (chassi/CPF/CNPJ
+            # conforme a transacao) - mesma fonte de verdade da aba Roteiros.
+            passos_enr = [dict(p, input=input_do_passo(p, dt)) for p in rot.get('passos', [])]
+            passos_relevantes = [p for p in passos_enr
                                   if p.get('transacao') in transacoes_do_programa]
+
+            # chave REAL de entrada deste programa (quando temos o descritor):
+            # deixa claro qual dado do cenario e' a chave da consulta, em vez do
+            # rotulo generico "Placa/Chassi". CPF/CNPJ que nao sao chave viram
+            # 'contexto'. Mesma fonte de verdade da aba Roteiros.
+            entrada_real = None
+            if _info_entrada and not is_placa:
+                er = _info_entrada(nome_conv)
+                if er:
+                    val = {'COB_CHASSI': dt.get('chassi', ''), 'COB_PLACA': dt.get('chassi', ''),
+                           'COB_CPF': dt.get('cpf', ''), 'COB_CNPJ': dt.get('cnpj', '')}.get(er['envvar'], '')
+                    ctx = []
+                    for cv in er.get('contexto', []):
+                        cvv = {'COB_CPF': dt.get('cpf', ''), 'COB_CNPJ': dt.get('cnpj', '')}.get(cv)
+                        if cvv:
+                            ctx.append({'rotulo': {'COB_CPF': 'CPF', 'COB_CNPJ': 'CNPJ'}.get(cv, cv), 'valor': cvv})
+                    entrada_real = {'rotulo': er['rotulo'], 'valor': val, 'contexto': ctx}
 
             caso = {
                 'cenario': rot['cenario'],
@@ -1270,7 +1600,8 @@ def testar_com_roteiro(programa):
                 'chassi': dt.get('chassi', ''),
                 'identificador': ident,
                 'entrada': entrada,
-                'passos': rot.get('passos', []),
+                'entrada_real': entrada_real,
+                'passos': passos_enr,
                 'passos_relevantes': passos_relevantes,
             }
 
@@ -1384,6 +1715,10 @@ def testar_com_roteiro(programa):
             'campo_saida': campo_saida,
             'legenda_saida': legenda_saida,
             'simulacao_forcada': simulacao_forcada,
+            # transacoes do roteiro que ESTE programa implementa (vazio = o
+            # programa nao faz parte do roteiro de Primeiro Emplacamento).
+            'transacoes_roteiro': transacoes_do_programa,
+            'no_roteiro': (not is_placa and not transacoes_do_programa),
             'casos': casos,
         })
     except Exception as e:
@@ -1392,18 +1727,303 @@ def testar_com_roteiro(programa):
         return jsonify({"error": str(e)}), 500
 
 
+# motivos padrao (por transacao/camada) de por que um passo NAO tem programa
+# executavel neste ambiente - texto honesto pro relatorio.
+_MOTIVO_SEM_PROGRAMA = {
+    '901': 'Consulta externa na BIN/Serpro - sistema de terceiros, fora dos 42 fontes.',
+    'TXUT': 'Tela de consulta de taxa cujo programa nao esta entre os 42 fontes entregues.',
+    'PGER': 'Consulta de ficha (GEVER) acessada por comando de tela; sem programa proprio nos fontes.',
+    'DHAB': 'Nao e um programa: e uma mensagem (MENSCODE DHAB) de processamento diario.',
+    'CDAV': 'Tela de consulta ampliada (RENAVAM TR.227); programa nao esta entre os 42 fontes.',
+    'CEST': 'Cancelamento de estampagem - transacao sem programa entre os 42 fontes.',
+    'PEST': 'Consulta de estampagem - transacao sem programa entre os 42 fontes.',
+    'PJOF': 'Manutencao de CNPJ oficial (telas PJO1/PJO2) - programa nao esta entre os 42 fontes.',
+}
+
+
+@app.route('/api/roteiro-execucao', methods=['GET'])
+def roteiro_execucao():
+    """Executa cada roteiro PASSO A PASSO (visao roteiro-centrica).
+
+    Para cada roteiro (Capital/Interior/Orgao Oficial), percorre TODOS os
+    passos (12). Nos passos cuja transacao corresponde a um programa COBOL
+    convertido (ver roteiros_teste.TRANSACOES), executa o programa com o dado
+    de teste CERTO (a chave real que aquele programa consulta - chassi/CPF) e
+    devolve o resultado data-dependent (achou/nao-achou via consulta SQLite
+    real). Nos demais passos (telas eCRV, sistemas externos, transacoes sem
+    programa entre os 42 fontes), devolve um marcador honesto de "manual/
+    externo - sem programa executavel" com o motivo.
+    """
+    try:
+        from data.roteiros_teste import get_roteiros, get_transacoes
+        from cobol_runner import executar_convertido, info_parametros_teste
+        try:
+            from roteiro_input import info_entrada, info_resultado
+        except Exception:
+            from app.roteiro_input import info_entrada, info_resultado  # type: ignore
+
+        transacoes = get_transacoes()
+        roteiros_out = []
+
+        for rot in get_roteiros():
+            dt = rot.get('dados_teste', {})
+            chassi = dt.get('chassi', '')
+            cpf = dt.get('cpf', '')
+            cnpj = dt.get('cnpj', '')
+            passos_out = []
+
+            for p in rot.get('passos', []):
+                trans = p.get('transacao')
+                prog = transacoes.get(trans, {}).get('programa') if trans else None
+                item = {
+                    'ordem': p.get('ordem'),
+                    'titulo': p.get('titulo', ''),
+                    'transacao': trans,
+                    'camada': p.get('camada', ''),
+                    'resultado_esperado': p.get('resultado_esperado', ''),
+                    'programa': prog,
+                }
+
+                if not prog:
+                    # passo sem programa executavel - marcador honesto
+                    item['executavel'] = False
+                    item['motivo'] = _MOTIVO_SEM_PROGRAMA.get(
+                        trans or '',
+                        'Passo manual/eCRV ou transacao sem programa entre os 42 fontes.')
+                    passos_out.append(item)
+                    continue
+
+                # passo COM programa: monta o env com a CHAVE REAL do programa
+                ent = info_entrada(prog)
+                env = {}
+                rotulo_entrada = None
+                valor_chave = None
+                if ent:
+                    ev = ent['envvar']
+                    valor_chave = {'COB_CHASSI': chassi, 'COB_PLACA': chassi,
+                                   'COB_CPF': cpf, 'COB_CNPJ': cnpj}.get(ev, '')
+                    env[ev] = valor_chave
+                    rotulo_entrada = ent['rotulo']
+                    # contexto: outros dados do cenario que NAO sao chave
+                    for cv in ent.get('contexto', []):
+                        val = {'COB_CPF': cpf, 'COB_CNPJ': cnpj,
+                               'COB_CHASSI': chassi}.get(cv)
+                        if val:
+                            env[cv] = val
+                else:
+                    # sem descritor de entrada real: manda os 4 (o programa le o
+                    # que precisar), rotulo generico honesto.
+                    env = {'COB_CHASSI': chassi, 'COB_PLACA': chassi}
+                    if cpf:
+                        env['COB_CPF'] = cpf
+                    if cnpj:
+                        env['COB_CNPJ'] = cnpj
+                    rotulo_entrada = 'chassi (campo de entrada real nao identificado)'
+                    valor_chave = chassi
+
+                info = info_parametros_teste(prog)
+                legenda = info.get('legenda_saida', {})
+                item['executavel'] = True
+                item['entrada_rotulo'] = rotulo_entrada
+                item['entrada_valor'] = valor_chave
+                item['campo_saida'] = info.get('campo_saida')
+                item['legenda_saida'] = legenda
+                item['resultado_real'] = bool(info.get('resultado_real'))
+                item['simulacao_forcada'] = bool(info.get('simulacao_forcada'))
+                # contexto (dados do cenario que nao sao chave)
+                ctx = {}
+                if ent:
+                    for cv in ent.get('contexto', []):
+                        val = {'COB_CPF': cpf, 'COB_CNPJ': cnpj}.get(cv)
+                        if val:
+                            ctx[{'COB_CPF': 'CPF', 'COB_CNPJ': 'CNPJ'}[cv]] = val
+                item['contexto'] = ctx
+
+                try:
+                    rc = executar_convertido(prog, env)
+                    cod = rc.codigo
+                    leg = legenda.get(str(cod)) if legenda else None
+                    executou = bool(rc.sucesso and cod is not None and not rc.erro)
+                    tem_valor = executou and (item['resultado_real'] or cod != 0 or bool(leg))
+                    item['codigo'] = cod
+                    item['descricao'] = leg or (rc.descricao if rc.descricao and not rc.output else '')
+                    item['sucesso'] = executou
+                    item['tem_valor_negocio'] = tem_valor
+                    item['erro'] = rc.erro
+                except Exception as ex:
+                    item['sucesso'] = False
+                    item['erro'] = str(ex)
+                passos_out.append(item)
+
+            roteiros_out.append({
+                'id': rot.get('id'),
+                'nome': rot.get('nome'),
+                'cenario': rot.get('cenario'),
+                'categoria': rot.get('categoria'),
+                'dados_teste': {'chassi': chassi, 'cpf': cpf, 'cnpj': cnpj},
+                'passos': passos_out,
+            })
+
+        return jsonify({'roteiros': roteiros_out})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/roteiro-por-programa', methods=['GET'])
+def roteiro_por_programa():
+    """Para CADA programa convertido, devolve a visao dos 12 passos de cada
+    roteiro (opcao 1 escolhida pelo usuario): o passo cuja transacao pertence
+    ao programa e' EXECUTADO de verdade; os demais passos sao MOCKADOS a partir
+    do 'resultado_esperado' do roteiro (marcados como simulados, nao validacao
+    real). Assim cada programa aparece com o roteiro completo.
+
+    Roda a execucao real dos roteiros UMA vez (reaproveita a mesma logica de
+    roteiro_execucao) e depois monta as visoes por programa a partir dela -
+    evita reexecutar 42 x 12 vezes.
+    """
+    try:
+        from data.roteiros_teste import get_roteiros, get_transacoes, input_do_passo
+        from data.program_mapping import get_converted_name
+
+        # 1) roda os roteiros de verdade uma vez (mesma logica do endpoint acima)
+        base = roteiro_execucao().get_json()
+        if not base or base.get('error'):
+            return jsonify({'error': (base or {}).get('error', 'falha ao executar roteiros')}), 500
+        base_roteiros = base.get('roteiros', [])
+        # indice rapido: (roteiro_id, ordem) -> passo real ja executado
+        real_idx = {}
+        for rot in base_roteiros:
+            for p in rot.get('passos', []):
+                real_idx[(rot.get('id'), p.get('ordem'))] = p
+
+        transacoes = get_transacoes()
+        # transacao -> programa convertido
+        prog_por_trans = {c: d.get('programa') for c, d in transacoes.items() if d.get('programa')}
+
+        # mapa convertido -> original (o nome que a aba Projeto mostra), para o
+        # relatorio exibir o MESMO nome da lista do projeto.
+        conv_para_orig = {}
+        try:
+            from data.program_registry import programas_por_categoria
+            for _cat, _progs in programas_por_categoria().items():
+                for _pr in _progs:
+                    if _pr.get('converted'):
+                        conv_para_orig[_pr['converted']] = _pr.get('original')
+        except Exception:
+            pass
+
+        # 2) lista de programas a exibir: recebe via querystring (?programas=a,b)
+        #    ou usa a MESMA fonte da lista de codigo-fonte: o registro de
+        #    programas reais (data/program_registry). Isso exclui copybooks/
+        #    mapas de tela (AUML01, COFI02, GERA01, MENS01, ...) que sao
+        #    fragmentos, nao programas - eles nao devem ser "testados".
+        pedido = (request.args.get('programas') or '').strip()
+        if pedido:
+            programas = [x.strip() for x in pedido.split(',') if x.strip()]
+        else:
+            try:
+                from data.program_registry import programas_por_categoria
+                programas = []
+                for _cat, progs in programas_por_categoria().items():
+                    for pr in progs:
+                        conv = pr.get('converted')
+                        if conv:
+                            programas.append(conv)
+                programas = sorted(set(programas))
+            except Exception:
+                programas = []
+
+        saida = []
+        for prog_conv in programas:
+            # transacoes que ESTE programa implementa
+            trans_do_prog = {c for c, pr in prog_por_trans.items() if pr == prog_conv}
+            roteiros_prog = []
+            for rot in get_roteiros():
+                dt = rot.get('dados_teste', {})
+                passos_out = []
+                for p in rot.get('passos', []):
+                    trans = p.get('transacao')
+                    ordem = p.get('ordem')
+                    inp = input_do_passo(p, dt)
+                    base_item = {
+                        'ordem': ordem, 'titulo': p.get('titulo', ''),
+                        'transacao': trans, 'camada': p.get('camada', ''),
+                        'resultado_esperado': p.get('resultado_esperado', ''),
+                        'input': inp,
+                    }
+                    if trans in trans_do_prog:
+                        # passo DESTE programa -> resultado REAL (do base_idx)
+                        real = real_idx.get((rot.get('id'), ordem), {})
+                        base_item.update({
+                            'programa': prog_conv, 'origem': 'real',
+                            'executavel': real.get('executavel', True),
+                            'entrada_rotulo': real.get('entrada_rotulo'),
+                            'entrada_valor': real.get('entrada_valor'),
+                            'contexto': real.get('contexto', {}),
+                            'legenda_saida': real.get('legenda_saida', {}),
+                            'codigo': real.get('codigo'),
+                            'descricao': real.get('descricao'),
+                            'sucesso': real.get('sucesso'),
+                            'tem_valor_negocio': real.get('tem_valor_negocio'),
+                            'erro': real.get('erro'),
+                        })
+                    else:
+                        # demais passos -> MOCK (resultado esperado do roteiro)
+                        base_item.update({
+                            'programa': prog_por_trans.get(trans),
+                            'origem': 'mock',
+                            'executavel': False,
+                            'mock': True,
+                            'entrada_rotulo': inp.get('rotulo'),
+                            'entrada_valor': inp.get('valor'),
+                            'motivo': ('SIMULADO: resultado esperado do roteiro (este passo '
+                                       'nao e executado por ' + prog_conv + ').'),
+                        })
+                    passos_out.append(base_item)
+                roteiros_prog.append({
+                    'id': rot.get('id'), 'nome': rot.get('nome'),
+                    'cenario': rot.get('cenario'), 'categoria': rot.get('categoria'),
+                    'dados_teste': {'chassi': dt.get('chassi', ''), 'cpf': dt.get('cpf', ''),
+                                    'cnpj': dt.get('cnpj', '')},
+                    'passos': passos_out,
+                })
+            saida.append({
+                'programa_convertido': prog_conv,
+                'programa_original': conv_para_orig.get(prog_conv),
+                'faz_parte_roteiro': bool(trans_do_prog),
+                'transacoes': sorted(trans_do_prog),
+                'roteiros': roteiros_prog,
+            })
+
+        return jsonify({'programas': saida})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/roteiros', methods=['GET'])
 def get_roteiros_endpoint():
     """Retorna os roteiros de teste de Primeiro Emplacamento (dos .docx)."""
     try:
-        from data.roteiros_teste import get_roteiros, get_transacoes
+        from data.roteiros_teste import get_roteiros, get_transacoes, input_do_passo
         # indice de imagens (prints de tela) publicadas em static/roteiros/
         imagens = {}
         idx = Path('frontend/static/roteiros/indice.json')
         if idx.exists():
             imagens = json.loads(idx.read_text(encoding='utf-8'))
+        # enriquece cada passo com o INPUT do cenario (chassi/CPF/CNPJ conforme
+        # a transacao) - copia para nao mutar os objetos compartilhados.
+        roteiros = []
+        for rot in get_roteiros():
+            r = dict(rot)
+            dt = rot.get('dados_teste', {})
+            r['passos'] = [dict(p, input=input_do_passo(p, dt)) for p in rot.get('passos', [])]
+            roteiros.append(r)
         return jsonify({
-            'roteiros': get_roteiros(),
+            'roteiros': roteiros,
             'transacoes': get_transacoes(),
             'imagens': imagens,
         })
@@ -1438,8 +2058,15 @@ def salvar_roteiro_historico():
     (e baixar o PDF) de execucoes anteriores sem rodar tudo de novo."""
     try:
         dados = request.get_json(force=True) or {}
+        formato = dados.get('formato', 'programas')
         resultados = dados.get('resultados')
-        if not isinstance(resultados, list):
+        roteiros = dados.get('roteiros')
+        # novo formato passo a passo (roteiro-centrico) usa 'roteiros';
+        # formato antigo (program-centrico) usa 'resultados'.
+        if formato == 'passos':
+            if not isinstance(roteiros, list):
+                return jsonify({"error": "campo 'roteiros' (lista) e obrigatorio no formato passos"}), 400
+        elif not isinstance(resultados, list):
             return jsonify({"error": "campo 'resultados' (lista) e obrigatorio"}), 400
 
         entrada = {
@@ -1447,7 +2074,11 @@ def salvar_roteiro_historico():
             'quando': datetime.now().isoformat(timespec='seconds'),
             'alvo': dados.get('alvo', ''),
             'usuario': (session.get('user') or {}).get('username', ''),
-            'resultados': resultados,
+            'formato': formato,
+            'resultados': resultados if isinstance(resultados, list) else [],
+            'roteiros': roteiros if isinstance(roteiros, list) else None,
+            'programas': dados.get('programas') if isinstance(dados.get('programas'), list) else None,
+            'destaqueProg': dados.get('destaqueProg'),
         }
 
         historico = []
@@ -1789,7 +2420,7 @@ def _processar_importacao(pendentes, run_id):
         IMPORTADOS_DIR = PROJECT_ROOT / 'arquivosimportados'
         IMPORTADOS_DIR.mkdir(parents=True, exist_ok=True)
 
-        for idx, (nome, raw) in enumerate(pendentes, start=1):
+        for idx, (nome, caminho_rel, raw) in enumerate(pendentes, start=1):
             if import_state["run_id"] != run_id:
                 return  # cancelada ou substituida por uma importacao mais nova
             import_state["indice_atual"] = idx
@@ -1830,9 +2461,26 @@ def _processar_importacao(pendentes, run_id):
                 import_state["itens"].append(item)
                 continue
 
-            if ext in ('.c74', '.cob', '.cpy'):
+            # Roteamento: quando o arquivo veio de uma PASTA importada, a
+            # subpasta de origem (Originais/ ou Convertidos/) manda. Sem essa
+            # informacao (import avulso), cai no roteamento por extensao.
+            segs = [s.lower() for s in (caminho_rel or '').replace('\\', '/').split('/')]
+            veio_de_originais = 'originais' in segs
+            veio_de_convertidos = 'convertidos' in segs
+
+            if eh_copybook:
+                # copybooks sempre vao para Originais (independe da pasta)
                 destino = ORIGINAIS_DIR / nome
-                tipo = 'copybook' if eh_copybook else 'original'
+                tipo = 'copybook'
+            elif veio_de_convertidos:
+                destino = CONVERTIDOS_DIR / nome
+                tipo = 'convertido'
+            elif veio_de_originais:
+                destino = ORIGINAIS_DIR / nome
+                tipo = 'original'
+            elif ext in ('.c74', '.cob'):
+                destino = ORIGINAIS_DIR / nome
+                tipo = 'original'
             else:
                 destino = CONVERTIDOS_DIR / nome
                 tipo = 'convertido'
@@ -1950,20 +2598,26 @@ def importar_fontes():
     if not arquivos:
         return jsonify({"ok": False, "error": "Nenhum arquivo enviado"}), 400
 
+    # Caminhos relativos (webkitRelativePath) enviados em paralelo aos arquivos,
+    # na mesma ordem. Vazios em import avulso; preenchidos em import de pasta.
+    caminhos = request.form.getlist('caminhos')
+
     # Le o conteudo agora (dentro do contexto da requisicao) - o FileStorage
     # do Werkzeug nao sobrevive apos a thread em background assumir.
+    # Cada pendente: (nome_arquivo, caminho_relativo, conteudo_bytes).
     pendentes = []
-    for arq in arquivos:
+    for i, arq in enumerate(arquivos):
         nome = os.path.basename(arq.filename or '').strip()
         if not nome:
             continue
-        pendentes.append((nome, arq.read()))
+        rel = caminhos[i] if i < len(caminhos) else ''
+        pendentes.append((nome, rel, arq.read()))
 
     import_state["run_id"] += 1
     meu_run_id = import_state["run_id"]
     import_state["running"] = True
     import_state["total"] = len(pendentes)
-    import_state["nomes"] = [nome for nome, _raw in pendentes]
+    import_state["nomes"] = [nome for nome, _rel, _raw in pendentes]
     import_state["indice_atual"] = 0
     import_state["arquivo_atual"] = None
     import_state["etapa_atual"] = None

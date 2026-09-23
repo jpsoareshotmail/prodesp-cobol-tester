@@ -124,6 +124,16 @@
         .ide-code table { border-collapse: collapse; width: 100%; }
         .ide-code .ln { text-align: right; color: #6A6A6A; padding: 0 10px; user-select: none; width: 1%; white-space: nowrap; border-right: 1px solid #333; }
         .ide-code .lc { padding: 0 12px; white-space: pre; color: #C8E6C9; }
+        /* Diff: linhas adicionadas/removidas/alteradas e vazias (padding) */
+        .ide-code tr.d-add .lc { background: #14351f; color: #B9F6CA; }
+        .ide-code tr.d-add .ln { background: #123018; }
+        .ide-code tr.d-del .lc { background: #3a1620; color: #FFB4B4; }
+        .ide-code tr.d-del .ln { background: #331218; }
+        .ide-code tr.d-chg .lc { background: #33320f; color: #FFF3B0; }
+        .ide-code tr.d-chg .ln { background: #2c2b0d; }
+        .ide-code tr.d-empty .lc { background: #202020; }
+        .ide-diff-legend { display: flex; gap: 14px; align-items: center; font-size: 11px; color: var(--text-muted); }
+        .ide-diff-legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
         .ide-deps { flex: 0 0 auto; max-height: 130px; overflow-y: auto; border-top: 1px solid var(--border); background: #fafafa; }
         .ide-deps-row { padding: 6px 14px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
         .ide-deps-row + .ide-deps-row { border-top: 1px solid var(--border); }
@@ -179,13 +189,17 @@
                 <input type="text" id="ide-filter" class="ide-filter" placeholder="Filtrar..." oninput="filtrarProgramas(this.value)">
                 <div id="ide-list" class="ide-list"><p style="padding:14px;color:var(--text-muted);font-size:12px">Carregando...</p></div>
                 <div class="ide-toolbar">
-                    <button type="button" class="ide-btn ide-btn-import" onclick="document.getElementById('import-input').click()" title="Importar fontes COBOL (.C74, .cob, .cpy ou convertidos sem extensao)">
+                    <button type="button" class="ide-btn ide-btn-import" onclick="document.getElementById('import-input').click()" title="Importar arquivos COBOL avulsos (.C74, .cob, .cpy ou convertidos sem extensao)">
                         &#8593; Importar fontes
+                    </button>
+                    <button type="button" class="ide-btn ide-btn-import" onclick="document.getElementById('import-dir-input').click()" title="Importar uma pasta com subpastas Originais/ e Convertidos/ - o roteamento e feito pela pasta de origem">
+                        &#128193; Importar pasta
                     </button>
                     <button type="button" class="ide-btn ide-btn-clean" onclick="limparProjeto()" title="Apaga TODO o projeto: fontes (originais e convertidos), arquivos importados, artefatos compilados e banco/estrutura">
                         &#128465; Limpar projeto
                     </button>
                     <input type="file" id="import-input" multiple style="display:none" onchange="importarFontes(this.files)">
+                    <input type="file" id="import-dir-input" webkitdirectory directory multiple style="display:none" onchange="importarFontes(this.files)">
                     <div id="ide-toolbar-msg" class="ide-toolbar-msg"></div>
                 </div>
             </aside>
@@ -356,13 +370,13 @@
         <div class="card">
             <div class="card-title">Executar Roteiro de Testes</div>
             <p style="font-size:13px;color:var(--text-3);margin-bottom:16px">
-                Executa os 3 cenarios do roteiro de Primeiro Emplacamento contra o(s) programa(s) escolhido(s) e gera um relatorio final.
+Gera o relatorio completo: (1) validacao passo a passo dos 3 roteiros de Primeiro Emplacamento (12 passos cada, executando os programas reais nos passos que tem um) e (2) teste de TODOS os programas convertidos com os dados dos cenarios. Salvavel e exportavel em PDF. Testar todos os programas leva alguns minutos (compila e roda cada um). Escolha um programa para destaca-lo na secao dos roteiros.
             </p>
             <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
                 <div style="flex:1;min-width:220px">
-                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Alvo</label>
+                    <label style="font-size:12px;color:var(--text-3);display:block;margin-bottom:4px">Destacar programa (opcional)</label>
                     <select id="roteiro-alvo-select" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:6px;font-family:inherit;background:#fff">
-                        <option value="__TODOS__">Todos os programas</option>
+                        <option value="__TODOS__">Nenhum destaque (todos os roteiros)</option>
                     </select>
                 </div>
                 <button class="btn btn-dark" id="roteiro-exec-btn" onclick="executarRoteiroSuite()">Executar Roteiro</button>
@@ -372,6 +386,14 @@
         <div class="card">
             <div class="card-title">Ultimos Testes Salvos</div>
             <div id="roteiro-historico-view"><p style="color:var(--text-muted);font-size:13px">Carregando...</p></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Validacao passo a passo dos roteiros</div>
+            <p style="font-size:13px;color:var(--text-3);margin-bottom:12px">
+                Percorre os 12 passos de cada roteiro. Nos passos que tem um programa COBOL convertido, executa o programa com a chave real do cenario (chassi/CPF) e consulta o banco SQLite de verdade (via ponte C), mostrando o resultado que depende do dado. Os demais passos (telas eCRV, sistemas externos, transacoes sem programa entre os 42 fontes) sao marcados como manuais/externos, com o motivo.
+            </p>
+            <button class="btn btn-primary" id="roteiro-exec-passo-btn" onclick="executarRoteiroPassoAPasso()">Executar validacao passo a passo</button>
+            <div id="roteiro-passo-view" style="margin-top:14px"></div>
         </div>
         <div class="card">
             <div class="card-title">Roteiros de Teste - Primeiro Emplacamento</div>
@@ -456,6 +478,132 @@ function abrirImg(src) {
     ov.style.display = 'flex';
 }
 
+// Validacao passo a passo dos roteiros (roteiro-centrica: 12 passos/roteiro)
+async function executarRoteiroPassoAPasso() {
+    const div = document.getElementById('roteiro-passo-view');
+    const btn = document.getElementById('roteiro-exec-passo-btn');
+    if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; }
+    div.innerHTML = '<span class="spinner"></span> Executando os passos de cada roteiro (compila e roda os programas reais)...';
+    try {
+        const r = await fetch('/api/roteiro-execucao');
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
+        await _garantirListaProgramas();
+        div.innerHTML = _renderRoteiroExecucao(d.roteiros, null);
+    } catch (e) {
+        div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>';
+    } finally {
+        if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+    }
+}
+
+// Garante que IDE_PROGRAMAS (lista da aba Projeto) esteja carregada, para o
+// mapa convertido->original funcionar mesmo se a aba Codigo nao foi aberta.
+async function _garantirListaProgramas() {
+    if (IDE_PROGRAMAS && IDE_PROGRAMAS.length) return;
+    try {
+        const r = await fetch('/api/programas-dual');
+        const d = await r.json();
+        IDE_PROGRAMAS = [];
+        Object.entries(d.categorias || {}).forEach(([cat, progs]) =>
+            progs.forEach(p => IDE_PROGRAMAS.push({ original: p.original, convertido: p.convertido, categoria: cat })));
+    } catch (e) { /* segue sem o mapa (mostra so o convertido) */ }
+}
+
+// Mapa convertido -> original (nome da lista do Projeto), a partir de
+// IDE_PROGRAMAS. Usado para exibir o nome original ao lado do convertido.
+function _origDoConvertido(conv) {
+    if (!conv) return null;
+    const p = (IDE_PROGRAMAS || []).find(x => x.convertido === conv);
+    return p ? p.original : null;
+}
+
+// Render compartilhado da visao roteiro-centrica (12 passos por roteiro).
+// destaqueProg (opcional): nome do programa convertido a destacar (linhas dele
+// ficam realcadas) - usado quando a validacao e disparada a partir de 1 fonte.
+function _renderRoteiroExecucao(roteiros, destaqueProg) {
+    let html = '';
+    (roteiros || []).forEach(rot => {
+        const dt = rot.dados_teste || {};
+        const ident = dt.cpf ? ('CPF ' + dt.cpf) : (dt.cnpj ? ('CNPJ ' + dt.cnpj) : '');
+        let nExec = 0, nValido = 0, nManual = 0, nErro = 0;
+        const linhas = (rot.passos || []).map(p => {
+            let badge, resTxt, entradaHtml = '<span style="color:var(--text-muted)">-</span>';
+            if (p.mock || p.origem === 'mock') {
+                // passo mockado: mostra o resultado esperado do roteiro como
+                // RESULTADO VALIDO (status correto do passo).
+                nValido++;
+                if (p.entrada_valor) {
+                    entradaHtml = '<strong>' + escapeHtml(p.entrada_rotulo || '') + '</strong>: <code>' + escapeHtml(String(p.entrada_valor)) + '</code>';
+                }
+                badge = '<span class="badge badge-green">RESULTADO VALIDO</span>';
+                resTxt = '<span style="font-size:11px">' + escapeHtml(p.resultado_esperado || 'resultado esperado do roteiro') + '</span>';
+            } else if (!p.executavel) {
+                nManual++;
+                badge = '<span class="badge" style="background:#E5E7EB;color:#374151" title="Nenhum teste foi executado neste passo: e um passo manual (eCRV) ou de um sistema externo/tela sem programa COBOL entre os 42 fontes convertidos.">MANUAL/EXTERNO</span>' +
+                    '<div style="font-size:9px;color:var(--text-muted);margin-top:3px;line-height:1.3;max-width:150px"><strong>Nenhum teste executado.</strong> Passo manual ou de sistema externo - sem programa entre os 42 fontes.</div>';
+                resTxt = '<span style="color:var(--text-muted);font-size:11px">' + escapeHtml(p.motivo || '') + '</span>';
+            } else {
+                entradaHtml = '<strong>' + escapeHtml(p.entrada_rotulo || '') + '</strong>: ' +
+                    '<code>' + escapeHtml(String(p.entrada_valor || '')) + '</code>';
+                const ctx = p.contexto || {};
+                const ctxKeys = Object.keys(ctx);
+                if (ctxKeys.length) {
+                    entradaHtml += '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">contexto (nao e chave): ' +
+                        ctxKeys.map(k => escapeHtml(k) + ' ' + escapeHtml(String(ctx[k]))).join(', ') + '</div>';
+                }
+                if (p.erro) {
+                    nErro++;
+                    badge = '<span class="badge badge-red">ERRO</span>';
+                    resTxt = '<span style="color:var(--danger);font-size:11px">' + escapeHtml(p.erro) + '</span>';
+                } else {
+                    nExec++;
+                    const cod = p.codigo;
+                    const leg = (p.legenda_saida || {})[String(cod)];
+                    const temValor = p.tem_valor_negocio;
+                    if (temValor) { nValido++; badge = '<span class="badge badge-green" title="Consultou as bases reais e retornou um resultado de negocio. Codigo 0 com legenda = consultou e nada consta (esperado p/ veiculo novo).">RESULTADO VALIDO</span>'; }
+                    else { badge = '<span class="badge badge-amber" title="Executou ate o fim mas sem valor de negocio verificavel neste ambiente">EXECUTOU (sem validacao)</span>'; }
+                    resTxt = _fmtResultadoRoteiro(cod, leg, p.descricao);
+                }
+            }
+            const destaque = (destaqueProg && p.programa === destaqueProg);
+            // mostra o nome ORIGINAL (da lista do Projeto) e o convertido ao lado
+            const origP = p.programa ? _origDoConvertido(p.programa) : null;
+            const progHtml = p.programa
+                ? '<code style="font-size:10px">' + escapeHtml(origP || p.programa) + '</code>' +
+                  (origP ? '<div style="font-size:9px;color:var(--text-muted)">&rarr; ' + escapeHtml(p.programa) + '</div>' : '') +
+                  (destaque ? ' <span class="badge badge-blue" style="font-size:9px">este</span>' : '')
+                : '<span style="color:var(--text-muted)">-</span>';
+            const tbadge = p.transacao ? '<span class="badge badge-blue" style="font-size:9px;padding:1px 5px">' + escapeHtml(p.transacao) + '</span>' : '';
+            const esperado = p.resultado_esperado ? '<div style="font-size:10px;color:var(--text-muted);margin-top:2px">Esperado: ' + escapeHtml(p.resultado_esperado) + '</div>' : '';
+            const trStyle = destaque ? 'border-bottom:1px solid var(--border);background:#EFF6FF' : 'border-bottom:1px solid var(--border)';
+            return '<tr style="' + trStyle + '">' +
+                '<td style="padding:6px 8px;text-align:center;vertical-align:top;color:var(--text-muted)">' + p.ordem + '</td>' +
+                '<td style="padding:6px 8px;vertical-align:top"><strong style="font-size:12px">' + escapeHtml(p.titulo || '') + '</strong> ' + tbadge + esperado + '</td>' +
+                '<td style="padding:6px 8px;vertical-align:top;font-size:11px">' + progHtml + '</td>' +
+                '<td style="padding:6px 8px;vertical-align:top;font-size:11px">' + entradaHtml + '</td>' +
+                '<td style="padding:6px 8px;vertical-align:top;font-size:11px">' + resTxt + '</td>' +
+                '<td style="padding:6px 8px;text-align:center;vertical-align:top">' + badge + '</td></tr>';
+        }).join('');
+
+        html += '<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden">' +
+            '<div style="background:var(--card-hover);padding:10px 14px;border-bottom:1px solid var(--border)">' +
+            '<strong style="font-size:13px">' + escapeHtml(rot.nome || rot.cenario) + '</strong> ' +
+            '<span class="badge badge-blue">' + escapeHtml(rot.categoria || '') + '</span>' +
+            '<div style="font-size:11px;color:var(--text-3);margin-top:4px">Chassi <strong>' + escapeHtml(dt.chassi || '') + '</strong>' +
+            (ident ? ' &nbsp;|&nbsp; ' + escapeHtml(ident) : '') +
+            ' &nbsp;|&nbsp; ' + rot.passos.length + ' passos: ' +
+            nValido + ' com resultado, ' + (nExec - nValido) + ' executados s/ validacao, ' +
+            nManual + ' manuais/externos' + (nErro ? ', ' + nErro + ' erro' : '') + '</div></div>' +
+            '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+            '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;width:32px">#</th>' +
+            '<th style="text-align:left">Passo</th><th style="text-align:left">Programa</th>' +
+            '<th style="text-align:left">Entrada usada</th><th style="text-align:left">Resultado</th>' +
+            '<th style="width:130px">Status</th></tr>' + linhas + '</table></div>';
+    });
+    return html || '<div style="color:var(--text-muted)">Nenhum roteiro.</div>';
+}
+
 // Roteiros de Teste
 async function carregarRoteiros() {
     const div = document.getElementById('roteiros-view');
@@ -484,7 +632,20 @@ async function carregarRoteiros() {
             rot.passos.forEach(p => {
                 const t = p.transacao;
                 const tbadge = t ? ' <span class="badge badge-green" style="font-size:10px">' + t + '</span>' : '';
-                html += '<li><strong>' + escapeHtml(p.titulo) + '</strong>' + tbadge + '</li>';
+                // input do passo (chassi/CPF/CNPJ conforme a transacao)
+                let inHtml = '';
+                const inp = p.input;
+                if (inp) {
+                    inHtml = inp.valor
+                        ? '<div style="font-size:11px;color:var(--text-3);margin-top:1px">Input: ' +
+                          escapeHtml(inp.rotulo) + ' = <code>' + escapeHtml(String(inp.valor)) + '</code></div>'
+                        : '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">Input: ' +
+                          escapeHtml(inp.rotulo) + '</div>';
+                }
+                const esp = p.resultado_esperado
+                    ? '<div style="font-size:10px;color:var(--text-muted)">Esperado: ' + escapeHtml(p.resultado_esperado) + '</div>'
+                    : '';
+                html += '<li><strong>' + escapeHtml(p.titulo) + '</strong>' + tbadge + inHtml + esp + '</li>';
             });
             html += '</ol>';
             // galeria de prints de tela do cenario
@@ -534,22 +695,45 @@ function popularSelectRoteiroAlvo() {
 async function executarRoteiroSuite() {
     const sel = document.getElementById('roteiro-alvo-select');
     const alvoVal = sel ? sel.value : '__TODOS__';
-    const alvos = (alvoVal === '__TODOS__')
-        ? IDE_PROGRAMAS.filter(p => p.original)
-        : IDE_PROGRAMAS.filter(p => p.original === alvoVal);
-    if (!alvos.length) { alert('Nenhum programa disponivel para testar.'); return; }
+    // programa convertido a destacar quando um alvo especifico foi escolhido
+    let destaqueProg = null;
+    if (alvoVal && alvoVal !== '__TODOS__') {
+        const p = IDE_PROGRAMAS.find(x => x.original === alvoVal);
+        destaqueProg = p ? (p.convertido || null) : null;
+    }
 
     const btn = document.getElementById('roteiro-exec-btn');
     const prog = document.getElementById('roteiro-exec-progress');
     btn.disabled = true;
     btn.style.opacity = '0.6';
 
+    // ===== Parte 1: validacao passo a passo dos roteiros =====
+    let roteiros = [];
+    prog.innerHTML = '<div style="font-size:12px;color:var(--text-3)"><span class="spinner"></span> (1/2) Validacao passo a passo dos roteiros...</div>';
+    try {
+        const r = await fetch('/api/roteiro-execucao');
+        const d = await r.json();
+        if (d.error) throw new Error(d.error);
+        roteiros = d.roteiros || [];
+    } catch (e) {
+        btn.disabled = false; btn.style.opacity = '1';
+        prog.innerHTML = '<div style="font-size:12px;color:var(--danger)">Erro: ' + escapeHtml(e.message) + '</div>';
+        return;
+    }
+
+    // ===== Parte 2: EXECUTAR de verdade cada programa da lista do Projeto
+    // (mesma coisa que o teste unitario faz) e mostrar o resultado real =====
+    // Usa EXATAMENTE a lista da aba Projeto (IDE_PROGRAMAS); se nao carregada,
+    // busca de /api/programas-dual (mesma fonte).
+    await _garantirListaProgramas();
+    let listaProgs = (IDE_PROGRAMAS || []).filter(p => p.original);
+
     const resultados = [];
-    for (let i = 0; i < alvos.length; i++) {
-        const p = alvos[i];
-        const pct = Math.round((i / alvos.length) * 100);
+    for (let i = 0; i < listaProgs.length; i++) {
+        const p = listaProgs[i];
+        const pct = Math.round((i / listaProgs.length) * 100);
         prog.innerHTML =
-            '<div style="font-size:12px;color:var(--text-3);margin-bottom:4px">Testando ' + (i + 1) + '/' + alvos.length +
+            '<div style="font-size:12px;color:var(--text-3);margin-bottom:4px">(2/2) Executando cada programa (real, como o teste unitario) ' + (i + 1) + '/' + listaProgs.length +
             ': <strong>' + escapeHtml(p.original) + '</strong></div>' +
             '<div style="height:8px;border-radius:4px;background:var(--bg-subtle,#eee);overflow:hidden">' +
             '<div style="height:100%;width:' + pct + '%;background:var(--green);transition:width .3s"></div></div>';
@@ -563,7 +747,7 @@ async function executarRoteiroSuite() {
                     programa: p.original, convertido: p.convertido, categoria: p.categoria,
                     casos: d.casos || [], isPlaca: d.is_placa,
                     campoSaida: d.campo_saida || null, legendaSaida: d.legenda_saida || {},
-                    simulacaoForcada: !!d.simulacao_forcada,
+                    simulacaoForcada: !!d.simulacao_forcada, noRoteiro: !!d.no_roteiro,
                 });
             }
         } catch (e) {
@@ -573,19 +757,78 @@ async function executarRoteiroSuite() {
 
     btn.disabled = false;
     btn.style.opacity = '1';
-    prog.innerHTML = '<div style="font-size:12px;color:var(--green-dark)">Concluido - ' + alvos.length + ' programa(s) testado(s).</div>';
+    prog.innerHTML = '<div style="font-size:12px;color:var(--green-dark)">Concluido - ' + roteiros.length + ' roteiro(s) passo a passo + ' + listaProgs.length + ' programa(s) executado(s) de verdade.</div>';
 
-    // salva esta execucao no historico (ultimos 3) para poder reabrir/baixar depois
+    // salva no historico (ultimos 3) para reabrir/baixar depois - guarda as DUAS partes
     try {
         await fetch('/api/roteiro-historico', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ alvo: alvoVal === '__TODOS__' ? 'Todos os programas' : alvoVal, resultados })
+            body: JSON.stringify({
+                alvo: 'Roteiros passo a passo + todos os programas (execucao real)',
+                formato: 'passos', roteiros: roteiros, destaqueProg: destaqueProg,
+                resultados: resultados
+            })
         });
         carregarHistoricoRoteiro();
     } catch (e) { /* nao bloqueia a exibicao do relatorio se o salvamento falhar */ }
 
-    abrirRelatorioRoteiro(resultados);
+    abrirRelatorioRoteiroPassos(roteiros, destaqueProg, resultados);
+}
+
+// Abre o modal com o relatorio passo a passo dos roteiros (mesmo conteudo da
+// aba Roteiros -> Executar validacao passo a passo), com PDF/salvar.
+function abrirRelatorioRoteiroPassos(roteiros, destaqueProg, resultados) {
+    const agora = new Date().toLocaleString('pt-BR');
+    // totais dos passos
+    let nValido = 0, nExec = 0, nManual = 0, nErro = 0, nPassos = 0;
+    (roteiros || []).forEach(rot => (rot.passos || []).forEach(p => {
+        nPassos++;
+        if (!p.executavel) { nManual++; }
+        else if (p.erro) { nErro++; }
+        else if (p.tem_valor_negocio) { nValido++; }
+        else { nExec++; }
+    }));
+    const corpo = _renderRoteiroExecucao(roteiros, destaqueProg);
+
+    // segunda secao: CADA programa EXECUTADO de verdade (igual ao teste
+    // unitario) - resultado real por cenario. 'resultados' = program-centrico.
+    let secaoProgs = '';
+    if (resultados && resultados.length) {
+        secaoProgs = '<div style="margin-top:24px;border-top:2px solid var(--border);padding-top:16px">' +
+            '<div style="font-weight:700;font-size:15px;margin-bottom:4px">Todos os programas - execucao real (' + resultados.length + ')</div>' +
+            '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px">Cada programa foi EXECUTADO de verdade com os dados de cada cenario do roteiro (mesmo resultado do teste unitario da aba Projeto). Programas que nao fazem parte de nenhum passo aparecem marcados como "fora do roteiro".</div>' +
+            _renderProgramasCentrico(resultados) + '</div>';
+    }
+
+    const html =
+        '<div style="padding:18px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">' +
+        '<div><div style="font-weight:700;font-size:16px">Relatorio - Roteiro de Testes</div>' +
+        '<div style="font-size:11px;color:var(--text-muted)">Gerado em ' + agora +
+        (destaqueProg ? ' - destacando ' + escapeHtml(destaqueProg) : '') + '</div></div>' +
+        '<button class="btn btn-outline btn-sm no-print" onclick="fecharRelatorioRoteiro()">Fechar</button></div>' +
+        '<div id="roteiro-relatorio-scroll" style="padding:18px 20px;overflow-y:auto;flex:1">' +
+        '<div style="font-weight:700;font-size:15px;margin-bottom:10px">Roteiros - validacao passo a passo</div>' +
+        '<div class="grid-3" style="margin-bottom:18px">' +
+        '<div class="stat"><div class="stat-value">' + nPassos + '</div><div class="stat-label">Passos no total</div></div>' +
+        '<div class="stat"><div class="stat-value" style="color:var(--green)">' + nValido + '</div><div class="stat-label">Com resultado de negocio</div></div>' +
+        '<div class="stat"><div class="stat-value" style="color:' + (nErro ? 'var(--danger)' : 'var(--text-3)') + '">' + nManual + ' / ' + nExec + ' / ' + nErro + '</div><div class="stat-label">Manuais / Exec s\u2011val / Erro</div></div>' +
+        '</div>' + corpo + secaoProgs + '</div>' +
+        '<div class="no-print" style="padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">' +
+        '<button class="btn btn-outline btn-sm" onclick="fecharRelatorioRoteiro()">Fechar</button>' +
+        '<button class="btn btn-dark btn-sm" onclick="imprimirRelatorioRoteiro()">Baixar PDF</button></div>';
+
+    let ov = document.getElementById('roteiro-relatorio-modal');
+    if (!ov) {
+        ov = document.createElement('div');
+        ov.id = 'roteiro-relatorio-modal';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:24px';
+        ov.onclick = function(e) { if (e.target === ov) ov.style.display = 'none'; };
+        ov.innerHTML = '<div id="roteiro-relatorio-box" style="background:#fff;border-radius:10px;max-width:95%;max-height:90%;width:1000px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,0.3)"></div>';
+        document.body.appendChild(ov);
+    }
+    document.getElementById('roteiro-relatorio-box').innerHTML = html;
+    ov.style.display = 'flex';
 }
 
 // Historico das ultimas execucoes salvas do roteiro (permite reabrir e baixar o PDF depois)
@@ -623,7 +866,12 @@ async function carregarHistoricoRoteiro() {
 function verHistoricoRoteiro(id) {
     const h = ROTEIRO_HISTORICO_CACHE.find(x => x.id === id);
     if (!h) return;
-    abrirRelatorioRoteiro(h.resultados || []);
+    // novo formato passo a passo (roteiro-centrico) vs formato antigo (program-centrico)
+    if (h.formato === 'passos' && h.roteiros) {
+        abrirRelatorioRoteiroPassos(h.roteiros, h.destaqueProg || null, h.programas || h.resultados || []);
+    } else {
+        abrirRelatorioRoteiro(h.resultados || []);
+    }
 }
 
 function fecharRelatorioRoteiro() {
@@ -647,6 +895,72 @@ function _htmlParametrosEntrada(parametros) {
     ).join('');
 }
 
+// Formata o texto do resultado do roteiro deixando claro o significado do
+// codigo 0 quando ele tem legenda de negocio. Nesses programas (ex: validador
+// de roubo/furto/bloqueio FGAA012D/032D) o "0 - NENHUM REGISTRO FOI
+// ENCONTRADO" NAO e' uma falha nem um resultado vazio: significa que o
+// programa CONSULTOU as bases reais (via ponte SQLite) e nada consta contra o
+// veiculo - que e' justamente o resultado ESPERADO para um veiculo zero-km no
+// primeiro emplacamento. O texto abaixo explicita isso para nao parecer
+// contraditorio ao lado do selo "RESULTADO VALIDO".
+function _fmtResultadoRoteiro(cod, legenda, descricao) {
+    const base = String(cod) + (legenda ? ' \u2013 ' + legenda : (descricao ? ' \u2013 ' + descricao : ''));
+    if (String(cod) === '0' && legenda) {
+        return escapeHtml(base) +
+            '<div style="font-size:10px;color:#166534;margin-top:2px">Consulta real executada: nada consta contra o veiculo (resultado esperado para veiculo novo).</div>';
+    }
+    return escapeHtml(base);
+}
+
+// Render compacto do teste de TODOS os programas (program-centrico): uma
+// linha por programa x cenario, com a chave real de entrada e o resultado.
+// Usado como 2a secao do relatorio "Executar Roteiro".
+function _renderProgramasCentrico(resultados) {
+    let linhas = '';
+    (resultados || []).forEach(res => {
+        const casos = res.casos || [];
+        const progHead = '<tr style="background:var(--card-hover)"><td colspan="4" style="padding:6px 8px">' +
+            '<strong style="font-size:12px">' + escapeHtml(res.programa) + '</strong>' +
+            (res.convertido ? ' <span style="font-size:10px;color:var(--text-muted)">&rarr; ' + escapeHtml(res.convertido) + '</span>' : '') +
+            (res.noRoteiro ? ' <span class="badge" style="background:#E5E7EB;color:#374151;font-size:9px">fora do roteiro</span>' : '') +
+            (res.erroGeral ? ' <span class="badge badge-red" style="font-size:9px">FALHA</span>' : '') +
+            '</td></tr>';
+        linhas += progHead;
+        if (res.erroGeral) {
+            linhas += '<tr><td colspan="4" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(res.erroGeral) + '</td></tr>';
+            return;
+        }
+        casos.forEach(c => {
+            const r = c.convertido || c.original || {};
+            const legenda = (res.legendaSaida || {})[String(r.codigo)];
+            const executou = !c.erro && r.sucesso && r.codigo != null;
+            const temValor = executou && (r.codigo !== 0 || !!legenda);
+            const resTxt = c.erro ? 'erro' : (executou ? _fmtResultadoRoteiro(r.codigo, legenda, r.descricao || (r.codigo === 0 ? 'executou (sem valor de negocio)' : 'sem descricao')) : '-');
+            const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
+                : (!executou ? '<span class="badge badge-red">SEM RETORNO</span>'
+                : (temValor ? '<span class="badge badge-green">RESULTADO VALIDO</span>'
+                            : '<span class="badge badge-amber">EXECUTOU (sem validacao)</span>'));
+            // entrada: chave real se houver, senao parametros genericos
+            let entradaHtml;
+            if (c.entrada_real) {
+                const er = c.entrada_real;
+                entradaHtml = '<span style="color:var(--text-muted)">' + escapeHtml(er.rotulo) + ':</span> <code style="font-size:11px">' + escapeHtml(String(er.valor || '(vazio)')) + '</code>';
+            } else {
+                entradaHtml = _htmlParametrosEntrada(c.parametros_entrada);
+            }
+            linhas += '<tr style="border-bottom:1px solid var(--border)">' +
+                '<td style="padding:5px 8px 5px 20px;font-size:11px">' + escapeHtml(c.cenario || '') + '</td>' +
+                '<td style="padding:5px 8px;font-size:11px">' + entradaHtml + '</td>' +
+                '<td style="padding:5px 8px;font-size:11px">' + resTxt + '</td>' +
+                '<td style="padding:5px 8px;text-align:center">' + badge + '</td></tr>';
+        });
+    });
+    return '<table style="width:100%;font-size:12px;border-collapse:collapse">' +
+        '<tr style="background:var(--card-hover)"><th style="padding:6px 8px;text-align:left">Programa / Cenario</th>' +
+        '<th style="text-align:left">Entrada usada</th><th style="text-align:left">Resultado</th>' +
+        '<th style="width:130px">Status</th></tr>' + linhas + '</table>';
+}
+
 // Monta e abre o modal com o relatorio consolidado da execucao do roteiro
 function abrirRelatorioRoteiro(resultados) {
     let totalCasos = 0, casosOk = 0, casosErro = 0, programasOk = 0, programasComErro = 0;
@@ -655,13 +969,18 @@ function abrirRelatorioRoteiro(resultados) {
         let errProg = 0;
         const linhasCasos = (res.casos || []).map(c => {
             const r = c.convertido || c.original || {};
-            const temRes = !c.erro && r.sucesso && r.codigo != null;
-            totalCasos++;
-            if (c.erro || !temRes) { casosErro++; errProg++; } else { casosOk++; }
+            const executou = !c.erro && r.sucesso && r.codigo != null;
             const legenda = (res.legendaSaida || {})[String(r.codigo)];
-            const resTxt = c.erro ? 'erro' : (temRes ? (r.codigo + ' - ' + (legenda || r.descricao || 'sem descricao')) : '-');
+            const temValorNegocio = executou && (r.codigo !== 0 || !!legenda);
+            totalCasos++;
+            // conta como OK so' quem produziu valor de negocio; "executou sem
+            // validacao" nao entra como erro nem como OK (fica neutro/amarelo).
+            if (c.erro || !executou) { casosErro++; errProg++; } else if (temValorNegocio) { casosOk++; }
+            const resTxt = c.erro ? 'erro' : (executou ? _fmtResultadoRoteiro(r.codigo, legenda, r.descricao || (r.codigo === 0 ? 'executou (sem valor de negocio)' : 'sem descricao')) : '-');
             const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
-                        : (temRes ? '<span class="badge badge-green">OK</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
+                        : (!executou ? '<span class="badge badge-red">SEM RETORNO</span>'
+                        : (temValorNegocio ? '<span class="badge badge-green" title="O programa consultou as bases reais e retornou um resultado de negocio (codigo mapeado). Para codigo 0 com legenda, significa que consultou e nada consta - o esperado para veiculo novo.">RESULTADO VALIDO</span>'
+                                           : '<span class="badge badge-amber">EXECUTOU (sem validacao)</span>'));
 
             // passo(s) do roteiro cuja transacao corresponde a este programa - a
             // comparacao direta entre o que o roteiro espera de negocio e o
@@ -692,7 +1011,7 @@ function abrirRelatorioRoteiro(resultados) {
             return '<tr style="border-bottom:1px solid var(--border)">' +
                 '<td style="padding:5px 8px;vertical-align:top"><strong>' + escapeHtml(c.cenario || '') + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria || '') + '</div></td>' +
                 '<td style="font-size:11px;vertical-align:top">' + _htmlParametrosEntrada(c.parametros_entrada) + '</td>' +
-                '<td style="text-align:center;font-size:11px;vertical-align:top">' + escapeHtml(String(resTxt)) + relevantesHtml + '</td>' +
+                '<td style="text-align:center;font-size:11px;vertical-align:top">' + resTxt + relevantesHtml + '</td>' +
                 '<td style="text-align:center;vertical-align:top">' + badge + '</td></tr>' +
                 (c.erro ? '<tr><td colspan="4" style="padding:2px 8px;font-size:10px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>' : '') +
                 passosHtml;
@@ -953,6 +1272,33 @@ function renderSeletorCenario(info) {
 // com este programa (que dado ele espera e o que o resultado significa)
 function renderTesteInfoBox(info) {
     if (!info) return '';
+    // descricao do programa (o que ele faz) - vem de data/program_descriptions.py
+    // via /api/teste-info. Mostrada no topo, antes da explicacao do teste.
+    let descHtml = '';
+    const dp = info.descricao_programa;
+    if (dp && (dp.descricao || dp.objetivo)) {
+        // "Entrada": prioriza o CAMPO DE ENTRADA REAL reconhecido no fonte
+        // (info.entradas de info_parametros_teste) - ex: CPF/Chassi/Placa - em
+        // vez do texto generico "Identificador de veiculo" do program_descriptions.
+        let entradaTxt = '';
+        const ents = (info.entradas || []).map(e => e.rotulo).filter(Boolean);
+        if (ents.length) {
+            entradaTxt = ents.join(', ') + ' (campo de consulta identificado no fonte)';
+        } else if (dp.entrada) {
+            entradaTxt = dp.entrada;
+        }
+        descHtml = '<div style="border:1px solid var(--border);background:#fff;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px">' +
+            '<div style="font-weight:700;font-size:13px;color:var(--text-1,#111);margin-bottom:2px">' +
+            (dp.nome ? escapeHtml(dp.nome) : 'Descricao do programa') +
+            (dp.categoria ? ' <span class="badge badge-blue" style="font-size:9px">' + escapeHtml(dp.categoria) + '</span>' : '') + '</div>' +
+            (dp.descricao ? '<div style="color:var(--text-3);line-height:1.5">' + escapeHtml(dp.descricao) + '</div>' : '') +
+            (dp.objetivo ? '<div style="color:var(--text-muted);margin-top:4px"><strong>Objetivo:</strong> ' + escapeHtml(dp.objetivo) + '</div>' : '') +
+            ((entradaTxt || dp.saida) ? '<div style="color:var(--text-muted);margin-top:2px">' +
+                (entradaTxt ? '<strong>Entra para consultar:</strong> ' + escapeHtml(entradaTxt) : '') +
+                (entradaTxt && dp.saida ? ' &nbsp;|&nbsp; ' : '') +
+                (dp.saida ? '<strong>Saida:</strong> ' + escapeHtml(dp.saida) : '') + '</div>' : '') +
+            '</div>';
+    }
     if (info.tipo === 'placa' || info.tipo === 'parametrizado') {
         const rotulos = (info.entradas || []).map(e => e.rotulo).join(', ') || '-';
         let html = '<div style="border:1px solid var(--info);background:#EFF6FF;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#1E3A8A">' +
@@ -966,7 +1312,7 @@ function renderTesteInfoBox(info) {
                     '<li><code>' + escapeHtml(cod) + '</code> &ndash; ' + escapeHtml(desc) + '</li>').join('') +
                 '</ul></div>';
         }
-        return html + '</div>';
+        return descHtml + html + '</div>';
     }
     if (info.transacao || info.simulacao_forcada) {
         let html = '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">';
@@ -987,9 +1333,9 @@ function renderTesteInfoBox(info) {
         } else {
             html += ' O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao.';
         }
-        return html + '</div>';
+        return descHtml + html + '</div>';
     }
-    return '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
+    return descHtml + '<div style="border:1px solid var(--border);background:#fafafa;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--text-3)">' +
         'Este programa nao recebe dados via parametro de chamada neste ambiente de teste (ex: recebe via canal/container do CICS, que nao e simulado aqui). ' +
         'O resultado abaixo e apenas o codigo de retorno (RETURN-CODE) da execucao, sem significado de negocio garantido.</div>';
 }
@@ -1053,21 +1399,234 @@ function extrairTabelasDoFonte(codigo) {
     return Array.from(tabelas).sort();
 }
 
+// ======================================================================
+// Diff lado a lado (convertido | original)
+// ======================================================================
+
+// LCS (Longest Common Subsequence) simplificado para linhas - retorna as
+// linhas comuns entre A e B (mesma ordem relativa).
+function _lcsLinhas(a, b) {
+    const n = a.length, m = b.length;
+    // para fontes grandes (>2000 linhas), um dp classico O(n*m) pode ser
+    // lento - nesse caso usamos um diff "por blocos" mais barato
+    if (n * m > 4_000_000) return _diffRapido(a, b);
+    const dp = Array.from({length: n+1}, () => new Uint16Array(m+1));
+    for (let i = 1; i <= n; i++)
+        for (let j = 1; j <= m; j++)
+            dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1]+1 : Math.max(dp[i-1][j], dp[i][j-1]);
+    // backtrace -> lista de pares [idxA, idxB] comuns
+    const pares = [];
+    let i = n, j = m;
+    while (i > 0 && j > 0) {
+        if (a[i-1] === b[j-1]) { pares.push([i-1, j-1]); i--; j--; }
+        else if (dp[i-1][j] >= dp[i][j-1]) i--;
+        else j--;
+    }
+    pares.reverse();
+    return pares;
+}
+
+// fallback O(n+m) para fontes muito grandes: monta um indice de hash e
+// pareia "greedily" a primeira ocorrencia igual (impreciso mas rapido)
+function _diffRapido(a, b) {
+    const idx = {};
+    b.forEach((ln, j) => { if (!(ln in idx)) idx[ln] = []; idx[ln].push(j); });
+    const pares = [];
+    let lastJ = -1;
+    for (let i = 0; i < a.length; i++) {
+        const cands = idx[a[i]];
+        if (!cands) continue;
+        // pega o primeiro j > lastJ (preserva ordem)
+        const k = cands.findIndex(jj => jj > lastJ);
+        if (k >= 0) { pares.push([i, cands[k]]); lastJ = cands[k]; cands.splice(k, 1); }
+    }
+    return pares;
+}
+
+// Gera as linhas alinhadas lado a lado a partir do LCS.
+// Retorna { left: [{num, txt, cls}], right: [{num, txt, cls}] }
+function diffLadoALado(textoConv, textoOrig) {
+    const linesL = (textoConv || '').split('\n');   // convertido (left)
+    const linesR = (textoOrig || '').split('\n');    // original (right)
+    const pares = _lcsLinhas(linesL, linesR);
+
+    const left = [], right = [];
+    let iL = 0, iR = 0;
+    for (const [pL, pR] of pares) {
+        // linhas so no convertido (adicionadas em relacao ao original)
+        while (iL < pL) {
+            left.push({num: iL+1, txt: linesL[iL], cls: 'd-add'});
+            right.push({num: '', txt: '', cls: 'd-empty'});
+            iL++;
+        }
+        // linhas so no original (removidas na conversao)
+        while (iR < pR) {
+            left.push({num: '', txt: '', cls: 'd-empty'});
+            right.push({num: iR+1, txt: linesR[iR], cls: 'd-del'});
+            iR++;
+        }
+        // linha comum
+        left.push({num: iL+1, txt: linesL[iL], cls: ''});
+        right.push({num: iR+1, txt: linesR[iR], cls: ''});
+        iL++; iR++;
+    }
+    // cauda
+    while (iL < linesL.length) {
+        left.push({num: iL+1, txt: linesL[iL], cls: 'd-add'});
+        right.push({num: '', txt: '', cls: 'd-empty'});
+        iL++;
+    }
+    while (iR < linesR.length) {
+        left.push({num: '', txt: '', cls: 'd-empty'});
+        right.push({num: iR+1, txt: linesR[iR], cls: 'd-del'});
+        iR++;
+    }
+    return { left, right };
+}
+
+// Renderiza um array de linhas diff em tabela HTML (para um painel)
+function renderDiffPane(linhas) {
+    let rows = '';
+    for (const l of linhas) {
+        rows += '<tr class="' + l.cls + '"><td class="ln">' + l.num + '</td><td class="lc">' + escapeHtml(l.txt) + '</td></tr>';
+    }
+    return '<table>' + rows + '</table>';
+}
+
+// Barra de legenda do diff
+function diffLegenda(nAdded, nDel) {
+    return '<div class="ide-diff-legend" style="padding:4px 12px;border-top:1px solid var(--border);background:#fafafa">' +
+        '<span><span class="sw" style="background:#14351f"></span> Adicionado no convertido (' + nAdded + ')</span>' +
+        '<span><span class="sw" style="background:#3a1620"></span> Presente so no original (' + nDel + ')</span>' +
+        '<span style="color:var(--text-muted)">Linhas iguais: sem destaque</span>' +
+        '</div>';
+}
+
+// Carrega e renderiza o resumo descritivo das diferencas (aba Diferencas)
+let _difsCarregadasPara = null;
+async function carregarDiferencas() {
+    const prog = (document.getElementById('code-prog') || {}).value || IDE_CODE.prog;
+    const box = document.getElementById('ide-diferencas');
+    if (!box) return;
+    // evita refazer o fetch ao alternar de aba para o mesmo programa
+    if (_difsCarregadasPara === prog && box.dataset.ok === '1') return;
+    box.dataset.ok = '0';
+    box.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-muted)"><span class="spinner"></span> Analisando diferencas...</div>';
+    try {
+        const r = await fetch('/api/diferencas/' + encodeURIComponent(prog));
+        const d = await r.json();
+        if (!d.ok) {
+            box.innerHTML = '<div style="padding:20px;color:var(--text-muted)">' +
+                escapeHtml(d.error || 'Nao foi possivel analisar as diferencas (par incompleto).') + '</div>';
+            return;
+        }
+        const m = d.metricas || {};
+        const card = (rot, val, cor) => '<div style="flex:1;min-width:110px;background:var(--card-hover);border-radius:8px;padding:10px 12px;text-align:center">' +
+            '<div style="font-size:20px;font-weight:800;color:' + (cor || 'var(--text)') + '">' + val + '</div>' +
+            '<div style="font-size:11px;color:var(--text-muted)">' + rot + '</div></div>';
+
+        let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:12px">' +
+            'Comparacao automatica do codigo entre <strong>' + escapeHtml(d.original || '') +
+            '</strong> (original) e <strong>' + escapeHtml(d.convertido || '') + '</strong> (convertido): ' +
+            'diferencas de estrutura e logica (paragrafos, variaveis, tabelas, chamadas e linhas de codigo).</div>';
+
+        html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">' +
+            card('Linhas original', m.linhas_original) +
+            card('Linhas convertido', m.linhas_convertido) +
+            card('So no convertido', m.linhas_so_convertido, 'var(--green-dark)') +
+            card('So no original', m.linhas_so_original, 'var(--danger)') +
+            '</div>';
+
+        // metricas estruturais (logica)
+        html += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">' +
+            card('Paragrafos orig', m.paragrafos_original) +
+            card('Paragrafos conv', m.paragrafos_convertido) +
+            card('Paragrafos comuns', m.paragrafos_comuns, 'var(--info)') +
+            card('Variaveis orig', m.variaveis_original) +
+            card('Variaveis conv', m.variaveis_convertido) +
+            card('Tabelas orig', m.tabelas_original) +
+            card('Tabelas conv', m.tabelas_convertido) +
+            '</div>';
+
+        if (!d.mudancas || !d.mudancas.length) {
+            html += '<div style="padding:16px;color:var(--text-muted)">Nenhuma diferenca estrutural relevante detectada.</div>';
+        } else {
+            html += '<div style="font-size:13px;font-weight:700;color:var(--text-3);margin-bottom:8px">Principais mudancas (' + d.mudancas.length + ')</div>';
+            for (const mud of d.mudancas) {
+                html += '<div style="border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:10px">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px">' +
+                    '<span style="font-weight:700;font-size:13px">' + escapeHtml(mud.titulo) + '</span>' +
+                    '<span class="badge badge-blue">' + mud.contagem + '</span></div>' +
+                    '<div style="font-size:12px;color:var(--text-3);margin-top:6px">' + escapeHtml(mud.descricao) + '</div>';
+                if (mud.exemplos && mud.exemplos.length) {
+                    html += '<div style="margin-top:8px;background:#1A1A1A;border-radius:6px;padding:8px 10px;overflow-x:auto">' +
+                        mud.exemplos.map(ex => '<div style="font-family:monospace;font-size:11px;color:#C8E6C9;white-space:pre">' + escapeHtml(ex) + '</div>').join('') +
+                        '</div>';
+                }
+                html += '</div>';
+            }
+        }
+
+        // ----- Comparacao estrutural detalhada (listas expansiveis) -----
+        const est = d.estrutura || {};
+        function listaDetalhe(titulo, obj, rotOrig, rotConv) {
+            const so = (obj && obj.so_original) || [];
+            const sc = (obj && obj.so_convertido) || [];
+            if (!so.length && !sc.length) return '';
+            const chips = (arr, cor, bg) => arr.map(x =>
+                '<span style="display:inline-block;margin:2px;padding:2px 8px;border-radius:10px;font-size:11px;font-family:monospace;color:' +
+                cor + ';background:' + bg + '">' + escapeHtml(x) + '</span>').join('');
+            let h = '<details style="border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:8px">' +
+                '<summary style="cursor:pointer;font-weight:700;font-size:12px">' + escapeHtml(titulo) +
+                ' <span style="color:var(--text-muted);font-weight:400">(' + sc.length + ' / ' + so.length + ')</span></summary>';
+            if (sc.length) h += '<div style="margin-top:6px"><div style="font-size:11px;color:var(--green-dark);font-weight:600">' + escapeHtml(rotConv) + '</div>' + chips(sc, '#065F46', '#ECFDF5') + '</div>';
+            if (so.length) h += '<div style="margin-top:6px"><div style="font-size:11px;color:var(--danger);font-weight:600">' + escapeHtml(rotOrig) + '</div>' + chips(so, '#991B1B', '#FEF2F2') + '</div>';
+            h += '</details>';
+            return h;
+        }
+        let detHtml = '';
+        detHtml += listaDetalhe('Paragrafos', est.paragrafos, 'So no original (removidos)', 'So no convertido (novos)');
+        detHtml += listaDetalhe('Secoes', est.secoes, 'So no original', 'So no convertido');
+        detHtml += listaDetalhe('Variaveis / itens de dados', est.variaveis, 'So no original', 'So no convertido');
+        detHtml += listaDetalhe('Tabelas SQL', est.tabelas, 'So no original', 'So no convertido');
+        detHtml += listaDetalhe('Chamadas CALL', est.calls, 'So no original', 'So no convertido');
+        if (detHtml) {
+            html += '<div style="font-size:13px;font-weight:700;color:var(--text-3);margin:16px 0 8px">Comparacao estrutural detalhada</div>' + detHtml;
+        }
+
+        box.innerHTML = html;
+        box.dataset.ok = '1';
+        _difsCarregadasPara = prog;
+    } catch(e) {
+        box.innerHTML = '<div style="padding:20px;color:var(--danger)">Erro ao analisar: ' + escapeHtml(e.message) + '</div>';
+    }
+}
+
 function ideMostrar(modo) {
     document.querySelectorAll('.ide-tab').forEach(t => t.classList.remove('active'));
     const btn = document.getElementById('ide-tab-' + modo);
     if (btn) btn.classList.add('active');
     const wrap = document.getElementById('ide-editor-wrap');
     const testes = document.getElementById('ide-testes');
+    const difs = document.getElementById('ide-diferencas');
 
-    // aba Testes: esconde o editor de codigo e mostra o painel de testes
+    // aba Testes: esconde o editor e mostra o painel de testes
     if (modo === 'testes') {
         if (wrap) wrap.style.display = 'none';
+        if (difs) difs.style.display = 'none';
         if (testes) testes.style.display = 'flex', testes.style.flexDirection = 'column';
+        return;
+    }
+    // aba Diferencas: esconde o editor e mostra o resumo (carrega sob demanda)
+    if (modo === 'diferencas') {
+        if (wrap) wrap.style.display = 'none';
+        if (testes) testes.style.display = 'none';
+        if (difs) { difs.style.display = 'block'; carregarDiferencas(); }
         return;
     }
     if (wrap) wrap.style.display = '';
     if (testes) testes.style.display = 'none';
+    if (difs) difs.style.display = 'none';
 
     // Visao unica do codigo fonte: mostra o convertido (o que roda);
     // se nao houver convertido, cai no original.
@@ -1109,9 +1668,52 @@ function ideMostrar(modo) {
     // fora da tela (parecia "travado": a area de codigo sumia ou ficava
     // minuscula).
     const depsBar = (copiesBar || tabelasBar) ? '<div class="ide-deps">' + copiesBar + tabelasBar + '</div>' : '';
-    const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>CODIGO FONTE</span><span>' +
-        (fonte ? escapeHtml(fonte.arquivo) + ' - ' + fonte.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
-        '<div class="ide-code">' + (fonte ? renderCodigoNumerado(fonte.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div>' +
+
+    const conv = IDE_CODE.convertido;
+    const orig = IDE_CODE.original;
+
+    // Se temos os DOIS lados, mostra o diff lado a lado: convertido | original
+    // com as diferencas destacadas. Caso contrario, cai na visao unica.
+    if (conv && orig) {
+        const d = diffLadoALado(conv.codigo, orig.codigo);
+        const nAdd = d.left.filter(l => l.cls === 'd-add').length;
+        const nDel = d.right.filter(l => l.cls === 'd-del').length;
+
+        const paneConv = '<div class="ide-pane">' +
+            '<div class="ide-pane-head"><span>CONVERTIDO</span><span>' +
+            escapeHtml(conv.arquivo) + ' - ' + conv.linhas + ' linhas</span></div>' +
+            '<div class="ide-code">' + renderDiffPane(d.left) + '</div></div>';
+        const paneOrig = '<div class="ide-pane">' +
+            '<div class="ide-pane-head"><span>ORIGINAL</span><span>' +
+            escapeHtml(orig.arquivo) + ' - ' + orig.linhas + ' linhas</span></div>' +
+            '<div class="ide-code">' + renderDiffPane(d.right) + '</div></div>';
+
+        wrap.innerHTML = '<div style="display:flex;flex-direction:column;height:100%;min-height:0">' +
+            '<div class="ide-split" style="flex:1 1 auto;min-height:0">' + paneConv + paneOrig + '</div>' +
+            diffLegenda(nAdd, nDel) + depsBar + '</div>';
+
+        // rola os dois paineis juntos (scroll sincronizado)
+        const codes = wrap.querySelectorAll('.ide-code');
+        if (codes.length === 2) {
+            let travado = false;
+            codes.forEach((el, i) => el.addEventListener('scroll', () => {
+                if (travado) return;
+                travado = true;
+                const outro = codes[1 - i];
+                outro.scrollTop = el.scrollTop;
+                outro.scrollLeft = el.scrollLeft;
+                travado = false;
+            }));
+        }
+        return;
+    }
+
+    // Fallback: so um lado disponivel
+    const fonte2 = conv || orig;
+    const pane = '<div class="ide-pane"><div class="ide-pane-head"><span>' +
+        (conv ? 'CONVERTIDO' : 'ORIGINAL') + '</span><span>' +
+        (fonte2 ? escapeHtml(fonte2.arquivo) + ' - ' + fonte2.linhas + ' linhas' : 'nao encontrado') + '</span></div>' +
+        '<div class="ide-code">' + (fonte2 ? renderCodigoNumerado(fonte2.codigo) : '<div style="padding:16px;color:#888">Codigo fonte nao encontrado.</div>') + '</div>' +
         depsBar + '</div>';
     wrap.innerHTML = '<div class="ide-split" style="grid-template-columns:1fr">' + pane + '</div>';
 }
@@ -1175,11 +1777,14 @@ async function carregarCodigo() {
         let html = '';
         // barra de titulo + abas (codigo + testes)
         html += '<div class="ide-tabs">';
-        html += '<div class="ide-tab active" id="ide-tab-codigo" onclick="ideMostrar(\'codigo\')">Codigo fonte</div>';
+        html += '<div class="ide-tab active" id="ide-tab-codigo" onclick="ideMostrar(\'codigo\')">Convertido x Original</div>';
+        html += '<div class="ide-tab" id="ide-tab-diferencas" onclick="ideMostrar(\'diferencas\')">Diferencas</div>';
         html += '<div class="ide-tab" id="ide-tab-testes" onclick="ideMostrar(\'testes\')">Testes</div>';
         html += '<div style="margin-left:auto;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text)">' + prog + '</div>';
         html += '</div>';
         html += '<div class="ide-editor-wrap" id="ide-editor-wrap"></div>';
+        // painel de Diferencas (resumo descritivo; carregado sob demanda)
+        html += '<div id="ide-diferencas" style="display:none;flex:1;overflow:auto;padding:16px"></div>';
         // painel de Testes (exibido quando a aba Testes esta ativa)
         html += '<div id="ide-testes" style="display:none;flex:1;overflow:auto;padding:16px">';
         html += bannerInferencia(d.inferidos || [], d.stubs || []);
@@ -1201,8 +1806,44 @@ async function carregarCodigo() {
     }
 }
 
-// Validar o programa com os dados de teste do roteiro (3 cenarios)
+// Validar o programa com o roteiro de teste - mostra a MESMA visao passo a
+// passo (12 passos por roteiro) da aba Roteiros, destacando os passos deste
+// programa. Assim o resultado aqui e' identico ao do roteiro de teste.
 async function validarRoteiro(prog) {
+    const div = document.getElementById('test-result');
+    div.innerHTML = '<span class="spinner"></span> Executando validacao passo a passo dos roteiros (compila e roda os programas reais)...';
+    try {
+        // 1) descobre o nome convertido deste programa e se ele faz parte do
+        //    roteiro (para destacar e avisar quando nao pertence).
+        let convNome = null, noRoteiro = false;
+        try {
+            const ri = await fetch('/api/testar-roteiro/' + encodeURIComponent(prog));
+            const di = await ri.json();
+            if (!di.error) { convNome = di.nome_convertido; noRoteiro = !!di.no_roteiro; }
+        } catch (e) { /* segue sem destaque se falhar */ }
+
+        // 2) roda a visao roteiro-centrica (12 passos por roteiro) - a MESMA
+        //    da aba Roteiros.
+        const r = await fetch('/api/roteiro-execucao');
+        const d = await r.json();
+        if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
+        let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Validacao passo a passo do roteiro <strong>Primeiro Emplacamento</strong>' +
+            (convNome ? ' &ndash; destacando os passos de <code>' + escapeHtml(convNome) + '</code>' : '') + '</div>';
+        if (noRoteiro) {
+            html += '<div style="border:1px solid #93C5FD;background:#EFF6FF;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#1E3A8A">' +
+                '<strong>&#8505; Este programa (' + escapeHtml(convNome || prog) + ') nao faz parte do roteiro de Primeiro Emplacamento.</strong> ' +
+                'Nenhum dos passos abaixo usa a transacao dele, por isso nenhuma linha aparece destacada. ' +
+                'A visao completa dos roteiros e mostrada mesmo assim.</div>';
+        }
+        await _garantirListaProgramas();
+        html += _renderRoteiroExecucao(d.roteiros, convNome);
+        div.innerHTML = html;
+        return;
+    } catch(e) { div.innerHTML = '<div class="result-box diff">Erro: ' + e.message + '</div>'; return; }
+}
+
+// (legado) Validacao program-centrica - mantida para referencia, nao usada.
+async function _validarRoteiroLegado(prog) {
     const div = document.getElementById('test-result');
     div.innerHTML = '<span class="spinner"></span> Executando validacao com os cenarios do roteiro de teste...';
     try {
@@ -1210,7 +1851,26 @@ async function validarRoteiro(prog) {
         const d = await r.json();
         if (d.error) { div.innerHTML = '<div class="result-box diff">Erro: ' + d.error + '</div>'; return; }
         let html = '<div style="font-size:12px;color:var(--text-3);margin-bottom:8px">Validacao com o roteiro <strong>Primeiro Emplacamento</strong> (' + d.casos.length + ' cenarios)</div>';
+        // programa que NAO faz parte do roteiro de Primeiro Emplacamento:
+        // nenhum passo o utiliza, entao rodar com os dados do roteiro nao valida
+        // nada de negocio - deixa isso explicito em vez de parecer uma validacao.
+        if (d.no_roteiro) {
+            html += '<div style="border:1px solid #93C5FD;background:#EFF6FF;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#1E3A8A">' +
+                '<strong>&#8505; Este programa nao faz parte do roteiro de Primeiro Emplacamento.</strong> ' +
+                'Nenhum dos 12 passos dos roteiros usa a transacao deste programa (' + escapeHtml(d.nome_convertido || '') + '). ' +
+                'A execucao abaixo apenas <strong>exercita o fonte</strong> com os dados de cada cenario (chassi/CPF/CNPJ), ' +
+                'sem correspondencia com um passo do roteiro - por isso aparece como "executou sem validacao". ' +
+                'Para ver a validacao passo a passo dos roteiros, use a aba <strong>Roteiros &rarr; Executar validacao passo a passo</strong>.</div>';
+        }
         html += renderTesteInfoBox(IDE_TESTE_INFO);
+        // aviso quando os cenarios so' "executam" sem valor de negocio real
+        const algumValido = (d.casos || []).some(c => { const r=c.convertido||c.original||{}; const lg=(IDE_TESTE_INFO.legenda_saida||{})[String(r.codigo)]; return !c.erro && r.sucesso && r.codigo!=null && (r.codigo!==0 || !!lg); });
+        if (!algumValido) {
+            html += '<div style="border:1px solid #F59E0B;background:#FFFBEB;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:12px;color:#78350F">' +
+                '<strong>&#9888; Atencao:</strong> este programa <strong>executa</strong>, mas neste ambiente nao produz um valor de negocio verificavel ' +
+                '(depende de tabelas/dados reais do mainframe, ou o campo de entrada real nao foi identificado). ' +
+                'O status "EXECUTOU (sem validacao)" significa apenas que o programa rodou sem falhar - <strong>nao</strong> que a regra de negocio foi validada.</div>';
+        }
         const descricaoExec = (d.casos[0] && d.casos[0].descricao_execucao) || '';
         if (descricaoExec) {
             html += '<div style="padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--text-3);background:var(--card-hover);border-radius:6px">' + escapeHtml(descricaoExec) + '</div>';
@@ -1223,15 +1883,45 @@ async function validarRoteiro(prog) {
         d.casos.forEach(c => {
             // usa o resultado da execucao do fonte (convertido); cai no original se preciso
             const res = c.convertido || c.original || {};
-            const temRes = !c.erro && res.sucesso && res.codigo != null;
             const legenda = (IDE_TESTE_INFO.legenda_saida || {})[String(res.codigo)];
-            const resTxt = c.erro ? 'erro' : (temRes ? (res.codigo + ' - ' + (legenda || res.descricao || 'sem descricao')) : '-');
-            const badge = c.erro ? '<span class="badge badge-red">ERRO</span>'
-                        : (temRes ? '<span class="badge badge-green">RESULTADO ESPERADO</span>' : '<span class="badge badge-red">SEM RETORNO</span>');
+            const executou = !c.erro && res.sucesso && res.codigo != null;
+            // Status HONESTO em 3 niveis:
+            //  - ERRO: nao executou / abortou / loop
+            //  - EXECUTOU (sem validacao): rodou mas o resultado nao e um valor
+            //    de negocio real - codigo 0 sem legenda (nao ha banco/dados ou
+            //    o campo de entrada real nao foi identificado). Nao e' um
+            //    "resultado esperado", so' significa "o programa rodou".
+            //  - RESULTADO VALIDO: retornou um codigo de negocio mapeado
+            //    (ex: 33 = placa Mercosul) - unico caso realmente validado.
+            const temValorNegocio = executou && (res.codigo !== 0 || !!legenda);
+            const resTxt = c.erro ? 'erro' : (executou ? _fmtResultadoRoteiro(res.codigo, legenda, res.descricao || (res.codigo === 0 ? 'executou (sem valor de negocio)' : 'sem descricao')) : '-');
+            let badge;
+            if (c.erro || !executou) {
+                badge = '<span class="badge badge-red">ERRO</span>';
+            } else if (temValorNegocio) {
+                badge = '<span class="badge badge-green" title="O programa consultou as bases reais e retornou um resultado de negocio. Para codigo 0 com legenda (ex: nada consta de roubo/furto), significa que consultou e nada consta - o esperado para veiculo novo.">RESULTADO VALIDO</span>';
+            } else {
+                badge = '<span class="badge badge-amber" title="O programa executou ate o fim, mas nao produziu um valor de negocio verificavel neste ambiente (sem banco/dados reais ou campo de entrada nao identificado). Nao e uma validacao da regra de negocio.">EXECUTOU (sem validacao)</span>';
+            }
+            // entrada: se o backend identificou a chave REAL do programa,
+            // mostra ela (ex: "CPF (chave da consulta TAXADS) = ...") + contexto;
+            // senao cai no rotulo generico antigo.
+            let entradaHtml;
+            if (c.entrada_real) {
+                const er = c.entrada_real;
+                entradaHtml = '<div><span style="color:var(--text-muted)">' + escapeHtml(er.rotulo) + ':</span> ' +
+                    '<code style="font-size:11px">' + escapeHtml(String(er.valor || '(vazio)')) + '</code></div>';
+                (er.contexto || []).forEach(cx => {
+                    entradaHtml += '<div style="font-size:10px;color:var(--text-muted)">contexto (nao e chave): ' +
+                        escapeHtml(cx.rotulo) + ' ' + escapeHtml(String(cx.valor)) + '</div>';
+                });
+            } else {
+                entradaHtml = _htmlParametrosEntrada(c.parametros_entrada);
+            }
             html += '<tr style="border-bottom:1px solid var(--border)">' +
                 '<td style="padding:6px 8px;vertical-align:top"><strong>' + escapeHtml(c.cenario) + '</strong><div style="font-size:10px;color:var(--text-muted)">' + escapeHtml(c.categoria) + '</div></td>' +
-                '<td style="font-size:11px;vertical-align:top">' + _htmlParametrosEntrada(c.parametros_entrada) + '</td>' +
-                '<td style="text-align:center;vertical-align:top">' + escapeHtml(String(resTxt)) + '</td>' +
+                '<td style="font-size:11px;vertical-align:top">' + entradaHtml + '</td>' +
+                '<td style="text-align:center;vertical-align:top">' + resTxt + '</td>' +
                 '<td style="text-align:center;vertical-align:top">' + badge + '</td></tr>';
             if (c.erro) {
                 html += '<tr><td colspan="4" style="padding:4px 8px;font-size:11px;color:var(--danger)">' + escapeHtml(c.erro) + '</td></tr>';
@@ -1241,9 +1931,13 @@ async function validarRoteiro(prog) {
             // resultado tecnico acima (o programa nao valida sozinho se o
             // resultado bate com a regra de negocio real).
             (c.passos_relevantes || []).forEach(p => {
+                const inp = p.input || {};
+                const inHtml = inp.valor
+                    ? ' &nbsp;|&nbsp; <span style="color:var(--text-muted)">Input:</span> ' + escapeHtml(inp.rotulo) + ' = <code>' + escapeHtml(String(inp.valor)) + '</code>'
+                    : (inp.rotulo ? ' &nbsp;|&nbsp; <span style="color:var(--text-muted)">Input:</span> ' + escapeHtml(inp.rotulo) : '');
                 html += '<tr><td colspan="4" style="padding:4px 8px 8px;font-size:11px;color:var(--text-3);background:var(--card-hover)">' +
                     '<strong>Roteiro (' + escapeHtml(p.transacao || '') + ' - ' + escapeHtml(p.titulo || '') + '):</strong> esperado: ' +
-                    escapeHtml(p.resultado_esperado || '-') + '</td></tr>';
+                    escapeHtml(p.resultado_esperado || '-') + inHtml + '</td></tr>';
             });
         });
         html += '</table>';
@@ -1760,7 +2454,12 @@ async function cancelarImportacao() {
 async function importarFontes(files) {
     if (!files || !files.length) return;
     const fd = new FormData();
-    for (const f of files) fd.append('arquivos', f);
+    for (const f of files) {
+        fd.append('arquivos', f);
+        // caminho relativo da pasta (quando importando um diretorio) para o
+        // backend rotear por Originais/ ou Convertidos/. Vazio em import avulso.
+        fd.append('caminhos', f.webkitRelativePath || f.name || '');
+    }
 
     modalImport('<div style="padding:40px;text-align:center;color:var(--text-muted)">' +
         '<span class="spinner"></span> Enviando ' + files.length + ' arquivo(s)...</div>');
@@ -1797,6 +2496,7 @@ async function importarFontes(files) {
         toolbarMsg('Erro: ' + e.message, 'var(--danger)');
     } finally {
         document.getElementById('import-input').value = '';
+        document.getElementById('import-dir-input').value = '';
     }
 }
 

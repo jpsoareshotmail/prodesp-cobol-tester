@@ -165,3 +165,47 @@ def get_roteiros() -> list:
 
 def get_transacoes() -> dict:
     return TRANSACOES
+
+
+# Qual dado do cenario e' o INPUT de cada passo, por transacao. Reflete a chave
+# que aquela etapa usa no mainframe (ver analise dos programas): consultas de
+# veiculo sao por CHASSI (901/PGER/PEPM/EDUT/CDAV/eCRV/CEST); as de taxa sao por
+# CPF do requerente (RAUT/TXUT); a de CNPJ oficial (PJOF) usa o CNPJ; DHAB e' um
+# processamento em lote, sem chave de entrada.
+_INPUT_POR_TRANSACAO = {
+    '901':  ('chassi', 'Chassi'),
+    'RAUT': ('cpf_cnpj', 'CPF/CNPJ do requerente'),
+    'TXUT': ('cpf_cnpj', 'CPF/CNPJ do requerente'),
+    'PGER': ('chassi', 'Chassi'),
+    'DHAB': (None, 'Processamento em lote (sem chave de entrada)'),
+    'PEPM': ('chassi', 'Chassi'),
+    'EDUT': ('chassi', 'Chassi'),
+    'CDAV': ('chassi', 'Chassi'),
+    'CEST': ('placa_chassi', 'Placa/Chassi'),
+    'PEST': ('placa_chassi', 'Placa/Chassi'),
+    'PJOF': ('cnpj', 'CNPJ oficial'),
+}
+
+
+def input_do_passo(passo: dict, dados_teste: dict) -> dict:
+    """Retorna {rotulo, valor, campo} do dado de entrada de um passo, conforme
+    a transacao e os dados de teste do cenario. Passos manuais/eCRV (sem
+    transacao) usam o chassi (dados da ficha do veiculo)."""
+    trans = passo.get('transacao')
+    dt = dados_teste or {}
+    chassi = dt.get('chassi', '')
+    cpf = dt.get('cpf', '')
+    cnpj = dt.get('cnpj', '')
+    tipo, rotulo = _INPUT_POR_TRANSACAO.get(trans, ('chassi', 'Chassi (dados da ficha)'))
+    if tipo is None:
+        return {'campo': None, 'rotulo': rotulo, 'valor': None}
+    if tipo == 'chassi':
+        return {'campo': 'chassi', 'rotulo': rotulo, 'valor': chassi}
+    if tipo == 'cnpj':
+        return {'campo': 'cnpj', 'rotulo': rotulo, 'valor': cnpj}
+    if tipo == 'cpf_cnpj':
+        val = cpf or cnpj
+        return {'campo': 'cpf' if cpf else 'cnpj', 'rotulo': ('CPF' if cpf else 'CNPJ') + ' do requerente', 'valor': val}
+    if tipo == 'placa_chassi':
+        return {'campo': 'chassi', 'rotulo': rotulo, 'valor': chassi}
+    return {'campo': 'chassi', 'rotulo': rotulo, 'valor': chassi}

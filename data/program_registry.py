@@ -61,6 +61,48 @@ def _categoria(nome: str) -> str:
     return 'Outros'
 
 
+def _chave_pareamento(nome: str) -> str:
+    """Deriva uma chave de identidade para parear original <-> convertido pelo nome.
+
+    Extrai o codigo de sistema (3 letras, ex GAA/GAT/GEV) + os digitos do nome.
+    Assim 'PF-GAA-L004' e 'FGAA004' produzem a mesma chave 'GAA004', e
+    'PF-GAA-T013-DB' e 'OGAA013D' produzem 'GAA013'. Se nao houver 3 letras +
+    digitos reconheciveis, usa os alfanumericos do nome como fallback.
+    """
+    import re
+    u = (nome or '').upper()
+    compact = re.sub(r'[^A-Z0-9]', '', u)
+    mnum = re.search(r'(\d{3,})', compact)
+    num = mnum.group(1) if mnum else ''
+    if not num:
+        return compact  # sem codigo numerico: usa alfanumericos
+
+    letras_antes = re.sub(r'[0-9]', '', compact[:compact.index(num)])
+
+    # 1) codigos de sistema conhecidos que aparecem identicos nos dois lados
+    for cod in ('GAA', 'GAT', 'GEV', 'GBA', 'GEC', 'LIB', 'SEE'):
+        if cod in letras_antes:
+            return cod + num
+
+    # 2) generico: o codigo de sistema sao 3 letras que aparecem tanto no
+    #    original (com letra de tipo ao fim: SIS+L/T) quanto no convertido
+    #    (com prefixo ao inicio: F/O/Z+SIS). Tentamos normalizar pegando um
+    #    trigrama estavel: descarta 1 letra de prefixo no inicio E 1 de tipo
+    #    no fim quando houver sobra, e usa o "miolo".
+    l = letras_antes
+    if len(l) >= 4:
+        # tenta miolo removendo 1 do inicio (prefixo) -> alinha convertido
+        candidato_ini = l[1:4]
+        # e removendo 1 do fim (tipo) -> alinha original
+        candidato_fim = l[-4:-1] if len(l) >= 4 else l[-3:]
+        # usa o que aparece mais "no meio": preferimos remover prefixo pois
+        # convertidos sempre tem prefixo de 1 letra
+        sis = candidato_ini
+    else:
+        sis = l[-3:] if len(l) >= 3 else l
+    return sis + num
+
+
 def _eh_programa_cobol(path: Path) -> bool:
     """Heuristica: arquivo de fonte COBOL (tem IDENTIFICATION/PROGRAM-ID)."""
     try:
@@ -121,7 +163,7 @@ def reconstruir_mapa_do_disco() -> dict:
         else:
             novo[orig] = ''
 
-    # 2. convertidos em disco ainda nao pareados
+    # 2. convertidos em disco ainda nao pareados: tenta par conhecido
     for conv in convertidos:
         if conv in usados_conv:
             continue
@@ -129,11 +171,31 @@ def reconstruir_mapa_do_disco() -> dict:
         if orig and orig not in novo:
             novo[orig] = conv
             usados_conv.add(conv)
-        elif not orig:
-            # convertido novo sem original conhecido: entra com chave propria
-            chave = f'(novo) {conv}'
-            novo.setdefault(chave, conv)
-            usados_conv.add(conv)
+
+    # 3. pareamento HEURISTICO por nome (para fontes importados sem par
+    #    conhecido). Casa originais com convertido vazio a convertidos ainda
+    #    livres que compartilhem a mesma "chave" normalizada do nome.
+    origs_sem_par = [o for o, c in novo.items() if not c and not o.startswith('(novo)')]
+    conv_livres = [c for c in convertidos if c not in usados_conv]
+    if origs_sem_par and conv_livres:
+        idx_conv = {}
+        for c in conv_livres:
+            idx_conv.setdefault(_chave_pareamento(c), []).append(c)
+        for orig in origs_sem_par:
+            chave = _chave_pareamento(orig)
+            candidatos = idx_conv.get(chave)
+            if candidatos:
+                conv = candidatos.pop(0)
+                novo[orig] = conv
+                usados_conv.add(conv)
+
+    # 4. convertidos que sobraram sem original: entram como avulsos para
+    #    aparecerem na lista mesmo assim.
+    for conv in convertidos:
+        if conv in usados_conv:
+            continue
+        novo.setdefault(f'(novo) {conv}', conv)
+        usados_conv.add(conv)
 
     salvar_mapa(novo)
     return novo

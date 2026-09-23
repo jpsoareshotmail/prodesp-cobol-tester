@@ -340,6 +340,16 @@ def _inferir_pic(nome: str, codigo: str, aritmeticos: set | None = None,
        or origem_numerica:
         if origem_decimal:
             return 'PIC 9(007)V99'
+        # campos de dominio com LARGURA FIXA conhecida: mesmo usados
+        # numericamente, precisam do tamanho certo senao um MOVE de um campo
+        # maior TRUNCA os digitos (ex: TAX-CPF-X 9(9) recebendo IN-CPF 9(11)
+        # perdia os 2 digitos da esquerda e a consulta por CPF nunca casava).
+        if ('CPF' in base and ('CGC' in base or 'CNPJ' in base)) or 'CNPJ' in base or 'CGC' in base:
+            return 'PIC 9(014)'
+        if 'CPF' in base:
+            return 'PIC 9(011)'
+        if 'RENAVAM' in base:
+            return 'PIC 9(011)'
         # tamanho por nome (ano/codigo) ou default 9
         if 'ANO' in base:
             return 'PIC 9(004)'
@@ -494,7 +504,7 @@ def gerar_copybook_inferido(nome_programa: str, undefined: list, codigo: str,
 
 
 def gerar_paragrafos_inferidos(nome_programa: str, paragrafos: list,
-                               copy_dir: Path) -> Path | None:
+                               copy_dir: Path, codigo_proc: str | None = None) -> Path | None:
     """Gera um copybook de PROCEDURE com stubs de paragrafo (CONTINUE).
 
     Paragrafos '<TABELA>-LOCK' sao um padrao de DM (Unisys) pra travar um

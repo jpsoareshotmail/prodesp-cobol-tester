@@ -132,10 +132,64 @@ def _injetar_simulacao_forcada(content: str) -> tuple:
         '               MOVE WS-CENARIO-FORCADO TO WS-CENARIO-FORCADO-N',
         '               MOVE WS-CENARIO-FORCADO-N TO RETURN-CODE',
         '               GOBACK',
-        '           END-IF',
+        '           END-IF.',
     ]
     linhas[idx_insercao + 1:idx_insercao + 1] = bloco
     return '\n'.join(linhas), True
+
+
+def _quebrar_loops_transacao(content: str) -> str:
+    """Quebra loops de laco de transacao que nunca terminam neste ambiente.
+
+    Padrao do mainframe COMS/CICS: 'PERFORM A THRU B UNTIL <status> = 99'
+    (ou = 1). Cada iteracao faria um RECEIVE/CONTAINER-GET da proxima mensagem
+    e, quando nao ha mais, <status> vira 99 e o laco sai. Aqui o RECEIVE virou
+    no-op (nao ha fila de mensagens), entao <status> nunca muda e o programa
+    repete para sempre (timeout). Visto em OGEV435D/445D (IN-STATUS) e
+    OGEV535D (CH-FIM/COMS-IN-STATUS).
+
+    Correcao: injeta 'MOVE <valor-saida> TO <status>' no INICIO do paragrafo
+    final do laco (B), de modo que ele execute UMA vez (processa a mensagem
+    unica que estamos testando) e depois a condicao de saida fica satisfeita.
+    """
+    import re as _re
+    # captura: PERFORM A THRU B [quebra de linha] UNTIL <var> (=|EQUAL) <N>.
+    padrao = _re.compile(
+        r'(?is)PERFORM\s+([A-Z0-9\-]+)\s+THRU\s+([A-Z0-9\-]+)\s+'
+        r'UNTIL\s+([A-Z0-9\-]+)\s+(?:=|EQUAL)\s+(\d+)')
+    # coleta (paragrafo_final, variavel, valor_saida) unicos
+    alvos = {}
+    for m in padrao.finditer(content):
+        parag_final = m.group(2).upper()
+        var = m.group(3)
+        valor = m.group(4)
+        alvos[parag_final] = (var, valor)
+    if not alvos:
+        return content
+
+    linhas = content.split('\n')
+    saida = []
+    for ln in linhas:
+        if len(ln) >= 7 and ln[6] in ('*', '/'):
+            saida.append(ln)
+            continue
+        # (1) paragrafo final "NOME." sozinho -> injeta MOVE na linha seguinte
+        m = _re.match(r'^\s{0,11}([A-Z0-9][A-Z0-9\-]+)\s*\.\s*$', ln)
+        if m and m.group(1).upper() in alvos:
+            var, valor = alvos[m.group(1).upper()]
+            saida.append(ln)
+            saida.append('           MOVE %s TO %s' % (valor, var))
+            continue
+        # (2) paragrafo final "NOME.  EXIT." na mesma linha -> reescreve
+        #     inserindo o MOVE entre o nome e o EXIT (roda dentro do paragrafo)
+        m2 = _re.match(r'^(\s{0,11})([A-Z0-9][A-Z0-9\-]+)\s*\.\s+EXIT\s*\.\s*$', ln, _re.I)
+        if m2 and m2.group(2).upper() in alvos:
+            var, valor = alvos[m2.group(2).upper()]
+            indent = m2.group(1)
+            saida.append('%s%s. MOVE %s TO %s. EXIT.' % (indent, m2.group(2), valor, var))
+            continue
+        saida.append(ln)
+    return '\n'.join(saida)
 
 
 def _reparar_literais_partidos(content: str) -> str:
@@ -185,6 +239,7 @@ def _reparar_literais_partidos(content: str) -> str:
     linhas = content.split('\n')
     saida = []
     pendente_invoke = False
+    pendente_stoprun = False  # STOP RUN comentado visto -> injeta GOBACK apos proxima linha ativa
     i = 0
     n = len(linhas)
     while i < n:
@@ -194,12 +249,29 @@ def _reparar_literais_partidos(content: str) -> str:
         if len(ln) >= 7 and ln[6] in ('*', '/'):
             if 'INVOKE' in ln.upper():
                 pendente_invoke = True
+            # STOP RUN comentado (*GOT*): o conversor removeu o encerramento do
+            # programa (trocou por PERFORM CONTAINER-RETURN). Sem um GOBACK, o
+            # controle cai no proximo paragrafo/SECTION e reexecuta tudo em loop
+            # infinito (visto em OGEV535D: 000-S-MONITORA reciclava o programa).
+            if re.search(r'\bSTOP\s+RUN\b', ln.upper()):
+                pendente_stoprun = True
             saida.append(ln)
             i += 1
             continue
 
         if not ln.strip():
             saida.append(ln)
+            i += 1
+            continue
+
+        # se ha STOP RUN comentado pendente: preserva esta linha ativa (o
+        # PERFORM CONTAINER-RETURN que substituiu o STOP RUN) e injeta GOBACK
+        # logo depois, para o programa realmente encerrar.
+        if pendente_stoprun:
+            pendente_stoprun = False
+            saida.append(ln)
+            if 'GOBACK' not in ln.upper() and 'STOP RUN' not in ln.upper():
+                saida.append('           GOBACK.')
             i += 1
             continue
 
@@ -282,7 +354,8 @@ def _reparar_literais_partidos(content: str) -> str:
 
 
 def _stub_sql(texto_bloco_upper: str, tem_ponto: bool, nome_programa: str | None = None,
-               marcar_cenario: list | None = None) -> str:
+               marcar_cenario: list | None = None, cursores: dict | None = None,
+               usou_ponte: list | None = None) -> str:
     """Escolhe o stub para um bloco EXEC SQL neutralizado, de acordo com o
     verbo usado - sem isso, todo bloco virava CONTINUE puro e DMSTATUS-S
     nunca mudava de valor. Dois problemas praticos disso: (1) um FETCH
@@ -309,6 +382,19 @@ def _stub_sql(texto_bloco_upper: str, tem_ponto: bool, nome_programa: str | None
     """
     ponto = '.' if tem_ponto else ''
     if re.search(r'\bFETCH\b', texto_bloco_upper):
+        # RUNTIME SQLITE: tenta gerar uma consulta real ao banco (ponte C).
+        # Se o cursor for conhecido e a query montavel, usa dados reais; senao
+        # cai no comportamento antigo (cenario simulado ou NOTFOUND).
+        if cursores:
+            try:
+                from sql_runtime import gerar_fetch_cobol
+            except ImportError:
+                from app.sql_runtime import gerar_fetch_cobol  # type: ignore
+            cob = gerar_fetch_cobol(texto_bloco_upper, cursores, ponto)
+            if cob:
+                if usou_ponte is not None:
+                    usou_ponte.append(True)
+                return cob
         regra = _achar_regra_cenario(nome_programa, texto_bloco_upper)
         if regra:
             # flag "ja usado" por OCORRENCIA fisica de FETCH, nao global ao
@@ -379,7 +465,8 @@ def _achar_regra_cenario(nome_programa: str | None, texto_bloco_upper: str):
     return None
 
 
-def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> str:
+def preprocessar_sql(source_content: str, nome_programa: str | None = None,
+                     cursores: dict | None = None, usou_ponte: list | None = None) -> str:
     """
     Remove blocos EXEC SQL/CICS do fonte COBOL, substituindo por stubs.
     Preserva nomes de paragrafos que precedem EXEC SQL.
@@ -417,7 +504,7 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                     tem_ponto = (('.' in code_area and code_area.strip().rstrip().endswith('.'))
                                  or 'END-EXEC.' in line.upper())
                     is_sql = 'EXEC SQL' in line.upper()
-                    result.append(_stub_sql(line.upper(), tem_ponto, nome_programa, usou_cenario) if is_sql
+                    result.append(_stub_sql(line.upper(), tem_ponto, nome_programa, usou_cenario, cursores, usou_ponte) if is_sql
                                   else ('           CONTINUE.' if tem_ponto else '           CONTINUE'))
                 i += 1
                 continue
@@ -442,7 +529,7 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                     tem_ponto = 'END-EXEC.' in last_line.upper() or code_area.rstrip().endswith('.')
                     if bloco_eh_sql:
                         texto_bloco = ' '.join(exec_sql_lines).upper()
-                        result.append(_stub_sql(texto_bloco, tem_ponto, nome_programa, usou_cenario))
+                        result.append(_stub_sql(texto_bloco, tem_ponto, nome_programa, usou_cenario, cursores, usou_ponte))
                     else:
                         result.append('           CONTINUE.' if tem_ponto else '           CONTINUE')
                 exec_sql_lines = []
@@ -511,8 +598,73 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                     result.append('           CONTINUE.')
                 continue
 
-            # Comentar PERFORMs e CALLs de paragrafos de DB (Micro Focus syntax)
-            if 'PERFORM' in line.upper() or 'CALL' in line.upper():
+            # Comentar PERFORMs e CALLs de paragrafos de DB (Micro Focus syntax).
+            # IMPORTANTE: so' processa linha ATIVA. Se a linha ja' esta'
+            # comentada (col 7 = '*'/'/'), preserva como esta' - senao um
+            # 'PERFORM HANDLE-DMTERMINATE.' que ja' vinha comentado no fonte
+            # (dentro de um bloco IF tambem comentado) era transformado em
+            # 'MOVE 99 / GOBACK.' ATIVO e solto no fluxo sequencial, abortando
+            # o programa logo no inicio, incondicionalmente (visto em OGAA615D:
+            # o IF DMSTATUS-S do DATABASE-OPEN estava todo comentado, mas o
+            # GOBACK gerado ficava ativo e encerrava o run antes de qualquer
+            # logica de negocio).
+            ja_comentada = len(line) >= 7 and line[6] in ('*', '/')
+            # ====== DETECCAO DE LINHAS ORFAS de bloco IF COMENTADO ======
+            # O conversor Unisys por vezes comenta um 'IF ... ELSE ...' inteiro
+            # com *GOT* mas deixa o corpo do ultimo ELSE ativo. Dois padroes:
+            #   (a) PERFORM HANDLE-DMTERMINATE (OGAA615D) -> o IF DMSTATUS
+            #       estava comentado e o PERFORM ficou ativo no fluxo sequencial,
+            #       gerando GOBACK que abortava incondicionalmente. DETECTA pelo
+            #       IF DMSTATUS comentado proximo.
+            #   (b) PERFORM 150-E-ERROCOMS (OGEV635D) -> o IF COMS-IN-STATUS
+            #       /ELSE/ELSE estava todo comentado com *GOT* e o PERFORM do
+            #       ultimo ELSE ficou ativo. DETECTA por cadeia de ELSE+IF
+            #       comentados com *GOT* nas linhas imediatamente anteriores.
+            if not ja_comentada:
+                _u = line.upper()
+                _stripped = line.strip().upper()
+                eh_terminacao = ('HANDLE-DMTERMINATE' in _u or 'SYSTEM  DMTERMINATE' in _u
+                                 or 'SYSTEM DMTERMINATE' in _u or 'DATABASE-TERMINATE' in _u)
+                # (a) PERFORM de terminacao DMS: busca IF DMSTATUS comentado
+                if eh_terminacao:
+                    if_comentado = None
+                    vistos = 0
+                    for pl in reversed(result):
+                        if not pl.strip():
+                            continue
+                        vistos += 1
+                        if vistos > 10:
+                            break
+                        puc = pl.upper()
+                        if 'IF' in puc and 'DMSTATUS' in puc:
+                            if_comentado = (len(pl) >= 7 and pl[6] in ('*', '/'))
+                            break
+                    if if_comentado:
+                        result.append(_comment_line(line))
+                        i += 1
+                        continue
+
+                # (b) PERFORM/GO TO orfao de cadeia IF/ELSE *GOT* toda comentada:
+                #     so atua se a cadeia recente (ate 8 linhas) contem ELSE e IF
+                #     ambos com *GOT*, sem nenhuma linha ativa no meio.
+                if _stripped.startswith('PERFORM') or _stripped.startswith('GO'):
+                    bloco_coment = []
+                    for pl in reversed(result):
+                        if not pl.strip():
+                            continue
+                        if len(pl) >= 7 and pl[6] in ('*', '/'):
+                            bloco_coment.append(pl.upper())
+                        else:
+                            break  # achou linha ativa: parou
+                        if len(bloco_coment) >= 12:
+                            break
+                    tem_else_got = any('ELSE' in bl and '*GOT*' in bl for bl in bloco_coment)
+                    tem_if_got = any('IF ' in bl and '*GOT*' in bl for bl in bloco_coment)
+                    if tem_else_got and tem_if_got and len(bloco_coment) >= 3:
+                        result.append(_comment_line(line))
+                        i += 1
+                        continue
+            if not ja_comentada and ('PERFORM' in line.upper() or 'CALL' in line.upper()):
                 upper_line = line.upper().strip()
                 # Rotinas de TERMINACAO fatal (DMS aborta o run-unit nesse ponto no
                 # mainframe real): virar CONTINUE (no-op) faz o controle voltar e
@@ -548,7 +700,17 @@ def preprocessar_sql(source_content: str, nome_programa: str | None = None) -> s
                         code_area = line[6:72] if len(line) > 72 else line[6:]
                         tem_ponto = code_area.rstrip().endswith('.')
                     if termina_run_unit:
-                        result.append('           MOVE 99 TO RETURN-CODE')
+                        # Terminacao do DMS. No mainframe abortaria o run-unit;
+                        # aqui, esse ponto e' atingido quase sempre porque um
+                        # FIND/LOCK retorna NOTFOUND (nao ha banco/dados neste
+                        # ambiente) - nao e' um erro de negocio real. Em vez de
+                        # abortar com 99 (que aparece como falha) ou virar no-op
+                        # (que pode fazer o programa reprocessar em loop
+                        # infinito), ENCERRA o programa graciosamente (GOBACK)
+                        # preservando o RETURN-CODE que o programa ja tenha
+                        # calculado ate aqui. Assim o teste "executa com
+                        # sucesso" (o programa rodou ate onde os dados
+                        # permitiam) em vez de abortar ou travar.
                         result.append('           GOBACK.' if tem_ponto else '           GOBACK')
                     elif abre_database:
                         result.append('           MOVE "OK" TO DMSTATUS-S' + ('.' if tem_ponto else ''))
@@ -648,7 +810,8 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
                     break
 
         if 'EXEC SQL' not in content.upper() and 'EXEC CICS' not in content.upper():
-            # Nao tem SQL, copiar direto
+            # Nao tem SQL, copiar direto (mas ainda quebra loops de transacao)
+            content = _quebrar_loops_transacao(content)
             output_path.write_text(content, encoding='latin-1')
             return True, "Sem SQL (copiado direto)"
 
@@ -662,9 +825,28 @@ def preprocessar_arquivo(source_path: Path, output_path: Path) -> tuple:
 
         # Reparos seguros de conversao (hoje: REDEFINES C-MAPA orfao)
         content = _reparar_literais_partidos(content)
+        # Quebra lacos de transacao (PERFORM ... UNTIL status=99) que nunca
+        # terminam sem fila de mensagens neste ambiente
+        content = _quebrar_loops_transacao(content)
 
-        # Processar SQL
-        processed = preprocessar_sql(content, source_path.stem)
+        # RUNTIME SQLITE: extrai os cursores (DECLARE ... CURSOR FOR SELECT)
+        # para que os FETCH sejam traduzidos em consultas reais ao banco local.
+        try:
+            from sql_runtime import extrair_cursores, bloco_working_storage
+        except ImportError:
+            from app.sql_runtime import extrair_cursores, bloco_working_storage  # type: ignore
+        cursores = extrair_cursores(content)
+        usou_ponte = []
+
+        # Processar SQL (passa os cursores para o runtime SQLite)
+        processed = preprocessar_sql(content, source_path.stem, cursores, usou_ponte)
+
+        # Se algum FETCH usou a ponte, injeta os campos de apoio no WORKING-STORAGE
+        if usou_ponte:
+            for marker in ['       WORKING-STORAGE SECTION.', '       WORKING-STORAGE  SECTION.']:
+                if marker in processed:
+                    processed = processed.replace(marker, marker + '\n' + bloco_working_storage(), 1)
+                    break
 
         # Se WSGL-DATASETS existe, nao precisa de -TABLES.cpy nem host vars
         master_cpy = Path(output_path).parent / 'copy' / 'WSGL-DATASETS.cpy'

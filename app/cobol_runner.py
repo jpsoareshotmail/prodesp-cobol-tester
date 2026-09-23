@@ -111,8 +111,14 @@ class ResultadoComparacao:
 def _get_env():
     """Retorna environment com PATH do GnuCOBOL configurado."""
     env = os.environ.copy()
-    # COB_LIBRARY_PATH: onde o runtime procura os modulos (.dll/.so) - vale nos dois SOs
-    env["COB_LIBRARY_PATH"] = str(BUILD_DIR)
+    # COB_LIBRARY_PATH: onde o runtime procura os modulos (.dll/.so) - vale nos dois SOs.
+    # Inclui a pasta da ponte SQLite (pdsql) para o CALL "PDSQL_*" resolver.
+    _pdsql = BUILD_DIR / "pdsql"
+    env["COB_LIBRARY_PATH"] = str(BUILD_DIR) + os.pathsep + str(_pdsql)
+    # Pre-carrega a ponte SQLite (pdsqlbridge) para os simbolos PDSQL_* serem
+    # resolvidos - a DLL tem varias funcoes, entao nao basta 1 modulo por nome.
+    if (_pdsql / ("pdsqlbridge" + MOD_EXT)).exists():
+        env["COB_PRE_LOAD"] = "pdsqlbridge"
     if _IS_WINDOWS and _COBC_WIN.exists():
         # GnuCOBOL empacotado (Windows): aponta PATH e dirs de config/copy do pacote
         env["PATH"] = str(COBOL_BIN) + os.pathsep + env.get("PATH", "")
@@ -278,6 +284,23 @@ def compilar_modulo(nome_convertido: str, on_progress=None) -> tuple:
     ok, msg = preprocessar_arquivo(source, processed_source)
     if not ok:
         return False, f"Erro pre-processamento SQL: {msg}", None
+
+    # Injeta a entrada do roteiro (chassi/CPF/CNPJ das env vars) nos programas
+    # "dispatcher" CICS que recebem dado por mapa de tela (nao por USING), para
+    # o valor do roteiro chegar ao WHERE do EXEC SQL - ver app/roteiro_input.py.
+    if processed_source.exists():
+        try:
+            from roteiro_input import injetar_no_processado
+        except Exception:
+            try:
+                from app.roteiro_input import injetar_no_processado  # type: ignore
+            except Exception:
+                injetar_no_processado = None
+        if injetar_no_processado:
+            try:
+                injetar_no_processado(nome_convertido, processed_source, COPY_DIR)
+            except Exception:
+                pass  # injecao e' best-effort; nao pode derrubar a compilacao
 
     compile_source = processed_source if processed_source.exists() else source
 
@@ -679,12 +702,29 @@ def info_parametros_teste(nome_convertido: str) -> dict:
         # devolve esse valor direto como RETURN-CODE - a UI deixa claro que
         # e' simulado, nao derivado de regra de negocio.
         if re.search(r'(?im)^\s*PROCEDURE\s+DIVISION\s*\.\s*$', content):
-            resultado['campo_saida'] = 'RETURN-CODE'
-            resultado['legenda_saida'] = {}
-            resultado['cenarios'] = [
-                {"codigo": "0001", "rotulo": "Erro (simulado - RETURN-CODE forcado)"},
-            ]
-            resultado['simulacao_forcada'] = True
+            # Se este dispatcher tem injecao de entrada de roteiro (o dado do
+            # roteiro e' levado ate uma consulta SQLite real via ponte e o
+            # resultado observavel DEPENDE do dado - ver app/roteiro_input.py),
+            # reporta o campo/legenda REAL em vez do atalho de simulacao.
+            try:
+                from roteiro_input import info_resultado as _info_res
+            except Exception:
+                try:
+                    from app.roteiro_input import info_resultado as _info_res  # type: ignore
+                except Exception:
+                    _info_res = None
+            ir = _info_res(nome_convertido) if _info_res else None
+            if ir:
+                resultado['campo_saida'] = ir['campo']
+                resultado['legenda_saida'] = ir['legenda']
+                resultado['resultado_real'] = True
+            else:
+                resultado['campo_saida'] = 'RETURN-CODE'
+                resultado['legenda_saida'] = {}
+                resultado['cenarios'] = [
+                    {"codigo": "0001", "rotulo": "Erro (simulado - RETURN-CODE forcado)"},
+                ]
+                resultado['simulacao_forcada'] = True
         return resultado
 
     # quando o campo nao foi reconhecido por nome (chassi/placa/cpf/cnpj),
@@ -1068,10 +1108,29 @@ def executar_convertido(nome_convertido: str, env_vars: Dict[str, str] = None) -
             fonte_path=str(CONVERTIDOS_DIR / nome_convertido),
             tempo_ms=elapsed,
         )
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as e:
+        # Timeout normalmente = loop infinito. Isso costuma acontecer quando o
+        # programa espera uma mensagem de transacao (COMS-IN) com campos de
+        # entrada validos que nao temos neste ambiente: a validacao falha, o
+        # programa vai para a rotina de erro e reprocessa sem nunca setar a
+        # condicao de saida - imprimindo a mesma mensagem de erro em loop.
+        # Detecta esse caso na saida parcial para dar uma mensagem clara.
+        parcial = e.stdout or ''
+        if isinstance(parcial, bytes):
+            parcial = parcial.decode('latin-1', 'ignore')
+        erro_msg = "Timeout (>10s): execucao nao terminou"
+        linhas_p = [l.strip() for l in parcial.split('\n') if l.strip()]
+        if linhas_p:
+            from collections import Counter
+            mais_comum, freq = Counter(linhas_p).most_common(1)[0]
+            if freq > 100:
+                erro_msg = ("Loop na execucao (timeout): o programa reprocessa sem "
+                            "terminar, repetindo \"" + mais_comum[:80] + "\". "
+                            "Provavelmente depende de uma mensagem de transacao/dados "
+                            "de entrada (COMS-IN) que nao existem neste ambiente de teste.")
         return ResultadoCOBOL(
             programa=nome_convertido, fluxo="convertido", sucesso=False,
-            erro="Timeout (>10s)", executado_cobol=False,
+            erro=erro_msg, executado_cobol=False,
         )
     except Exception as e:
         return ResultadoCOBOL(
